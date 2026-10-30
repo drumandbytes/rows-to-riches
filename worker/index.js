@@ -7,9 +7,9 @@ const MIN_SAVE_INTERVAL_MS = 10_000;
 const MAX_SAVE_BYTES = 64 * 1024;
 // Floor for a first upload's claimed start time: nobody has played longer than the game existed.
 const LAUNCH_MS = Date.UTC(2026, 9, 30);
-// Resend sends from the rows.drumandbytes.dev subdomain (verified in Resend; its DNS records
+// Resend sends from the rowstoriches.drumandbytes.dev subdomain (verified in Resend; its DNS records
 // live in dnb-cloudflare-tf), keeping the apex's iCloud / Email Routing records untouched.
-const FROM = "Rows to Riches <noreply@rows.drumandbytes.dev>";
+const FROM = "Rows to Riches <noreply@rowstoriches.drumandbytes.dev>";
 const APP_NAME = "Rows to Riches";
 
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -236,9 +236,14 @@ function logRef(request, refs) {
   refs.writeDataPoint({ indexes: [from], blobs: [from, url.hostname, url.pathname, refHost] });
 }
 
+// Earlier addresses of the game: permanently redirected to APP_ORIGIN.
+const OLD_HOSTS = new Set(["rows.drumandbytes.dev"]);
+
 export default {
   async fetch(request, env) {
-    const { pathname } = new URL(request.url);
+    const url = new URL(request.url);
+    if (OLD_HOSTS.has(url.hostname)) return Response.redirect(`${env.APP_ORIGIN}${url.pathname}${url.search}`, 301);
+    const { pathname } = url;
     if (!pathname.startsWith("/api/")) {
       logRef(request, env.REFS);
       return env.ASSETS.fetch(request);

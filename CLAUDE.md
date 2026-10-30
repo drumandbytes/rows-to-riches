@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Data engineering idle game at rows.drumandbytes.dev. See README.md for the design.
+Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for the design.
 
 ## Layout
 

@@ -30,6 +30,10 @@
     { "binding": "REFS", "dataset": "dnb_refs" }
   ],
   // Sign-in links are built from this, never from the request's Host header.
-  "vars": { "APP_ORIGIN": "https://rows.drumandbytes.dev" },
-  "routes": [{ "pattern": "rows.drumandbytes.dev", "custom_domain": true }]
+  "vars": { "APP_ORIGIN": "https://rowstoriches.drumandbytes.dev" },
+  // rows.drumandbytes.dev was the first address: the Worker 301s it to the current one.
+  "routes": [
+    { "pattern": "rowstoriches.drumandbytes.dev", "custom_domain": true },
+    { "pattern": "rows.drumandbytes.dev", "custom_domain": true }
+  ]
 }
