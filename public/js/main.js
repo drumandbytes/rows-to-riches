@@ -9,6 +9,7 @@ import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
 import { track, allowed as statsAllowed } from "./analytics.js";
+import { createTour } from "./tour.js";
 
 const SAVE_KEY = "r2r.save";
 const $ = (id) => document.getElementById(id);
@@ -163,8 +164,12 @@ function bump() {
   setTimeout(() => el.classList.remove("bump"), 110);
 }
 
+// Sell mode is a per-visit toggle, not saved: coming back in sell mode would be a trap.
+let selling = false;
+
 function buyAmount(i) {
   const b = S.settings.buy;
+  if (selling) return b === "max" ? E.sellable(S, i) : Math.min(b, E.sellable(S, i));
   if (b === "max") return Math.max(1, E.maxAffordable(S, i));
   return b;
 }
@@ -174,7 +179,24 @@ function sparkFrom(btn, hue) {
   if (r) sparks(r.left + r.width / 2, r.top + r.height / 2, hue ?? E.environmentFor(S).hue);
 }
 
+function onSellProducer(i) {
+  E.tick(S, Date.now());
+  const n = buyAmount(i);
+  const value = E.sellValue(S, i, n);
+  if (!E.sellProducer(S, i, n)) return audio.sfx("deny");
+  audio.sfx("sell");
+  const p = E.PRODUCERS[i];
+  if (S.prod[i] === 42) grantSecret("answer");
+  // Otherwise the auto-buyer would buy them straight back.
+  if (autoBuyerOwned() && S.settings.autoSources && !S.settings.autoSkip.includes(p.id)) {
+    S.settings.autoSkip = [...S.settings.autoSkip, p.id];
+    toast(`🤖 ${esc(p.name)} left out of the auto-buyer so it stays at ${S.prod[i]}. Tick 🤖 on its card to undo.`);
+  } else toast(`💸 Sold ${n} ${esc(n === 1 ? p.name : p.plural)} for ${fmt(value)} rows.`, "info");
+  afterPurchase();
+}
+
 function onBuyProducer(i, btn) {
+  if (selling) return onSellProducer(i);
   E.tick(S, Date.now());
   if (!E.buyProducer(S, i, buyAmount(i))) return audio.sfx("deny");
   audio.sfx("buy");
@@ -819,12 +841,18 @@ function buildSources() {
     }
   }
   syncList($("sources"), items);
-  document.querySelectorAll(".buy-amount button").forEach((b) => b.classList.toggle("on", String(S.settings.buy) === b.dataset.buy));
+  document.querySelectorAll(".buy-amount button[data-buy]").forEach((b) => b.classList.toggle("on", String(S.settings.buy) === b.dataset.buy));
+  $("sell-mode").classList.toggle("on", selling);
+  $("sell-mode").setAttribute("aria-pressed", selling);
+  $("sources").classList.toggle("selling", selling);
 }
+
+const sharePct = (f) => (f >= 0.995 ? "100%" : f >= 0.1 ? `${Math.round(f * 100)}%` : f >= 0.001 ? `${(f * 100).toFixed(1)}%` : "<0.1%");
 
 function updateSources() {
   if (tab !== "sources") return;
   const gm = E.globalMultiplier(S);
+  const raw = E.rawRate(S) || 1;
   for (const li of $("sources").querySelectorAll("li[data-i]")) {
     const i = Number(li.dataset.i);
     const p = E.PRODUCERS[i];
@@ -843,8 +871,9 @@ function updateSources() {
       chip.textContent = chipText;
       chip.className = `chip ${owned ? "run" : "queued"}`;
     }
+    const total = E.producerRate(S, i, gm);
     li.querySelector(".sub").textContent = owned
-      ? `${fmt(each)}/s each · ${fmt(E.producerRate(S, i, gm))}/s total`
+      ? `${fmt(each)}/s each · ${fmt(total)}/s total · ${sharePct(total / raw)} of output`
       : `${fmt(each)}/s each · ${p.flavor}`;
     // Run bar: more units → shorter batch cycle.
     const dur = owned ? `${Math.max(0.35, 4 / (1 + Math.log2(owned))).toFixed(2)}s` : "0s";
@@ -852,6 +881,13 @@ function updateSources() {
     bar.hidden = !owned;
     if (bar.firstChild.style.getPropertyValue("--dur") !== dur) bar.firstChild.style.setProperty("--dur", dur);
     const btn = li.querySelector(".buy");
+    if (selling) {
+      const html = n ? `Sell ${n}<small>+${fmt(E.sellValue(S, i, n))}</small>` : `Sell<small>${owned ? "starter units" : "none"}</small>`;
+      if (btn.innerHTML !== html) btn.innerHTML = html;
+      btn.disabled = !n;
+      li.classList.remove("affordable");
+      continue;
+    }
     const html = `Buy ${n}<small>${fmt(cost)}</small>`;
     if (btn.innerHTML !== html) btn.innerHTML = html;
     btn.disabled = cost > S.rows;
@@ -875,6 +911,22 @@ function buildUpgrades() {
     `<li class="muted">Nothing new yet. Grow your Data Sources to unlock upgrades.</li>`,
   );
   $("upg-owned").textContent = `${S.upg.length} owned`;
+  $("upg-deployed").hidden = !S.upg.length;
+  $("upg-deployed-n").textContent = `(${S.upg.length})`;
+  if ($("upg-deployed").open) buildDeployed();
+}
+
+$("upg-deployed").addEventListener("toggle", (e) => e.target.open && buildDeployed());
+
+// Up to a few hundred rows, so it's only built while the section is open. Newest first.
+function buildDeployed() {
+  syncList(
+    $("upgrades-owned"),
+    [...S.upg].reverse().map((id) => {
+      const u = E.UPGRADE_BY_ID[id];
+      return { key: id, html: `<li class="item owned"><div class="ico" aria-hidden="true">${u.icon}</div><div><div class="name">${esc(u.name)}</div><div class="sub">${esc(u.desc)}</div></div>${S.kept.upg.includes(id) ? `<span class="chip run" title="Carried over by a retention reward">kept</span>` : "<span></span>"}</li>` };
+    }),
+  );
 }
 
 function updateUpgrades() {
@@ -1235,7 +1287,10 @@ document.addEventListener("click", (e) => {
     ]);
   } else if (t.dataset.mail) openMail(t.dataset.mail);
   else if (t.id === "inbox-btn") openInbox();
-  else if (t.dataset.buy) {
+  else if (t.id === "sell-mode") {
+    selling = !selling;
+    render(true);
+  } else if (t.dataset.buy) {
     S.settings.buy = t.dataset.buy === "max" ? "max" : Number(t.dataset.buy);
     saveLocal();
     render(true);
@@ -1618,12 +1673,42 @@ function loop() {
   render();
 }
 
+// ---- walkthrough -------------------------------------------------------------
+
+const tabButton = (name) => document.querySelector(`.tabs button[data-tab="${name}"]`);
+const tour = createTour(
+  [
+    { title: "Welcome to the data team", text: "You <i>are</i> the data team. Your job: rows. Lots of rows. This short tour shows the basics; you can replay it any time from Settings → Help.", next: "Show me around" },
+    { title: "Press INSERT", text: "Every press adds rows. Press quickly to build a combo (Space works too). Try it a few times.", target: () => $("insert"), until: () => S.clicks >= 5 },
+    {
+      title: "Hire your first Data Source",
+      text: "A Spreadsheet Intern types rows for you every second, even while the game is closed. Keep pressing INSERT until you can afford one, then buy it.",
+      target: () => $("sources").querySelector("li[data-i]"),
+      enter: () => selectTab("sources"),
+      until: () => S.prod[0] >= 1,
+    },
+    { title: "Rows and rows per second", text: "Your bank, and how much your sources make per second. Buy more sources, and better ones, to grow it. ×10 and max buy in bulk; <b>sell</b> sells sources back for half.", target: () => document.querySelector(".counter") },
+    { title: "Upgrades", text: "Owning more of a source unlocks upgrades: ×2 production, synergies between neighbouring sources, a stronger INSERT. A dot on the tab means you can afford one.", target: () => tabButton("upgrades") },
+    { title: "Schema", text: "Columns multiply <i>everything</i>. They're expensive, and worth it.", target: () => tabButton("schema") },
+    { title: "Prestige", text: "Growth eventually slows. Then you re-platform: start over with Insights that make everything faster. There are four layers of this, and it gets weird.", target: () => tabButton("prestige") },
+    { title: "Inbox and incidents", text: "Vendors email you here. Alerts also pop up on screen: click them for bonuses. Except phishing tests. Never click those.", target: () => $("inbox-btn") },
+    { title: "That's it", text: "Name your company, change number formats, music and motion under Settings. Help explains every system in detail. Good luck out there.", target: () => tabButton("settings") },
+  ],
+  { onEnd: () => setPref("tourDone", true) },
+);
+$("replay-tour").addEventListener("click", () => {
+  selectTab("sources");
+  tour.start();
+});
+
 // Older saves kept the notation in the save itself.
 if (S.settings.sci && prefs.notation === "suffix") setPref("notation", "scientific");
 setNotation(prefs.notation);
 showPrefs();
 applyOffline();
 render(true);
+// Fresh saves only: someone syncing an old save onto a new device doesn't need the tour.
+if (!prefs.tourDone && S.everRows < 50) setTimeout(() => tour.start(), 600);
 rotateTicker();
 shownRows = S.rows;
 animateCounter();

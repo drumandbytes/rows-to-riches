@@ -10,8 +10,9 @@ The story starts reasonable and gets steadily sillier: a CSV on localhost, then 
 
 | System | What it does |
 | --- | --- |
+| **Walkthrough** | A 9-step spotlight tour on a fresh save (some steps wait for you to do the thing); replay it from Settings → Help. |
 | **INSERT** | The click. Fast clicking builds a combo (up to +100%). Upgrades turn it from +1 row into a share of your rows/s, and the button's SQL grows up with them. |
-| **Data Sources** | 26 sources, from Spreadsheet Intern to Everything Is Data. Each one stands on the pipeline stage and sends packets to the storage sink. |
+| **Data Sources** | 26 sources, from Spreadsheet Intern to Everything Is Data. Each one stands on the pipeline stage and sends packets to the storage sink. Cards show each source's share of output; sell mode sells bought units back for half. |
 | **Upgrades** | 9 ×2 upgrades per source, 25 synergies (each source boosts the next), plus click and global upgrades: about 280 in total. |
 | **Schema** | Columns multiply everything. Alien data types (`QUBIT`, `VIBE`, `NULLER_THAN_NULL`, …) make every column stronger. |
 | **Incidents** | PagerDuty alerts, backfills, viral dashboards, schema drift and, later, 🛸 abductions. |

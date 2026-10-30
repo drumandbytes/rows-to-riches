@@ -86,7 +86,7 @@
           <div class="pane-head">
             <h2><span class="cm">#</span> Data Sources</h2>
             <div class="buy-amount" role="group" aria-label="Buy amount">
-              <button data-buy="1">×1</button><button data-buy="10">×10</button><button data-buy="100">×100</button><button data-buy="max">max</button>
+              <button data-buy="1">×1</button><button data-buy="10">×10</button><button data-buy="100">×100</button><button data-buy="max">max</button><button type="button" id="sell-mode" class="sell-toggle" aria-pressed="false" title="Sell sources back for half their price">sell</button>
             </div>
           </div>
           <ul class="dag" id="sources"></ul>
@@ -95,6 +95,10 @@
         <div class="pane" id="pane-upgrades" role="tabpanel" hidden>
           <div class="pane-head"><h2><span class="cm">--</span> Upgrades</h2><span class="muted" id="upg-owned"></span></div>
           <ul class="list" id="upgrades"></ul>
+          <details class="deployed" id="upg-deployed" hidden>
+            <summary>Deployed this run <span class="muted" id="upg-deployed-n"></span></summary>
+            <ul class="list" id="upgrades-owned"></ul>
+          </details>
         </div>
 
         <div class="pane" id="pane-schema" role="tabpanel" hidden>
@@ -248,9 +252,10 @@
 
           <div class="section help" data-section="help" hidden>
             <p><button type="button" data-feedback="1">💬 Send feedback</button> <span class="muted">Found a bug or have an idea? Tell me.</span></p>
+            <p><button type="button" id="replay-tour">🧭 Replay the walkthrough</button></p>
             <details open><summary>The basics</summary>
-              <p>Press <b>INSERT</b> to add rows by hand. Fast presses build a combo, up to +100%. Spend rows on <b>Data Sources</b>, which produce rows on their own, even while the game is closed (up to your offline cap).</p>
-              <p><b>Upgrades</b> double sources, link neighbouring sources (synergies) or boost INSERT. <b>Schema</b> columns multiply everything, at a steep price.</p>
+              <p>Press <b>INSERT</b> to add rows by hand. Fast presses build a combo, up to +100%. Spend rows on <b>Data Sources</b>, which produce rows on their own, even while the game is closed (up to your offline cap). Each card shows its share of your output. Need an exact number for an objective? Switch the buy bar to <b>sell</b> to sell sources back for half their price (free starter units can't be sold, and a sold source leaves the auto-buyer).</p>
+              <p><b>Upgrades</b> double sources, link neighbouring sources (synergies) or boost INSERT; the ones you own are listed under <i>Deployed this run</i>. <b>Schema</b> columns multiply everything, at a steep price.</p>
               <p><b>Data gravity:</b> past 1 quadrillion rows/s, data gets heavy and extra production has diminishing returns (a square-root-ish curve). Bigger multipliers still help; they just help less. Stats shows how much gravity is costing you.</p></details>
             <details><summary>Corporate life</summary>
               <p><b>🎯 OKRs</b> arrive every quarter (15 minutes of play) once you've re-platformed: three objectives scaled to where you are. Each one you hit gives a production bonus.</p>
