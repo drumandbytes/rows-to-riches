@@ -7,9 +7,10 @@ const MIN_SAVE_INTERVAL_MS = 10_000;
 const MAX_SAVE_BYTES = 64 * 1024;
 // Floor for a first upload's claimed start time: nobody has played longer than the game existed.
 const LAUNCH_MS = Date.UTC(2026, 9, 30);
-// Resend sends from the rowstoriches.drumandbytes.dev subdomain (verified in Resend; its DNS records
-// live in dnb-cloudflare-tf), keeping the apex's iCloud / Email Routing records untouched.
-const FROM = "Rows to Riches <noreply@rowstoriches.drumandbytes.dev>";
+// Cloudflare Email Sending, from the game's own subdomain so the apex's iCloud / Email Routing
+// records stay untouched. The subdomain is onboarded once with
+// `npx wrangler email sending enable rowstoriches.drumandbytes.dev`.
+const FROM = "noreply@rowstoriches.drumandbytes.dev";
 const APP_NAME = "Rows to Riches";
 
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -93,12 +94,7 @@ async function handleLogin(request, env) {
   if (env.DEV_RETURN_LINKS === "1") return json({ ok: true, devLink: link });
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: [email], subject: `Sign in to ${APP_NAME}`, ...loginEmail(link) }),
-    });
-    if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    await env.EMAIL.send({ from: { email: FROM, name: APP_NAME }, to: email, subject: `Sign in to ${APP_NAME}`, ...loginEmail(link) });
   } catch (err) {
     console.error("login email failed:", err instanceof Error ? err.message : err);
     return json({ error: "Couldn't send the email right now." }, 502);

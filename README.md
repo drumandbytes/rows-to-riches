@@ -83,9 +83,9 @@ Infrastructure lives in the org's OpenTofu repos; secrets stay out of state. Fir
 1. **GitHub repo**: `drumandbytes/dnb-tf` (branch `feat/rows-to-riches`) adds this public repo with branch protection from the org ruleset. Plan and apply there (`just kp plan`, `just kp apply`), then push this checkout to it.
 2. **Repo secrets**: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (Actions secrets are deliberately not in dnb-tf).
 3. **D1**: `drumandbytes/dnb-cloudflare-tf` (branch `feat/rows-to-riches`, `rows-to-riches.tf`) creates the `rows-to-riches` database. After applying, put its UUID into `wrangler.jsonc` (`tofu state show cloudflare_d1_database.rows_to_riches_db`).
-4. **Resend**: add the domain `rowstoriches.drumandbytes.dev` (region eu-west-1, like Mystery Game) and let it auto-configure DNS. Create a sending-only API key for that domain, then run `npx wrangler secret put RESEND_API_KEY`.
+4. **Email Sending**: `npx wrangler email sending enable rowstoriches.drumandbytes.dev` (Workers Paid). It adds the `cf-bounce` DNS records for the subdomain.
 5. **Deploy**: merging to `main` runs `.github/workflows/deploy.yml` (tests → D1 migrations → `wrangler deploy`). The Worker's `custom_domain` route creates `rowstoriches.drumandbytes.dev`.
-6. **Import the new DNS records** into dnb-cloudflare-tf (the custom-domain record and Resend's `send.rowstoriches` MX/SPF and `resend._domainkey.rowstoriches` DKIM), next to the Mystery Game ones in `drumandbytes-dev.tf`.
+6. **Import the new DNS records** into dnb-cloudflare-tf: the two Worker custom-domain records and Email Sending's `cf-bounce.rowstoriches` MX/SPF/DKIM, like road-conditions' `cf-bounce` ones in `drumandbytes-ee.tf`.
 
 Already covered, nothing to do:
 - **Page views**: Cloudflare Web Analytics is zone-wide and auto-injected on drumandbytes.dev; the CSP allows it.
@@ -93,4 +93,4 @@ Already covered, nothing to do:
 - **Gameplay stats**: the `rows_to_riches_events` Analytics Engine dataset is created on first write.
 - **Embedding**: `frame-ancestors` allows galaxy.click; submitting the game there is done on galaxy.click.
 
-Cost: static assets are free; the API, D1 and Analytics Engine sit well within the Workers Paid plan's included usage, and Resend's free tier covers 3,000 sign-in emails a month.
+Cost: static assets are free; the API, D1 and Analytics Engine sit well within the Workers Paid plan's included usage, and Email Sending includes 3,000 emails a month per account ($0.35 per 1,000 after).
