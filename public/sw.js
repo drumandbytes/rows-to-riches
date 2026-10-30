@@ -5,7 +5,7 @@
 // server sends no-cache anyway); offline the last good copy is served. /api/* is never
 // cached, and cross-origin requests (fonts, analytics) are left to the browser.
 
-const CACHE = "r2r-shell-v1";
+const CACHE = "r2r-shell-v2";
 const SHELL = [
   "/",
   "/style.css",
@@ -13,6 +13,7 @@ const SHELL = [
   "/icon.svg",
   "/icon-192.png",
   "/icon-512.png",
+  ...["jetbrains-mono", "space-grotesk"].map((f) => `/fonts/${f}-latin-wght-normal.woff2`),
   ...["main", "economy", "format", "flavor", "scene", "widgets", "sync", "prefs", "audio", "music", "erd", "active", "analytics"].map((m) => `/js/${m}.js`),
 ];
 

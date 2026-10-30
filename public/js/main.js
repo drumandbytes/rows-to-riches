@@ -1114,11 +1114,16 @@ function toast(html, kind = "key") {
   if (prefs.toasts === "off" || (prefs.toasts === "important" && kind === "info")) return;
   const el = document.createElement("div");
   el.className = "toast";
+  el.title = "Click to dismiss";
   el.innerHTML = html;
+  el.addEventListener("click", () => el.remove());
   $("toasts").append(el);
-  while ($("toasts").children.length > 4) $("toasts").firstChild.remove();
+  const all = $("toasts").querySelectorAll(".toast");
+  for (let i = 0; i < all.length - 4; i++) all[i].remove();
   setTimeout(() => el.remove(), 4500);
 }
+// Shown by CSS only while two or more toasts are up.
+$("toasts-clear").addEventListener("click", () => $("toasts").querySelectorAll(".toast").forEach((t) => t.remove()));
 
 // buttons: [label, className, onClick]
 function modal(html, buttons) {
