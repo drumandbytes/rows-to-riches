@@ -141,6 +141,13 @@
             <label class="field">Name <input type="text" id="opt-company" maxlength="32" placeholder="Your Startup, Inc." autocomplete="off" spellcheck="false" /></label>
             <h3>Numbers</h3>
             <label class="field">Notation <select id="opt-notation"></select></label>
+            <label class="field">Clock
+              <select id="opt-clock">
+                <option value="auto">Auto (your device's format)</option>
+                <option value="12">12-hour (02:15 PM)</option>
+                <option value="24">24-hour (14:15)</option>
+              </select>
+            </label>
             <h3>Automation</h3>
             <p class="muted" id="auto-none">Automation unlocks with <b>terraform apply</b> (Architecture) and the Board.</p>
             <div id="auto-wrap" hidden>
