@@ -1,0 +1,19 @@
+name: Auto merge
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+jobs:
+  auto-merge:
+    # The org default token is read-only.
+    permissions:
+      contents: write
+      pull-requests: write
+    # Not gated on workflow_run.event: Dependabot branches run CI as 'push'.
+    # The reusable workflow's author check is the real gate.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
+    uses: drumandbytes/reusable-actions/.github/workflows/auto-merge.yml@v1

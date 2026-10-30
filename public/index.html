@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Rows to Riches — an idle game about data and the company around it</title>
+    <meta name="description" content="An idle game about data engineering and corporate life. INSERT rows, survive OKRs, all-hands and meetings, build warehouses and data centers, then re-platform everything until everything is data." />
+    <meta name="theme-color" content="#16181c" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Rows to Riches" />
+    <meta property="og:title" content="Rows to Riches" />
+    <meta property="og:description" content="An idle game about data and the company around it. From one CSV on localhost to OKRs, all-hands, aliens and the point where everything is data." />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/js/main.js"></script>
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">▦</span>
+        <span class="title">Rows<span class="to">to</span>Riches</span>
+        <span class="env" id="env" title="Environment">localhost</span>
+      </div>
+      <button type="button" class="inbox-btn" id="inbox-btn" aria-label="Inbox">📬<i class="badge" id="inbox-badge" hidden></i></button>
+      <div class="counter">
+        <div class="rows"><span id="rows">0</span> <small>rows</small></div>
+        <div class="rate"><span class="pulse" aria-hidden="true"></span><span id="rate">0</span>/s</div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="window console" aria-label="Pipeline">
+        <div class="win-bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="win-title">pipeline://<span id="company-slug">your-startup</span>.<b id="env-path">localhost</b>/rows</span>
+          <span class="live">LIVE</span>
+        </div>
+        <div class="stage">
+          <canvas id="scene" aria-hidden="true"></canvas>
+          <div class="buffs" id="buffs" aria-live="polite"></div>
+        </div>
+        <div class="console-body">
+          <div class="chal-banner" id="chal-banner" hidden></div>
+          <div class="request-card" id="request-card" hidden></div>
+          <div class="okr-strip" id="okr-strip" hidden></div>
+          <div class="widgets">
+            <div class="querylog" id="querylog" hidden aria-hidden="true"></div>
+            <div class="spark-wrap" id="spark-wrap" hidden>
+              <canvas id="spark" aria-hidden="true"></canvas>
+              <span class="spark-label">throughput · last 60s</span>
+            </div>
+          </div>
+          <div class="insert-wrap">
+            <button class="insert" id="insert" type="button">
+              <code id="insert-label">INSERT INTO rows VALUES (…)</code>
+              <small id="click-value">+1 row</small>
+            </button>
+            <div class="combo" id="combo" aria-hidden="true"></div>
+            <div class="momentum" id="momentum" hidden><i></i><span></span></div>
+          </div>
+          <div class="footprint" id="footprint"></div>
+          <div class="ticker" aria-live="off"><span id="ticker">Booting localhost…</span></div>
+        </div>
+      </section>
+
+      <section class="window panel">
+        <nav class="tabs" role="tablist" aria-label="Game sections">
+          <button role="tab" data-tab="sources" aria-selected="true"><span aria-hidden="true">🔌</span><b>sources<span class="ext">.yaml</span></b></button>
+          <button role="tab" data-tab="upgrades"><span aria-hidden="true">🛠️</span><b>upgrades<span class="ext">.sql</span></b><i class="dot" id="upg-dot" hidden></i></button>
+          <button role="tab" data-tab="schema"><span aria-hidden="true">🧱</span><b>schema<span class="ext">.sql</span></b></button>
+          <button role="tab" data-tab="prestige"><span aria-hidden="true">💡</span><b>prestige<span class="ext">.md</span></b><i class="dot" id="ins-dot" hidden></i></button>
+          <button role="tab" data-tab="stats"><span aria-hidden="true">📊</span><b>stats<span class="ext">.ipynb</span></b></button>
+          <button role="tab" data-tab="settings"><span aria-hidden="true">⚙️</span><b>settings<span class="ext">.toml</span></b></button>
+        </nav>
+
+        <div class="pane" id="pane-sources" role="tabpanel">
+          <div class="pane-head">
+            <h2><span class="cm">#</span> Data Sources</h2>
+            <div class="buy-amount" role="group" aria-label="Buy amount">
+              <button data-buy="1">×1</button><button data-buy="10">×10</button><button data-buy="100">×100</button><button data-buy="max">max</button>
+            </div>
+          </div>
+          <ul class="dag" id="sources"></ul>
+        </div>
+
+        <div class="pane" id="pane-upgrades" role="tabpanel" hidden>
+          <div class="pane-head"><h2><span class="cm">--</span> Upgrades</h2><span class="muted" id="upg-owned"></span></div>
+          <ul class="list" id="upgrades"></ul>
+        </div>
+
+        <div class="pane" id="pane-schema" role="tabpanel" hidden>
+          <div class="pane-head"><h2><span class="cm">--</span> Schema</h2><span class="muted" id="col-mult"></span></div>
+          <p class="muted">Wider rows are worth more. Every column multiplies all production. The DBA has concerns.</p>
+          <div class="seg" id="schema-seg" role="group" aria-label="Schema view">
+            <button type="button" data-view="erd" class="on">🕸️ ERD</button>
+            <button type="button" data-view="ddl">📜 DDL</button>
+          </div>
+          <div class="erd" id="erd"></div>
+          <pre class="ddl" id="ddl" hidden></pre>
+          <button class="big" id="add-column" type="button"></button>
+        </div>
+
+        <div class="pane" id="pane-prestige" role="tabpanel" hidden>
+          <div class="pane-head"><h2><span class="cm">##</span> Prestige</h2></div>
+          <div class="seg" id="prestige-seg" role="group" aria-label="Prestige layer"></div>
+          <div id="prestige-card"></div>
+          <div id="prestige-shops"></div>
+        </div>
+
+        <div class="pane" id="pane-stats" role="tabpanel" hidden>
+          <div class="pane-head"><h2><span class="cm">In [1]:</span> Stats</h2></div>
+          <dl class="stats" id="stats"></dl>
+          <h3>Data Catalog <span class="muted" id="ach-count"></span></h3>
+          <p class="muted">Each catalog entry gives +1% production.</p>
+          <div class="ach" id="ach"></div>
+        </div>
+
+        <div class="pane" id="pane-settings" role="tabpanel" hidden>
+          <div class="pane-head"><h2><span class="cm">[</span>settings<span class="cm">]</span></h2></div>
+          <div class="seg" id="settings-seg" role="group" aria-label="Settings section">
+            <button type="button" data-section="game" class="on">🎮 Game</button>
+            <button type="button" data-section="audio">🔊 Audio</button>
+            <button type="button" data-section="display">🖥️ Display</button>
+            <button type="button" data-section="save">💾 Save</button>
+            <button type="button" data-section="help">❓ Help</button>
+            <button type="button" data-section="about">ℹ️ About</button>
+          </div>
+
+          <div class="section" data-section="game">
+            <h3>Company</h3>
+            <label class="field">Name <input type="text" id="opt-company" maxlength="32" placeholder="Your Startup, Inc." autocomplete="off" spellcheck="false" /></label>
+            <h3>Numbers</h3>
+            <label class="field">Notation <select id="opt-notation"></select></label>
+            <h3>Automation</h3>
+            <p class="muted" id="auto-none">Automation unlocks with <b>terraform apply</b> (Architecture) and the Board.</p>
+            <div id="auto-wrap" hidden>
+              <label class="toggle"><input type="checkbox" id="opt-auto-sources" /> Auto-buy Data Sources</label>
+              <label class="field">Strategy
+                <select id="opt-auto-strategy">
+                  <option value="value">Best value: most rows/s per row spent</option>
+                  <option value="milestone">Next milestone: towards each source's next ×2 upgrade</option>
+                  <option value="newest">Newest tier first</option>
+                  <option value="cheapest">Cheapest first</option>
+                </select>
+              </label>
+              <p class="muted">Untick 🤖 on a source card to leave that source out.</p>
+            </div>
+            <div id="auto-gitops" hidden>
+              <label class="toggle"><input type="checkbox" id="opt-auto-upgrades" /> Auto-buy upgrades</label>
+              <label class="field">Upgrade order
+                <select id="opt-upg-strategy">
+                  <option value="cheapest">Cheapest first</option>
+                  <option value="production">Production first (sources and global before INSERT)</option>
+                </select>
+              </label>
+              <label class="toggle"><input type="checkbox" id="opt-auto-columns" /> Auto-buy columns (when one costs under half your bank)</label>
+            </div>
+            <p class="muted" id="auto-gitops-hint" hidden>Upgrade and column auto-buying unlock with <b>GitOps</b> on the Board.</p>
+            <label class="toggle" id="autoreplat-wrap" hidden>Auto re-platform when Insights would grow ×<input type="number" id="opt-autoreplat" min="1.1" step="0.1" value="2" /></label>
+          </div>
+
+          <div class="section" data-section="audio" hidden>
+            <label class="toggle"><input type="checkbox" id="opt-muted" /> Mute everything</label>
+            <label class="field">Master <input type="range" id="opt-master" min="0" max="1" step="0.05" /><output></output></label>
+            <label class="field">Sound effects <input type="range" id="opt-sfx" min="0" max="1" step="0.05" /><output></output></label>
+            <label class="field">Music <input type="range" id="opt-music" min="0" max="1" step="0.05" /><output></output></label>
+            <label class="field">Music mood <select id="opt-mood"></select></label>
+            <p class="muted">The music is generated live in your browser and changes with each environment, from lo-fi on localhost to a music box at the end of everything. Audio starts after your first click (browsers require it) and pauses while the tab is hidden.</p>
+          </div>
+
+          <div class="section" data-section="display" hidden>
+            <label class="field">Quality
+              <select id="opt-quality">
+                <option value="high">High: full animations</option>
+                <option value="low">Low: fewer particles, calmer animations (saves battery)</option>
+              </select>
+            </label>
+            <h3>Motion &amp; pop-ups</h3>
+            <label class="field">Motion
+              <select id="opt-motion">
+                <option value="full">Full: everything animates</option>
+                <option value="reduced">Reduced: no looping, bobbing, blinking or pulsing</option>
+              </select>
+            </label>
+            <label class="field">Pipeline scene
+              <select id="opt-scene">
+                <option value="animated">Animated</option>
+                <option value="paused">Paused (still picture)</option>
+                <option value="hidden">Hidden</option>
+              </select>
+            </label>
+            <label class="field">Notifications
+              <select id="opt-toasts">
+                <option value="all">All</option>
+                <option value="important">Important only (prestige, challenges, your own actions)</option>
+                <option value="off">None</option>
+              </select>
+            </label>
+            <label class="toggle"><input type="checkbox" id="opt-particles" /> Sparks, confetti and floating numbers</label>
+            <label class="toggle"><input type="checkbox" id="opt-shake" /> Screen shake</label>
+            <label class="toggle"><input type="checkbox" id="opt-querylog" /> Scrolling SQL query log</label>
+            <p class="muted">Your system's "reduce motion" setting is always respected. Incident pop-ups always appear (they're part of the game), but with reduced motion they stop pulsing.</p>
+            <div id="install-wrap" hidden>
+              <h3>App</h3>
+              <button type="button" id="install">📲 Install Rows to Riches</button>
+              <span class="muted">Opens in its own window and works offline.</span>
+            </div>
+            <div id="fullscreen-wrap" hidden>
+              <h3>Window</h3>
+              <button type="button" id="fullscreen">⛶ Full screen</button>
+              <span class="muted">or press F</span>
+            </div>
+          </div>
+
+          <div class="section" data-section="save" hidden>
+            <h3>Cloud save</h3>
+            <p class="muted embed-note" id="embed-note" hidden>You're playing in an embedded window. Your progress saves here, but cloud sign-in links open in a normal browser tab, which keeps its own separate save. To sync across devices, play at <a href="https://rows.drumandbytes.dev/" target="_blank" rel="noopener">rows.drumandbytes.dev</a> and use Export / Import below to move this save there.</p>
+            <div id="cloud"></div>
+            <h3>This device</h3>
+            <p class="muted">The game autosaves every 5 seconds and whenever you leave the page.</p>
+            <div class="row-buttons">
+              <button type="button" id="save-now">💾 Save now</button>
+              <button type="button" id="export">Export save</button>
+              <button type="button" id="import">Import save</button>
+            </div>
+            <h3>Privacy</h3>
+            <label class="toggle"><input type="checkbox" id="opt-stats" /> Send anonymous gameplay stats</label>
+            <p class="muted" id="stats-note">No cookies and no identifiers: only things like "a session lasted 25 minutes in the prod environment" or "someone reached their first acquisition after 6 hours". It helps balance the game. Your browser's Global Privacy Control or Do Not Track setting turns this off automatically.</p>
+            <h3>Danger zone</h3>
+            <button type="button" class="danger" id="reset">DROP DATABASE (hard reset)</button>
+          </div>
+
+          <div class="section help" data-section="help" hidden>
+            <details open><summary>The basics</summary>
+              <p>Press <b>INSERT</b> to add rows by hand. Fast presses build a combo, up to +100%. Spend rows on <b>Data Sources</b>, which produce rows on their own, even while the game is closed (up to your offline cap).</p>
+              <p><b>Upgrades</b> double sources, link neighbouring sources (synergies) or boost INSERT. <b>Schema</b> columns multiply everything, at a steep price.</p>
+              <p><b>Data gravity:</b> past 1 quadrillion rows/s, data gets heavy and extra production has diminishing returns (a square-root-ish curve). Bigger multipliers still help; they just help less. Stats shows how much gravity is costing you.</p></details>
+            <details><summary>Corporate life</summary>
+              <p><b>🎯 OKRs</b> arrive every quarter (15 minutes of play) once you've re-platformed: three objectives scaled to where you are. Each one you hit gives a production bonus.</p>
+              <p><b>📣 All-hands</b> closes every quarter: your OKRs get graded, you get a performance rating (bonus included, sometimes), and leadership makes announcements.</p>
+              <p><b>📅 Meetings and 📨 requests</b> start after a few re-platforms: stakeholders want things, calendars fill up. Each card has two choices with different trade-offs and a 30-second timer. Ignoring it is also a choice.</p></details>
+            <details><summary>Incidents</summary>
+              <p>Every minute or two an alert pops up somewhere on screen. Click it before it disappears: production frenzies, instant backfills, INSERT storms and, much later, abductions.</p>
+              <p>Two are different: <b>phishing tests</b> (free GPU credits, urgent password resets) should be ignored, and when <b>the intern drops a table</b> you have to click quickly to restore it, or lose 10% of your bank.</p></details>
+            <details><summary>Prestige layers</summary>
+              <p><b>💡 Re-platform</b> resets your run for Insights: +3% production each, spent on Architecture and the Tech Radar.</p>
+              <p><b>📈 Acquisition</b> resets the company (Insights too) for Equity: spent on the Board, which brings automation and new sources.</p>
+              <p><b>👽 First Contact</b> resets the civilization for Xenobytes: alien tech, alien data types and alien sources.</p>
+              <p><b>🌀 Big Bang</b> becomes available once everything is data. It starts a new universe with permanent Axioms.</p>
+              <p>A good rule of thumb: prestige when it would roughly double the currency you have.</p></details>
+            <details><summary>Challenges</summary>
+              <p>Under Prestige → Challenges. Each one is a run with a restriction. Reach the goal and you get a strong reward until the layer above resets; some let you keep upgrades, columns or more through a prestige. You can abandon a challenge at any time.</p></details>
+            <details><summary>Saving and devices</summary>
+              <p>Progress lives in this browser. To play on several devices, sign in with your email under Save → Cloud save and open the link on each one. The save that has ingested more rows in total wins, and you're asked before anything is overwritten.</p></details>
+            <details><summary>Install as an app</summary>
+              <p>Rows to Riches can be installed like an app and plays fully offline (cloud sync catches up when you're back online).</p>
+              <p><b>Desktop Chrome / Edge:</b> Settings → Display → Install, or the install icon in the address bar. <b>Android:</b> browser menu → Install app. <b>iPhone / iPad:</b> Safari's Share button → Add to Home Screen.</p></details>
+            <details><summary>Keyboard</summary>
+              <p><kbd>Space</kbd> INSERT · <kbd>1</kbd>–<kbd>6</kbd> switch tabs · <kbd>B</kbd> cycle buy amount · <kbd>M</kbd> mute · <kbd>F</kbd> full screen</p></details>
+          </div>
+
+          <div class="section about" data-section="about" hidden>
+            <p><b>Rows to Riches</b> <span class="muted" id="about-version"></span>: an idle game about data engineering and the company around it. You start with one CSV on localhost and a job title nobody understands, and end up at the point where everything is data. In between: OKRs, all-hands, reorgs, vendors and aliens.</p>
+            <p>Part of <a href="https://drumandbytes.com/projects/">Drumandbytes Projects</a>. Free to play, no ads, nothing to buy.</p>
+            <p><a class="coffee" href="https://buymeacoffee.com/justmaris" target="_blank" rel="noopener">☕ Buy me a coffee</a> <span class="muted">if the game made your day (or your quarter).</span></p>
+            <h3>Credits</h3>
+            <ul class="credits">
+              <li>Music and sound effects are synthesized live with the Web Audio API.</li>
+              <li>Fonts: JetBrains Mono and Space Grotesk (SIL Open Font License), via Google Fonts.</li>
+              <li>Icons are your system's emoji.</li>
+              <li>Cloud vendors in the Inbox are parodies. Any resemblance to your actual cloud bill is coincidental.</li>
+            </ul>
+            <h3>Privacy</h3>
+            <p class="muted">No ads and no cookies. Cloud save stores only your email and your save; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy. Nothing else leaves your browser unless you sign in.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span>⎇ main</span>
+      <span id="sb-env">env: localhost</span>
+      <span id="sb-sync">☁ local only</span>
+    </footer>
+
+    <div id="incident-layer"></div>
+    <div id="toasts" aria-live="polite"></div>
+    <dialog id="modal"><form method="dialog" id="modal-body"></form></dialog>
+  </body>
+</html>

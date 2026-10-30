@@ -1,0 +1,16 @@
+{
+  "name": "rows-to-riches",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "node --test && node tools/music-audit.js",
+    "db:migrate:local": "wrangler d1 migrations apply rows-to-riches --local",
+    "db:migrate:remote": "wrangler d1 migrations apply rows-to-riches --remote",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

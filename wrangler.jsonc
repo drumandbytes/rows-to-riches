@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rows-to-riches",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  // Static files are served straight from public/. The Worker sees /api/* and the page
+  // itself ("/"), the latter only to log where visitors came from (logRef).
+  "assets": { "directory": "public", "binding": "ASSETS", "run_worker_first": ["/", "/api/*"] },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rows-to-riches",
+      // Created by drumandbytes/dnb-cloudflare-tf (rows-to-riches.tf); copy its UUID here.
+      "database_id": "c6928ed4-c410-4539-95e3-6320c30393fb",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Sign-in links go out through Resend: `npx wrangler secret put RESEND_API_KEY`.
+  "ratelimits": [
+    { "name": "LOGIN_LIMITER", "namespace_id": "2001", "simple": { "limit": 5, "period": 60 } },
+    { "name": "EVENT_LIMITER", "namespace_id": "2002", "simple": { "limit": 30, "period": 60 } }
+  ],
+  // Anonymous gameplay events (no cookies, no identifiers): see worker/index.js handleEvent.
+  "analytics_engine_datasets": [
+    { "binding": "STATS", "dataset": "rows_to_riches_events" },
+    // Shared with drumandbytes/cloudflare-workers ref-logger: this host has its own Worker,
+    // so the ref-logger passthrough can't sit in front of it.
+    { "binding": "REFS", "dataset": "dnb_refs" }
+  ],
+  // Sign-in links are built from this, never from the request's Host header.
+  "vars": { "APP_ORIGIN": "https://rows.drumandbytes.dev" },
+  "routes": [{ "pattern": "rows.drumandbytes.dev", "custom_domain": true }]
+}
