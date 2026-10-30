@@ -168,6 +168,11 @@ export const FINALE = [
 // Inbox: emails, news and vendor notices that arrive when `when(s)` first holds.
 // Vendors are parodies; none of them would sign this SLA.
 const P = (id) => (s) => s.prod[id] > 0;
+// True once mail `id` arrived at least `ms` ago (real time, so it also fires after a break).
+const after = (id, ms) => (s) => {
+  const m = s.inbox.find((x) => x.id === id);
+  return !!m && Date.now() - m.at >= ms;
+};
 const ROWS = (n) => (s) => s.everRows >= n;
 export const INBOX = [
   { id: "welcome", from: "HR <hr@yourstartup.io>", kind: "email", when: () => true,
@@ -179,6 +184,16 @@ export const INBOX = [
   { id: "cron", from: "root@localhost", kind: "email", when: P(1),
     subject: "Cron <root@localhost> /usr/local/bin/load.sh",
     body: "/usr/local/bin/load.sh: line 1: python: command not found\n\n(You will receive this email every minute, forever.)" },
+  // The cron gag keeps going: each follow-up arrives a while after the previous one.
+  { id: "cron2", from: "root@localhost", kind: "email", when: after("cron", 3600e3),
+    subject: "Re: Cron <root@localhost> /usr/local/bin/load.sh",
+    body: "/usr/local/bin/load.sh: line 1: python: command not found\n\n(This is message 61 of ∞. You were warned.)" },
+  { id: "cron3", from: "root@localhost", kind: "email", when: after("cron2", 86_400e3),
+    subject: "Re: Re: Cron <root@localhost> /usr/local/bin/load.sh",
+    body: "Traceback (most recent call last):\n  File \"/usr/local/bin/load.py\", line 1, in <module>\n    import pandas as pd\nModuleNotFoundError: No module named 'pandas'\n\n(Someone ran `pip install python`. Progress, of a kind.)" },
+  { id: "cron4", from: "MAILER-DAEMON@localhost", kind: "alert", when: after("cron3", 7 * 86_400e3),
+    subject: "Mail delivery failed: mailbox full",
+    body: "Delivery to root@localhost failed permanently: mailbox quota exceeded (10,080 messages from Cron <root@localhost>).\n\nThe cron job is still running. It has simply stopped telling anyone." },
   { id: "pypi", from: "Python Packaging Authority", kind: "news", when: P(2),
     subject: "New packaging tool released",
     body: "A new tool promises to finally fix Python packaging. It is the 14th one this year. Your requirements.txt has been deprecated in favour of three other files." },

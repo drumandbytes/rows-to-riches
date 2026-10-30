@@ -1143,10 +1143,14 @@ function rotateTicker() {
     const lines = [...envs.flatMap((id) => TICKER[id] ?? []), ...(TICKER[current] ?? []), ...(TICKER[current] ?? []), ...TICKER.tools, ...(S.replat > 0 ? TICKER.corporate : []), ...dynamicTicker()];
     tickerBag = [...new Set(lines)].concat(TICKER[current] ?? []).sort(() => Math.random() - 0.5);
   }
-  const span = document.createElement("span");
-  span.id = "ticker";
-  span.textContent = tickerBag.pop();
-  $("ticker").replaceWith(span);
+  // Newest on top; on desktop the older lines stay below as a feed (CSS hides them on phones).
+  const line = document.createElement("span");
+  line.className = "tick";
+  const time = document.createElement("time");
+  time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  line.append(time, tickerBag.pop());
+  $("ticker").prepend(line);
+  while ($("ticker").children.length > 40) $("ticker").lastElementChild.remove();
 }
 
 function dynamicTicker() {
@@ -1201,6 +1205,7 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.challenge) onStartChallenge(t.dataset.challenge);
   else if (t.closest("[data-request]")) active.answer(t.closest("[data-request]").dataset.request);
   else if (t.dataset.okrToggle) $("okr-strip").classList.toggle("open");
+  else if (t.dataset.feedback) openFeedback();
   else if (t.dataset.autoSrc) {
     const skip = S.settings.autoSkip;
     const id = t.dataset.autoSrc;
@@ -1472,6 +1477,68 @@ $("cloud").addEventListener("submit", async (e) => {
     status.textContent = "Couldn't reach the server.";
   }
 });
+
+// ---- feedback -------------------------------------------------------------------
+
+function feedbackContext() {
+  return {
+    v: VERSION,
+    env: E.environmentFor(S).id,
+    device: matchMedia("(pointer: coarse)").matches ? "mobile" : "desktop",
+    notation: prefs.notation,
+    replat: S.replat,
+    acq: S.acq,
+    contact: S.contact,
+    bangs: S.bangs,
+    log10Rows: Math.round(Math.log10(S.everRows + 1) * 10) / 10,
+    playHours: Math.round((S.stats.onlineMs / 3.6e6) * 10) / 10,
+  };
+}
+
+function openFeedback() {
+  const ctx = feedbackContext();
+  modal(
+    `<h2>💬 Send feedback</h2>
+     <div class="feedback">
+       <label class="field">Type <select id="fb-category"><option value="bug">🐛 Bug</option><option value="idea">💡 Idea</option><option value="balance">⚖️ Balance</option><option value="other">💬 Other</option></select></label>
+       <textarea id="fb-message" maxlength="2000" placeholder="What happened, what would make it better, or what made you laugh…"></textarea>
+       <input type="email" id="fb-contact" placeholder="Email, if you'd like a reply (optional)" value="${esc(sync.session.email ?? "")}" />
+       <input type="text" id="fb-website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+       <p class="muted">Sent along: version ${esc(ctx.v)}, ${esc(ctx.env)}, ${esc(ctx.device)}, ${ctx.replat} re-platforms, ${ctx.acq} acquisitions, ~${ctx.playHours}h played. Nothing that identifies you unless you add an email.</p>
+       <p class="muted" id="fb-status"></p>
+     </div>`,
+    [["Cancel"], ["Send", "primary"]],
+  );
+  // Dialog buttons submit (and close) by default; Send stays open until the server accepts.
+  const send = [...document.querySelectorAll("#modal button")].find((b) => b.textContent === "Send");
+  send.type = "button";
+  send.addEventListener("click", () => sendFeedback(send));
+  setTimeout(() => $("fb-message").focus());
+}
+
+async function sendFeedback(btn) {
+  const message = $("fb-message").value.trim();
+  if (message.length < 5) {
+    $("fb-status").textContent = "Please write a little more.";
+    return;
+  }
+  btn.disabled = true;
+  $("fb-status").textContent = "Sending…";
+  try {
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: $("fb-category").value, message, contact: $("fb-contact").value, website: $("fb-website").value, context: feedbackContext() }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? `Failed (${res.status})`);
+    $("modal").close();
+    toast("💬 Thanks! Your feedback was sent. A ticket has been created and assigned to nobody.");
+  } catch (err) {
+    $("fb-status").textContent = err instanceof Error ? err.message : "Couldn't send. Are you offline?";
+    btn.disabled = false;
+  }
+}
 
 function exportSave() {
   E.tick(S, Date.now());

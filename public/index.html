@@ -69,7 +69,7 @@
             <div class="momentum" id="momentum" hidden><i></i><span></span></div>
           </div>
           <div class="footprint" id="footprint"></div>
-          <div class="ticker" aria-live="off"><span id="ticker">Booting localhost…</span></div>
+          <div class="ticker" id="ticker" aria-live="off"><span class="tick">Booting localhost…</span></div>
         </div>
       </section>
 
@@ -241,6 +241,7 @@
           </div>
 
           <div class="section help" data-section="help" hidden>
+            <p><button type="button" data-feedback="1">💬 Send feedback</button> <span class="muted">Found a bug or have an idea? Tell me.</span></p>
             <details open><summary>The basics</summary>
               <p>Press <b>INSERT</b> to add rows by hand. Fast presses build a combo, up to +100%. Spend rows on <b>Data Sources</b>, which produce rows on their own, even while the game is closed (up to your offline cap).</p>
               <p><b>Upgrades</b> double sources, link neighbouring sources (synergies) or boost INSERT. <b>Schema</b> columns multiply everything, at a steep price.</p>
@@ -272,6 +273,7 @@
           <div class="section about" data-section="about" hidden>
             <p><b>Rows to Riches</b> <span class="muted" id="about-version"></span>: an idle game about data engineering and the company around it. You start with one CSV on localhost and a job title nobody understands, and end up at the point where everything is data. In between: OKRs, all-hands, reorgs, vendors and aliens.</p>
             <p>Part of <a href="https://drumandbytes.com/projects/">Drumandbytes Projects</a>. Free to play, no ads, nothing to buy.</p>
+            <p><button type="button" data-feedback="1">💬 Send feedback</button> <span class="muted">Bugs, ideas, balance complaints, compliments: all welcome. Or open an issue on <a href="https://github.com/drumandbytes/rows-to-riches/issues" target="_blank" rel="noopener">GitHub</a>.</span></p>
             <p><a class="coffee" href="https://buymeacoffee.com/justmaris" target="_blank" rel="noopener">☕ Buy me a coffee</a> <span class="muted">if the game made your day (or your quarter).</span></p>
             <h3>Credits</h3>
             <ul class="credits">
@@ -281,7 +283,7 @@
               <li>Cloud vendors in the Inbox are parodies. Any resemblance to your actual cloud bill is coincidental.</li>
             </ul>
             <h3>Privacy</h3>
-            <p class="muted">No ads and no cookies. Cloud save stores only your email and your save; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy. Nothing else leaves your browser unless you sign in.</p>
+            <p class="muted">No ads and no cookies. Cloud save stores only your email and your save; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy. Feedback you send is stored with the game context shown in the form, plus your email only if you add one. Nothing else leaves your browser unless you sign in.</p>
           </div>
         </div>
       </section>

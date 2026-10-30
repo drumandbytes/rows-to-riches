@@ -192,9 +192,50 @@ async function handleEvent(request, env) {
   return new Response(null, { status: 204 });
 }
 
-async function route(request, env) {
+// In-game feedback into D1, plus an optional Telegram ping (secrets TELEGRAM_BOT_TOKEN and
+// TELEGRAM_CHAT_ID; without them feedback is only stored).
+const FEEDBACK_CATEGORIES = new Set(["bug", "idea", "balance", "other"]);
+const CONTEXT_KEYS = ["v", "env", "device", "notation", "replat", "acq", "contact", "bangs", "log10Rows", "playHours"];
+
+async function handleFeedback(request, env, ctx) {
+  if (env.FEEDBACK_LIMITER) {
+    const { success } = await env.FEEDBACK_LIMITER.limit({ key: request.headers.get("CF-Connecting-IP") ?? "local" });
+    if (!success) return json({ error: "That's a lot of feedback. Try again in a minute." }, 429);
+  }
+  const body = await readJson(request);
+  // Honeypot: a field people never see, so only bots fill it in. Pretend it worked.
+  if (body?.website) return json({ ok: true });
+  const category = FEEDBACK_CATEGORIES.has(body?.category) ? body.category : "other";
+  const message = typeof body?.message === "string" ? body.message.trim().slice(0, 2000) : "";
+  if (message.length < 5) return json({ error: "Please write a little more." }, 400);
+  const contact = isEmail(body?.contact?.trim?.()) ? body.contact.trim().toLowerCase() : null;
+  const context = {};
+  for (const k of CONTEXT_KEYS) {
+    const v = body?.context?.[k];
+    if (typeof v === "number" && Number.isFinite(v)) context[k] = v;
+    else if (typeof v === "string" && v.length <= 32) context[k] = v;
+  }
+  const country = request.cf?.country ?? null;
+  await env.DB.prepare("INSERT INTO feedback (created_at, category, message, contact, context, country) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(Date.now(), category, message, contact, JSON.stringify(context), country)
+    .run();
+  if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+    const text = `💬 Rows to Riches feedback (${category})\n\n${message}\n\n${contact ? `Reply to: ${contact}\n` : ""}${JSON.stringify(context)} ${country ?? ""}`;
+    ctx.waitUntil(
+      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: text.slice(0, 4000) }),
+      }).catch((err) => console.error("telegram failed:", err instanceof Error ? err.message : err)),
+    );
+  }
+  return json({ ok: true });
+}
+
+async function route(request, env, ctx) {
   const { pathname } = new URL(request.url);
   const method = request.method;
+  if (pathname === "/api/feedback" && method === "POST") return handleFeedback(request, env, ctx);
   if (pathname === "/api/t" && method === "POST") return handleEvent(request, env);
   if (pathname === "/api/login" && method === "POST") return handleLogin(request, env);
   if (pathname === "/api/verify" && method === "POST") return handleVerify(request, env);
@@ -240,7 +281,7 @@ function logRef(request, refs) {
 const OLD_HOSTS = new Set(["rows.drumandbytes.dev"]);
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (OLD_HOSTS.has(url.hostname)) return Response.redirect(`${env.APP_ORIGIN}${url.pathname}${url.search}`, 301);
     const { pathname } = url;
@@ -249,7 +290,7 @@ export default {
       return env.ASSETS.fetch(request);
     }
     try {
-      return await route(request, env);
+      return await route(request, env, ctx);
     } catch (err) {
       console.error("api error:", err instanceof Error ? err.stack : err);
       return json({ error: "Server error." }, 500);

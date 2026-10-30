@@ -136,7 +136,10 @@ a { color: var(--accent); }
   body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
   .top, .statusbar { flex: none; }
   .layout { flex: 1; min-height: 0; width: 100%; grid-template-columns: minmax(360px, 5fr) 7fr; grid-template-rows: minmax(0, 1fr); }
-  .window.console { overflow-y: auto; }
+  /* The console fills the column; the news feed takes whatever height is left. */
+  .window.console { overflow-y: auto; display: flex; flex-direction: column; }
+  .console-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .ticker { flex: 1; min-height: 4em; mask-image: linear-gradient(#000 70%, transparent); }
   .panel { display: flex; flex-direction: column; min-height: 0; }
   .panel .tabs { flex: none; }
   .panel .pane { flex: 1; min-height: 0; overflow-y: auto; }
@@ -256,9 +259,20 @@ a { color: var(--accent); }
   transition: width 0.4s;
 }
 @keyframes stripes { to { background-position: 22px 0; } }
-.ticker { font: 12px var(--mono); color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; min-height: 2.6em; }
-.ticker span { display: inline-block; animation: slidein 0.4s; }
-.ticker span::before { content: "$ "; color: var(--accent); }
+.ticker { font: 12px var(--mono); color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; min-height: 2.6em; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+.tick { display: block; animation: slidein 0.4s; }
+.tick::before { content: "$ "; color: var(--accent); }
+.tick time { color: var(--sql-c); margin-right: 8px; }
+.tick:first-child { color: var(--fg); }
+/* Older headlines fade as they scroll down the feed. */
+.tick:nth-child(n + 4) { opacity: 0.7; }
+.tick:nth-child(n + 8) { opacity: 0.45; }
+.tick:nth-child(n + 14) { opacity: 0.25; }
+/* Phones: one headline at a time. */
+@media (max-width: 899px) {
+  .tick:not(:first-child) { display: none; }
+  .tick time { display: none; }
+}
 
 /* ---- tabs as editor tabs ---- */
 .tabs { display: flex; flex-wrap: wrap; gap: 0; background: var(--bg-2); border-bottom: 1px solid var(--line); }
@@ -652,3 +666,10 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); b
   .okr-strip:not(.open) ul { display: none; }
   .okr-strip:not(.open) .okr-head b::after { content: " ▸"; color: var(--muted); }
 }
+
+/* ---- feedback ---- */
+.feedback { display: grid; gap: 8px; }
+.feedback textarea { min-height: 120px; font: 14px var(--sans); }
+.feedback .field { grid-template-columns: 60px 1fr; }
+/* Honeypot: off-screen for people, still in the form for bots. */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
