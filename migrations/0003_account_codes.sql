@@ -1,10 +1,17 @@
--- Account codes: sign in with a random code instead of an email.
+-- Account codes replace email sign-in: accounts are a code hash and nothing else.
 --
--- users.email stays NOT NULL: dropping that would mean rebuilding users, and D1 always
--- enforces foreign keys, so DROP TABLE users would cascade-delete every session and save.
--- Code-only accounts store a "code:" placeholder there instead (see worker/index.js).
+-- Rebuilding users is only safe because it was empty when this ran (checked on the live
+-- database, 2026-10-30): D1 always enforces foreign keys, so dropping a users table with
+-- rows would cascade-delete their sessions and saves. Never copy this pattern onto a
+-- table with data.
 --
--- Only a SHA-256 of the code is stored. The code carries 100 random bits, so an unsalted
--- hash is safe to keep: nobody can brute-force it from a leaked database.
-ALTER TABLE users ADD COLUMN code_hash TEXT;
-CREATE UNIQUE INDEX users_code_hash ON users (code_hash) WHERE code_hash IS NOT NULL;
+-- Only a SHA-256 of each code is stored. A code carries 100 random bits, so the unsalted
+-- hash can't be brute-forced from a leaked database.
+PRAGMA defer_foreign_keys = true;
+DROP TABLE login_tokens;
+DROP TABLE users;
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code_hash TEXT NOT NULL UNIQUE,
+  created_at INTEGER NOT NULL
+);

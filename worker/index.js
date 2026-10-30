@@ -1,17 +1,10 @@
 import { implausible, normalize, ACHIEVEMENTS } from "../public/js/economy.js";
 
-const LOGIN_TTL_MS = 15 * 60_000;
-const MAX_LINKS_PER_WINDOW = 3;
 const SESSION_IDLE_MS = 180 * 86_400_000;
 const MIN_SAVE_INTERVAL_MS = 10_000;
 const MAX_SAVE_BYTES = 64 * 1024;
 // Floor for a first upload's claimed start time: nobody has played longer than the game existed.
 const LAUNCH_MS = Date.UTC(2026, 9, 30);
-// Cloudflare Email Sending, from the game's own subdomain so the apex's iCloud / Email Routing
-// records stay untouched. The subdomain is onboarded once with
-// `npx wrangler email sending enable rowstoriches.drumandbytes.dev`.
-const FROM = "noreply@rowstoriches.drumandbytes.dev";
-const APP_NAME = "Rows to Riches";
 
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const isEmail = (v) => typeof v === "string" && v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -29,7 +22,6 @@ async function sha256(text) {
 // Account codes: 20 Crockford base32 characters (100 random bits), shown as
 // R2R-XXXX-XXXX-XXXX-XXXX-XXXX. No I, L, O or U, and typing those is forgiven.
 const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-const CODE_EMAIL_PREFIX = "code:";
 
 function newCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(20));
@@ -45,8 +37,6 @@ function cleanCode(input) {
 }
 
 const codeHash = (input) => sha256(`r2r-code:${cleanCode(input)}`);
-/** What the client shows for an account: its email, or null for code-only accounts. */
-const publicEmail = (email) => (email?.startsWith(CODE_EMAIL_PREFIX) ? null : email);
 
 async function readJson(request) {
   const text = await request.text();
@@ -63,7 +53,7 @@ async function authenticate(request, env) {
   if (!auth.startsWith("Bearer ")) return null;
   const hash = await sha256(auth.slice(7).trim());
   const row = await env.DB.prepare(
-    "SELECT s.token_hash, s.last_seen, u.id, u.email, u.created_at, u.code_hash IS NOT NULL AS has_code FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?",
+    "SELECT s.token_hash, s.last_seen, u.id, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?",
   )
     .bind(hash)
     .first();
@@ -75,7 +65,7 @@ async function authenticate(request, env) {
   }
   // Only touch last_seen hourly to keep writes down.
   if (now - row.last_seen > 3_600_000) await env.DB.prepare("UPDATE sessions SET last_seen = ? WHERE token_hash = ?").bind(now, hash).run();
-  return { id: row.id, email: row.email, createdAt: row.created_at, tokenHash: hash, hasCode: !!row.has_code };
+  return { id: row.id, createdAt: row.created_at, tokenHash: hash };
 }
 
 async function startSession(env, userId, now = Date.now()) {
@@ -90,103 +80,33 @@ async function loginLimited(request, env) {
   return !success;
 }
 
-// New code-only account. The code is returned once; the server keeps only its hash.
+// New account. The code is returned once; the server keeps only its hash.
 async function handleCodeNew(request, env) {
   if (await loginLimited(request, env)) return json({ error: "Too many requests, try again in a minute." }, 429);
   const now = Date.now();
   const code = newCode();
   const hash = await codeHash(code);
-  const user = await env.DB.prepare("INSERT INTO users (email, code_hash, created_at) VALUES (?, ?, ?) RETURNING id")
-    .bind(`${CODE_EMAIL_PREFIX}${hash.slice(0, 32)}`, hash, now)
-    .first();
-  return json({ code, session: await startSession(env, user.id, now), email: null });
+  // 2^100 codes: a collision would need ~10^15 accounts, so the unique index is just a backstop.
+  const user = await env.DB.prepare("INSERT INTO users (code_hash, created_at) VALUES (?, ?) RETURNING id").bind(hash, now).first();
+  return json({ code, session: await startSession(env, user.id, now) });
 }
 
 async function handleCodeLogin(request, env) {
-  // Shares the email limiter: 5 guesses a minute per IP against 2^100 codes.
+  // 5 guesses a minute per IP against 2^100 codes.
   if (await loginLimited(request, env)) return json({ error: "Too many attempts, try again in a minute." }, 429);
   const body = await readJson(request);
   if (!cleanCode(body?.code)) return json({ error: "That doesn't look like an account code (R2R- and 20 letters or digits)." }, 400);
-  const user = await env.DB.prepare("SELECT id, email FROM users WHERE code_hash = ?").bind(await codeHash(body.code)).first();
+  const user = await env.DB.prepare("SELECT id FROM users WHERE code_hash = ?").bind(await codeHash(body.code)).first();
   if (!user) return json({ error: "No account with that code." }, 404);
-  return json({ session: await startSession(env, user.id), email: publicEmail(user.email) });
+  return json({ session: await startSession(env, user.id) });
 }
 
-// A fresh code for the signed-in account (also how email accounts get one). The old code
+// A fresh code for the signed-in account. The old code
 // stops working; sessions on other devices stay signed in.
 async function handleCodeRotate(user, env) {
   const code = newCode();
   await env.DB.prepare("UPDATE users SET code_hash = ? WHERE id = ?").bind(await codeHash(code), user.id).run();
   return json({ code });
-}
-
-function loginEmail(link) {
-  const text = `Open this link to sign in to ${APP_NAME} (valid 15 minutes):\n\n${link}\n\nIf you didn't ask for this, ignore this email.`;
-  const html = `<!doctype html><html><body style="margin:0;padding:32px 16px;background:#0d1117;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-<table role="presentation" width="440" cellpadding="0" cellspacing="0" style="max-width:440px;width:100%;background:#161b22;border:1px solid #2a323d;border-radius:12px;">
-<tr><td style="padding:28px 28px 8px;text-align:center;color:#e6edf3;font-size:20px;font-weight:700;">▦ ${APP_NAME}</td></tr>
-<tr><td style="padding:8px 28px;text-align:center;color:#c9d1d9;font-size:15px;line-height:1.5;">Tap the button to sign in and sync your progress. The link is valid for 15 minutes.</td></tr>
-<tr><td style="padding:12px 28px;text-align:center;"><a href="${link}" style="display:inline-block;background:#2fbf71;color:#06110b;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:10px;font-family:Menlo,monospace;">INSERT INTO session</a></td></tr>
-<tr><td style="padding:16px 28px 28px;text-align:center;color:#8b949e;font-size:12px;line-height:1.5;word-break:break-all;">Button not working? Paste this into your browser:<br><a href="${link}" style="color:#3fd68a;">${link}</a><br><br>Didn't ask for this? Just ignore it.</td></tr>
-</table></td></tr></table></body></html>`;
-  return { text, html };
-}
-
-async function handleLogin(request, env) {
-  const ip = request.headers.get("CF-Connecting-IP") ?? "local";
-  if (env.LOGIN_LIMITER) {
-    const { success } = await env.LOGIN_LIMITER.limit({ key: ip });
-    if (!success) return json({ error: "Too many requests, try again in a minute." }, 429);
-  }
-  const body = await readJson(request);
-  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : null;
-  if (!isEmail(email)) return json({ error: "That email doesn't look right." }, 400);
-
-  const now = Date.now();
-  const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM login_tokens WHERE email = ? AND created_at > ?")
-    .bind(email, now - LOGIN_TTL_MS)
-    .first("n");
-  // Same response when capped, so nobody can probe or flood an inbox.
-  if (recent >= MAX_LINKS_PER_WINDOW) return json({ ok: true });
-
-  const token = randomToken();
-  await env.DB.prepare("INSERT INTO login_tokens (token_hash, email, expires_at, created_at) VALUES (?, ?, ?, ?)")
-    .bind(await sha256(token), email, now + LOGIN_TTL_MS, now)
-    .run();
-  const link = `${env.APP_ORIGIN}/?login=${token}`;
-  if (env.DEV_RETURN_LINKS === "1") return json({ ok: true, devLink: link });
-
-  try {
-    await env.EMAIL.send({ from: { email: FROM, name: APP_NAME }, to: email, subject: `Sign in to ${APP_NAME}`, ...loginEmail(link) });
-  } catch (err) {
-    console.error("login email failed:", err instanceof Error ? err.message : err);
-    return json({ error: "Couldn't send the email right now." }, 502);
-  }
-  return json({ ok: true });
-}
-
-async function handleVerify(request, env) {
-  const body = await readJson(request);
-  if (typeof body?.token !== "string") return json({ error: "Missing token." }, 400);
-  const now = Date.now();
-  const hash = await sha256(body.token);
-  // Atomic single use: only the request that flips used_at gets a row back.
-  const row = await env.DB.prepare(
-    "UPDATE login_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND expires_at > ? RETURNING email",
-  )
-    .bind(now, hash, now)
-    .first();
-  if (!row) return json({ error: "This sign-in link has expired or was already used." }, 400);
-
-  await env.DB.prepare("INSERT INTO users (email, created_at) VALUES (?, ?) ON CONFLICT (email) DO NOTHING").bind(row.email, now).run();
-  const user = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(row.email).first();
-  const session = randomToken();
-  await env.DB.batch([
-    env.DB.prepare("INSERT INTO sessions (token_hash, user_id, created_at, last_seen) VALUES (?, ?, ?, ?)").bind(await sha256(session), user.id, now, now),
-    env.DB.prepare("DELETE FROM login_tokens WHERE expires_at < ?").bind(now - 86_400_000),
-  ]);
-  return json({ session, email: row.email });
 }
 
 async function getSave(env, userId) {
@@ -318,15 +238,12 @@ async function route(request, env, ctx) {
   const method = request.method;
   if (pathname === "/api/feedback" && method === "POST") return handleFeedback(request, env, ctx);
   if (pathname === "/api/t" && method === "POST") return handleEvent(request, env);
-  if (pathname === "/api/login" && method === "POST") return handleLogin(request, env);
-  if (pathname === "/api/verify" && method === "POST") return handleVerify(request, env);
   if (pathname === "/api/code/new" && method === "POST") return handleCodeNew(request, env);
   if (pathname === "/api/code/login" && method === "POST") return handleCodeLogin(request, env);
 
   const user = await authenticate(request, env);
   if (!user) return json({ error: "Not signed in." }, 401);
   if (pathname === "/api/code/rotate" && method === "POST") return handleCodeRotate(user, env);
-  if (pathname === "/api/me" && method === "GET") return json({ email: publicEmail(user.email), hasCode: user.hasCode });
   if (pathname === "/api/save" && method === "GET") return handleGetSave(user, env);
   if (pathname === "/api/save" && method === "PUT") return handlePutSave(request, user, env);
   if (pathname === "/api/logout" && method === "POST") {
@@ -338,7 +255,6 @@ async function route(request, env, ctx) {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM saves WHERE user_id = ?").bind(user.id),
       env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id),
-      env.DB.prepare("DELETE FROM login_tokens WHERE email = ?").bind(user.email),
       env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
     ]);
     return json({ ok: true });

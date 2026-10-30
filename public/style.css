@@ -723,6 +723,4 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); b
 
 .account-code { font: 700 clamp(15px, 4.6vw, 20px) var(--mono); letter-spacing: 0.04em; text-align: center; padding: 12px; margin: 10px 0; background: var(--bg); border: 1px dashed var(--accent); border-radius: 10px; user-select: all; word-break: break-all; }
 #code-input { font-family: var(--mono); text-transform: uppercase; }
-.email-login { margin-top: 10px; }
-.email-login summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 .row-buttons .primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
