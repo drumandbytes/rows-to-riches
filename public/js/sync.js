@@ -61,6 +61,22 @@ export async function verifyLink(token) {
   return r;
 }
 
+// Account codes: sign in without an email. The code is only ever shown once by the server.
+export async function createCode() {
+  const r = await api("code/new", { method: "POST" });
+  if (r.ok) session.signIn(r.data.session, null);
+  return r;
+}
+
+export async function codeLogin(code) {
+  const r = await api("code/login", { method: "POST", body: { code } });
+  if (r.ok) session.signIn(r.data.session, r.data.email);
+  return r;
+}
+
+export const rotateCode = () => api("code/rotate", { method: "POST" });
+export const me = () => api("me");
+
 export const fetchCloud = () => api("save");
 
 /** force: overwrite a cloud save that has more all-time rows (the player chose this one). */

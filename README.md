@@ -48,7 +48,7 @@ Numbers are plain doubles. Each universe caps at 1e300 rows and multipliers cap 
 ## Saves and sync
 
 - The game is local-first. It autosaves to `localStorage` every 5s and whenever the tab is hidden. Export and Import live under Settings.
-- **Cloud sync** is optional. Enter an email, open the magic link on each device, and you're done. No password. The email is the only personal data stored, and Settings → Delete account removes everything.
+- **Cloud sync** is optional. Create an **account code** (`R2R-XXXX-XXXX-XXXX-XXXX-XXXX`, 100 random bits) and enter it, or open its `#code=` link, on your other devices. No email, no password; the server keeps only a hash. Lost it? Any device that's still signed in can make a new one. Email magic links remain as a fallback. Settings → Delete account removes everything.
 - When two devices disagree, the save with more all-time rows wins automatically. If the cloud is ahead, the game asks first.
 
 ### Why not a salted hash?

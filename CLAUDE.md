@@ -9,8 +9,8 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 - `public/js/main.js` — state, game loop (200ms tick), rendering, incidents, cloud reconcile. Lists rebuild their DOM only when `visibleKey()` changes; everything else updates text in place.
 - `public/js/scene.js` (pipeline canvas: one station per owned source, backdrop per environment `scene`), `widgets.js` (query log, throughput sparkline, sparks/confetti/banners), `flavor.js` (ticker jokes per environment, finale text). All cosmetic.
 - `tools/sim.js` — greedy balance simulator. `TWEAK='E.BOARD_BY_ID.rnd.base=9' node tools/sim.js 48` tries a variant without editing the economy.
-- `worker/index.js` — `/api/login`, `/api/verify` (magic link → session), `/api/save` GET/PUT, `/api/logout`, `/api/account` DELETE. Everything else goes to `env.ASSETS`.
-- `migrations/` — D1 schema. Tokens are stored only as SHA-256 hashes.
+- `worker/index.js` — `/api/code/new`, `/api/code/login`, `/api/code/rotate` (account codes, the main sign-in), `/api/login`, `/api/verify` (email magic link → session, the fallback), `/api/me`, `/api/save` GET/PUT, `/api/logout`, `/api/account` DELETE. Everything else goes to `env.ASSETS`.
+- `migrations/` — D1 schema. Tokens and account codes are stored only as SHA-256 hashes. Code-only accounts keep a `code:` placeholder in `users.email` (NOT NULL): rebuilding `users` to drop that would cascade-delete every session and save, because D1 always enforces foreign keys.
 
 ## Rules of thumb
 

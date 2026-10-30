@@ -26,6 +26,28 @@ async function sha256(text) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Account codes: 20 Crockford base32 characters (100 random bits), shown as
+// R2R-XXXX-XXXX-XXXX-XXXX-XXXX. No I, L, O or U, and typing those is forgiven.
+const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const CODE_EMAIL_PREFIX = "code:";
+
+function newCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(20));
+  const chars = [...bytes].map((b) => CODE_ALPHABET[b & 31]).join("");
+  return `R2R-${chars.match(/.{4}/g).join("-")}`;
+}
+
+/** The 20 code characters, or null. Accepts any case, spaces, dashes and the R2R- prefix. */
+function cleanCode(input) {
+  if (typeof input !== "string") return null;
+  const s = input.toUpperCase().replace(/^\s*R2R/, "").replace(/[\s-]/g, "").replace(/[IL]/g, "1").replace(/O/g, "0").replace(/U/g, "V");
+  return /^[0-9A-HJKMNP-TV-Z]{20}$/.test(s) ? s : null;
+}
+
+const codeHash = (input) => sha256(`r2r-code:${cleanCode(input)}`);
+/** What the client shows for an account: its email, or null for code-only accounts. */
+const publicEmail = (email) => (email?.startsWith(CODE_EMAIL_PREFIX) ? null : email);
+
 async function readJson(request) {
   const text = await request.text();
   if (text.length > MAX_SAVE_BYTES) return null;
@@ -41,7 +63,7 @@ async function authenticate(request, env) {
   if (!auth.startsWith("Bearer ")) return null;
   const hash = await sha256(auth.slice(7).trim());
   const row = await env.DB.prepare(
-    "SELECT s.token_hash, s.last_seen, u.id, u.email, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?",
+    "SELECT s.token_hash, s.last_seen, u.id, u.email, u.created_at, u.code_hash IS NOT NULL AS has_code FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?",
   )
     .bind(hash)
     .first();
@@ -53,7 +75,49 @@ async function authenticate(request, env) {
   }
   // Only touch last_seen hourly to keep writes down.
   if (now - row.last_seen > 3_600_000) await env.DB.prepare("UPDATE sessions SET last_seen = ? WHERE token_hash = ?").bind(now, hash).run();
-  return { id: row.id, email: row.email, createdAt: row.created_at, tokenHash: hash };
+  return { id: row.id, email: row.email, createdAt: row.created_at, tokenHash: hash, hasCode: !!row.has_code };
+}
+
+async function startSession(env, userId, now = Date.now()) {
+  const session = randomToken();
+  await env.DB.prepare("INSERT INTO sessions (token_hash, user_id, created_at, last_seen) VALUES (?, ?, ?, ?)").bind(await sha256(session), userId, now, now).run();
+  return session;
+}
+
+async function loginLimited(request, env) {
+  if (!env.LOGIN_LIMITER) return false;
+  const { success } = await env.LOGIN_LIMITER.limit({ key: request.headers.get("CF-Connecting-IP") ?? "local" });
+  return !success;
+}
+
+// New code-only account. The code is returned once; the server keeps only its hash.
+async function handleCodeNew(request, env) {
+  if (await loginLimited(request, env)) return json({ error: "Too many requests, try again in a minute." }, 429);
+  const now = Date.now();
+  const code = newCode();
+  const hash = await codeHash(code);
+  const user = await env.DB.prepare("INSERT INTO users (email, code_hash, created_at) VALUES (?, ?, ?) RETURNING id")
+    .bind(`${CODE_EMAIL_PREFIX}${hash.slice(0, 32)}`, hash, now)
+    .first();
+  return json({ code, session: await startSession(env, user.id, now), email: null });
+}
+
+async function handleCodeLogin(request, env) {
+  // Shares the email limiter: 5 guesses a minute per IP against 2^100 codes.
+  if (await loginLimited(request, env)) return json({ error: "Too many attempts, try again in a minute." }, 429);
+  const body = await readJson(request);
+  if (!cleanCode(body?.code)) return json({ error: "That doesn't look like an account code (R2R- and 20 letters or digits)." }, 400);
+  const user = await env.DB.prepare("SELECT id, email FROM users WHERE code_hash = ?").bind(await codeHash(body.code)).first();
+  if (!user) return json({ error: "No account with that code." }, 404);
+  return json({ session: await startSession(env, user.id), email: publicEmail(user.email) });
+}
+
+// A fresh code for the signed-in account (also how email accounts get one). The old code
+// stops working; sessions on other devices stay signed in.
+async function handleCodeRotate(user, env) {
+  const code = newCode();
+  await env.DB.prepare("UPDATE users SET code_hash = ? WHERE id = ?").bind(await codeHash(code), user.id).run();
+  return json({ code });
 }
 
 function loginEmail(link) {
@@ -256,9 +320,13 @@ async function route(request, env, ctx) {
   if (pathname === "/api/t" && method === "POST") return handleEvent(request, env);
   if (pathname === "/api/login" && method === "POST") return handleLogin(request, env);
   if (pathname === "/api/verify" && method === "POST") return handleVerify(request, env);
+  if (pathname === "/api/code/new" && method === "POST") return handleCodeNew(request, env);
+  if (pathname === "/api/code/login" && method === "POST") return handleCodeLogin(request, env);
 
   const user = await authenticate(request, env);
   if (!user) return json({ error: "Not signed in." }, 401);
+  if (pathname === "/api/code/rotate" && method === "POST") return handleCodeRotate(user, env);
+  if (pathname === "/api/me" && method === "GET") return json({ email: publicEmail(user.email), hasCode: user.hasCode });
   if (pathname === "/api/save" && method === "GET") return handleGetSave(user, env);
   if (pathname === "/api/save" && method === "PUT") return handlePutSave(request, user, env);
   if (pathname === "/api/logout" && method === "POST") {
