@@ -18,6 +18,7 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 - Balance changes: run `node tools/sim.js 72` and check that no layer snowballs (acquisitions or contacts every few minutes for hours means a feedback exponent near 1). Then run `node --test`. The honest-play tests check that real progress still passes `implausible()`. Loosen `maxBuff()` / `MAX_CLICKS_PER_SEC` there if a new mechanic can legitimately beat them.
 - Client clicks are capped at 20/s to match the server budget.
 - Sign-in links are built from `APP_ORIGIN`, never from the request's Host header.
+- No third-party requests from the page: fonts, scripts, images and styles are self-hosted (Google Fonts would send every player's IP to Google). The only exception is Cloudflare Web Analytics, which the zone injects. The CSP in `public/_headers` enforces this; don't widen it for a CDN. A new asset the game needs offline goes into `SHELL` in `public/sw.js` (bump `CACHE`). Third-party links get `rel="noopener noreferrer"`.
 
 ## Commands
 
