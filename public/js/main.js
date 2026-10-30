@@ -33,7 +33,7 @@ function grantSecret(id) {
   if (!S.secrets.includes(id)) S.secrets.push(id);
 }
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.2";
 const scene = createScene($("scene"));
 // OKRs, all-hands and stakeholder requests (active.js).
 const active = createActive({

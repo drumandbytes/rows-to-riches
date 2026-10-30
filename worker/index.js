@@ -193,6 +193,27 @@ async function handleEvent(request, env) {
 const FEEDBACK_CATEGORIES = new Set(["bug", "idea", "balance", "other"]);
 const CONTEXT_KEYS = ["v", "env", "device", "notation", "replat", "acq", "contact", "bangs", "log10Rows", "playHours"];
 
+const CATEGORY_LABELS = { bug: "🐛 Bug", idea: "💡 Idea", balance: "⚖️ Balance", other: "💬 Other" };
+const escapeHtml = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+const flag = (cc) => (/^[A-Z]{2}$/.test(cc ?? "") ? String.fromCodePoint(...[...cc].map((c) => 0x1f1a5 + c.charCodeAt(0))) + " " + cc : "");
+
+// Telegram HTML: the message stands out, the context reads as one-line facts.
+function feedbackText(category, message, contact, c, country) {
+  const prestige = ["replat", "acq", "contact", "bangs"].filter((k) => c[k]).map((k) => `${k} ${c[k]}`);
+  const facts = [
+    [c.v && `v${c.v}`, c.device, flag(country)],
+    [c.env, c.log10Rows !== undefined && `~1e${c.log10Rows} rows`, c.playHours !== undefined && `${c.playHours} h played`],
+    [prestige.length ? prestige.join(", ") : "no prestige yet", c.notation && `${c.notation} notation`],
+  ].map((line) => line.filter(Boolean).join(" · ")).filter(Boolean);
+  return [
+    `<b>${CATEGORY_LABELS[category]}</b> · Rows to Riches`,
+    "",
+    `<blockquote>${escapeHtml(message)}</blockquote>`,
+    contact ? `Reply to: ${escapeHtml(contact)}` : "",
+    `<i>${escapeHtml(facts.join("\n"))}</i>`,
+  ].filter((l, i) => l || i === 1).join("\n");
+}
+
 async function handleFeedback(request, env, ctx) {
   if (env.FEEDBACK_LIMITER) {
     const { success } = await env.FEEDBACK_LIMITER.limit({ key: request.headers.get("CF-Connecting-IP") ?? "local" });
@@ -216,12 +237,12 @@ async function handleFeedback(request, env, ctx) {
     .bind(Date.now(), category, message, contact, JSON.stringify(context), country)
     .run();
   if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
-    const text = `💬 Rows to Riches feedback (${category})\n\n${message}\n\n${contact ? `Reply to: ${contact}\n` : ""}${JSON.stringify(context)} ${country ?? ""}`;
+    const text = feedbackText(category, message, contact, context, country);
     ctx.waitUntil(
       fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: text.slice(0, 4000) }),
+        body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", link_preview_options: { is_disabled: true } }),
       }).catch((err) => console.error("telegram failed:", err instanceof Error ? err.message : err)),
     );
   }
