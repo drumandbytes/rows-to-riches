@@ -918,15 +918,28 @@ function buildUpgrades() {
 
 $("upg-deployed").addEventListener("toggle", (e) => e.target.open && buildDeployed());
 
-// Up to a few hundred rows, so it's only built while the section is open. Newest first.
+// Up to a few hundred rows, so it's only built while the section is open. Grouped by what
+// each upgrade boosts, in the game's own order. Owned counts only: totals would spoil how
+// much is left to unlock.
 function buildDeployed() {
-  syncList(
-    $("upgrades-owned"),
-    [...S.upg].reverse().map((id) => {
-      const u = E.UPGRADE_BY_ID[id];
-      return { key: id, html: `<li class="item owned"><div class="ico" aria-hidden="true">${u.icon}</div><div><div class="name">${esc(u.name)}</div><div class="sub">${esc(u.desc)}</div></div>${S.kept.upg.includes(id) ? `<span class="chip run" title="Carried over by a retention reward">kept</span>` : "<span></span>"}</li>` };
-    }),
-  );
+  const groups = new Map();
+  for (const u of E.UPGRADES) {
+    if (!S.upg.includes(u.id)) continue;
+    const p = u.target != null ? E.PRODUCERS[u.target] : null;
+    const key = p ? `p${p.i}` : u.kind;
+    if (!groups.has(key)) groups.set(key, { title: p ? `${p.icon} ${p.name}` : u.kind === "click" ? "⌨️ INSERT" : "🛠️ Everything", ups: [] });
+    groups.get(key).ups.push(u);
+  }
+  // Sources first (tier order), then INSERT and global.
+  const order = [...groups.keys()].sort((a, b) => (a[0] === "p" ? Number(a.slice(1)) : 1e3 + (a === "click" ? 0 : 1)) - (b[0] === "p" ? Number(b.slice(1)) : 1e3 + (b === "click" ? 0 : 1)));
+  const items = [];
+  for (const key of order) {
+    const g = groups.get(key);
+    items.push({ key: `h:${key}:${g.ups.length}`, html: `<li class="upg-group">${esc(g.title)} <span class="muted">${g.ups.length} deployed</span></li>` });
+    for (const u of g.ups)
+      items.push({ key: u.id, html: `<li class="item owned"><div class="ico" aria-hidden="true">${u.icon}</div><div><div class="name">${esc(u.name)}</div><div class="sub">${esc(u.desc)}</div></div>${S.kept.upg.includes(u.id) ? `<span class="chip run" title="Carried over by a retention reward">kept</span>` : "<span></span>"}</li>` });
+  }
+  syncList($("upgrades-owned"), items);
 }
 
 function updateUpgrades() {

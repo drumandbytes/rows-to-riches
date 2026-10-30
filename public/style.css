@@ -413,6 +413,9 @@ a { color: var(--accent); }
 .deployed summary { cursor: pointer; font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 6px 0; }
 .deployed .list { margin-top: 8px; }
 .deployed .item.owned { opacity: 0.8; animation: none; }
+.upg-group { list-style: none; font: 700 14px var(--display); margin: 10px 0 0; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.upg-group:first-child { margin-top: 0; }
+.upg-group .muted { font: 500 11px var(--mono); margin-left: 6px; }
 
 .ddl { font: 13px/1.65 var(--mono); background: #121418; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0; max-height: 340px; }
 .ddl .k { color: var(--sql-k); font-weight: 600; }
