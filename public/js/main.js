@@ -33,7 +33,7 @@ function grantSecret(id) {
   if (!S.secrets.includes(id)) S.secrets.push(id);
 }
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.2";
 const scene = createScene($("scene"));
 // OKRs, all-hands and stakeholder requests (active.js).
 const active = createActive({
@@ -1022,6 +1022,12 @@ function updateSettings() {
 
 // ---- cloud -------------------------------------------------------------------
 
+// Settings → Game → Clock: "auto" follows the device locale.
+function clockTime(seconds = false) {
+  const hour12 = prefs.clock === "auto" ? undefined : prefs.clock === "12";
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", ...(seconds && { second: "2-digit" }), hour12 });
+}
+
 function setSyncStatus(text) {
   const el = $("sync-status");
   if (el) el.textContent = text;
@@ -1041,7 +1047,7 @@ async function pushCloud({ force = false, keepalive = false } = {}) {
     setSyncStatus("Offline — will retry.");
     return;
   }
-  if (r.ok) setSyncStatus(`Synced ${new Date().toLocaleTimeString()}.`);
+  if (r.ok) setSyncStatus(`Synced ${clockTime(true)}.`);
   else if (r.status === 409) offerCloud(r.data.save);
   else if (r.status === 422) setSyncStatus(`Cloud rejected this save: ${r.data.error}.`);
   else if (r.status === 429) cloudDirty = true;
@@ -1147,7 +1153,7 @@ function rotateTicker() {
   const line = document.createElement("span");
   line.className = "tick";
   const time = document.createElement("time");
-  time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  time.textContent = clockTime();
   line.append(time, tickerBag.pop());
   $("ticker").prepend(line);
   while ($("ticker").children.length > 40) $("ticker").lastElementChild.remove();
@@ -1319,7 +1325,7 @@ function showPrefs() {
   scene.setQuality(prefs.quality);
   scene.setMotion({ reduced: prefs.motion === "reduced", shake: prefs.shake, mode: prefs.sceneMode });
   document.querySelector(".stage").hidden = prefs.sceneMode === "hidden";
-  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"]]) $(id).value = prefs[key];
+  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) $(id).value = prefs[key];
   for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]]) $(id).checked = prefs[key];
   $("fullscreen").textContent = document.fullscreenElement ? "⛶ Exit full screen" : "⛶ Full screen";
 }
@@ -1329,7 +1335,7 @@ $("opt-notation").addEventListener("change", (e) => {
   setNotation(prefs.notation);
   render(true);
 });
-for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"]]) {
+for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) {
   $(id).addEventListener("change", (e) => {
     setPref(key, e.target.value);
     showPrefs();
