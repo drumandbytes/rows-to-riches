@@ -86,7 +86,7 @@ Infrastructure lives in the org's OpenTofu repos; secrets stay out of state. Fir
 2. **Repo secrets**: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (Actions secrets are deliberately not in dnb-tf).
 3. **D1**: `drumandbytes/dnb-cloudflare-tf` (branch `feat/rows-to-riches`, `rows-to-riches.tf`) creates the `rows-to-riches` database. After applying, put its UUID into `wrangler.jsonc` (`tofu state show cloudflare_d1_database.rows_to_riches_db`).
 4. **Deploy**: merging to `main` runs `.github/workflows/deploy.yml` (tests → D1 migrations → `wrangler deploy`). The Worker's `custom_domain` route creates `rowstoriches.drumandbytes.dev`.
-   Local deploys (`npm run deploy`) bump the patch version first (`tools/bump-version.js`: package.json plus its copy in `public/js/main.js`), so the About page and feedback show what's live; commit the bump. CI deploys whatever version is committed. For a bigger step: `node tools/bump-version.js minor`.
+   Releases: commits follow Conventional Commits (`feat: …`, `fix: …`). release-please keeps a release PR open with the version bump (package.json and `VERSION` in `public/js/main.js`) and `CHANGELOG.md`; merging it tags `vX.Y.Z`, and the tag runs `deploy.yml` (tests → D1 migrations → `wrangler deploy`). Patch releases auto-merge once CI passes; minor and major wait for you. `npm run deploy` still works for an emergency deploy from a checkout, without a version bump.
 5. **Import the new DNS records** into dnb-cloudflare-tf: the two Worker custom-domain records. `_dmarc.rowstoriches` (`p=reject`) stays: the subdomain sends no mail, so nobody may send as it.
 
 Already covered, nothing to do:

@@ -1,11 +1,11 @@
 name: Deploy
 
 # Not the reusable worker deploy: D1 migrations have to run before the new code.
+# Runs on release tags, which release-please (as dnb-robot) creates when its release PR is
+# merged, so what's live is always a release and its version matches the tag.
 on:
   push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
+    tags: ["v*"]
   workflow_dispatch:
 
 # Queue rather than cancel, so an older deploy can't finish last and win.
