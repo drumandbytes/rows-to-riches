@@ -427,7 +427,11 @@ function renderPrestige() {
     $("prestige-card").dataset.html = card;
     $("prestige-card").innerHTML = card;
   }
-  const shops = l.shops.map(renderShop).join("") || `<p class="muted">Axioms are never spent. They just make every future universe faster.</p>`;
+  const shops =
+    l.shops.map(renderShop).join("") ||
+    `<p class="muted">Axioms are never spent. They make every future universe faster, and owning enough unlocks milestones:</p><ul class="list">${E.AXIOM_MILESTONES.map(
+      (m) => `<li class="item ${S.axioms >= m.at ? "owned" : ""}"><div class="ico" aria-hidden="true">${S.axioms >= m.at ? "✅" : "🌀"}</div><div><div class="name">${m.at} Axiom${m.at === 1 ? "" : "s"}</div><div class="sub">${esc(m.text)}</div></div><span></span></li>`,
+    ).join("")}</ul>`;
   if ($("prestige-shops").dataset.html !== shops) {
     $("prestige-shops").dataset.html = shops;
     $("prestige-shops").innerHTML = shops;
@@ -602,7 +606,7 @@ const SOURCE_STRATEGIES = {
 function autoBuy() {
   if (!E.automationAllowed(S)) return;
   const set = S.settings;
-  let bought = false;
+  let bought = E.autoBuyShops(S) > 0;
   if (gitopsOwned() && set.autoColumns && E.columnCost(S.cols, S) < S.rows * 0.5) bought = E.buyColumn(S) || bought;
   if (gitopsOwned() && set.autoUpgrades) {
     const list = availableUpgrades().filter((u) => u.cost <= S.rows);
@@ -1123,7 +1127,8 @@ function updateStats() {
 
 function updateSettings() {
   if (document.activeElement !== $("opt-company")) $("opt-company").value = S.company;
-  const automation = autoBuyerOwned() || E.boardLevel(S, "autoreplat");
+  const bots = { radar: (S.board.radarbot ?? 0) > 0, board: (S.xeno_tech.boardbot ?? 0) > 0, xeno: S.axioms >= 1 };
+  const automation = autoBuyerOwned() || E.boardLevel(S, "autoreplat") || bots.radar || bots.board || bots.xeno;
   $("auto-none").hidden = !!automation;
   $("auto-wrap").hidden = !autoBuyerOwned();
   $("auto-gitops").hidden = !gitopsOwned();
@@ -1135,6 +1140,10 @@ function updateSettings() {
   $("opt-upg-strategy").value = set.upgStrategy;
   $("opt-auto-columns").checked = set.autoColumns;
   $("autoreplat-wrap").hidden = !E.boardLevel(S, "autoreplat");
+  for (const k of ["radar", "board", "xeno"]) {
+    $(`auto-${k}-wrap`).hidden = !bots[k];
+    $(`opt-auto-${k}`).checked = set[`auto${k[0].toUpperCase()}${k.slice(1)}`];
+  }
   $("chal-confirm-wrap").hidden = !S.chalEver.length;
   $("opt-chal-confirm").checked = !prefs.skipChalConfirm;
   if (document.activeElement !== $("opt-autoreplat")) $("opt-autoreplat").value = S.settings.autoReplatAt;
@@ -1669,6 +1678,7 @@ $("opt-autoreplat").addEventListener("change", (e) => {
 // Auto-buyer settings live in the save (they're about this game, not this device).
 for (const [id, key, kind] of [
   ["opt-auto-sources", "autoSources", "check"], ["opt-auto-upgrades", "autoUpgrades", "check"], ["opt-auto-columns", "autoColumns", "check"],
+  ["opt-auto-radar", "autoRadar", "check"], ["opt-auto-board", "autoBoard", "check"], ["opt-auto-xeno", "autoXeno", "check"],
   ["opt-auto-strategy", "autoStrategy", "value"], ["opt-upg-strategy", "upgStrategy", "value"],
 ]) {
   $(id).addEventListener("change", (e) => {
