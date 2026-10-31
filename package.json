@@ -8,9 +8,11 @@
     "test": "node --test && node tools/music-audit.js",
     "db:migrate:local": "wrangler d1 migrations apply rows-to-riches --local",
     "db:migrate:remote": "wrangler d1 migrations apply rows-to-riches --remote",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test:browser": "BROWSER_SMOKE=1 node --test test/browser/*.test.js"
   },
   "devDependencies": {
+    "playwright-core": "1.64.1",
     "wrangler": "^4.40.0"
   }
 }
