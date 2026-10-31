@@ -1,3 +1,5 @@
+import { Decimal } from "./big.js";
+
 const SUFFIXES = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc", "UDc", "DDc", "TDc", "QaDc", "QiDc", "SxDc", "SpDc", "OcDc", "NoDc", "Vg"];
 const WORDS = ["", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion", "undecillion", "duodecillion", "tredecillion", "quattuordecillion", "quindecillion", "sexdecillion", "septendecillion", "octodecillion", "novemdecillion", "vigintillion"];
 
@@ -77,7 +79,49 @@ const DATA = ["", "k", "M", "G", "T", "P", "E", "Z", "Y", "R", "Q", "bronto", "g
 let notation = "suffix";
 export const setNotation = (mode) => (notation = NOTATIONS[mode] ? mode : "suffix");
 
+/** Exponents past a million get commas, past a billion their own exponent (e1.23e12). */
+const fmtExp = (e) => (e < 1e9 ? e.toLocaleString("en-US") : e.toExponential(2).replace("+", ""));
+
+// Numbers past a double (about 1e308) come in as Decimals and are formatted from their
+// mantissa and exponent; everything smaller takes the plain-number path below.
+const LOG10_2 = Math.log10(2);
+function fmtHuge(d, digits) {
+  const exp = d.exponent;
+  const m = d.mantissa;
+  const log = d.log10();
+  if (notation === "log") return `e${log < 1e9 ? log.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : fmtExp(Math.floor(log))}`;
+  if (notation === "engineering") {
+    const t = Math.floor(exp / 3);
+    return `${Number((m * 10 ** (exp - 3 * t)).toPrecision(3))}E${fmtExp(3 * t)}`;
+  }
+  if (notation === "binary" || notation === "hex") {
+    const e2 = Math.floor(log / LOG10_2);
+    const m2 = 10 ** (log - e2 * LOG10_2);
+    if (notation === "binary") return `${m2.toFixed(2)} × 2^${fmtExp(e2)}`;
+    return `0x1.${Math.min(4095, Math.round((m2 - 1) * 4096)).toString(16).padStart(3, "0")}p+${fmtExp(e2)}`;
+  }
+  if (notation === "letters" && exp < 3e6) {
+    let i = Math.floor(exp / 3) - 5;
+    let letters = "";
+    // Bijective base 26 from "aa": aa…zz, then aaa…, so it never runs out.
+    i += 26;
+    do {
+      letters = String.fromCharCode(97 + (i % 26)) + letters;
+      i = Math.floor(i / 26) - 1;
+    } while (i >= 0);
+    return `${(m * 10 ** (exp % 3)).toFixed(digits)} ${letters}`;
+  }
+  if (notation === "roman" && exp < 4000) return `${roman(Math.round(m * 100))} × 10^${roman(exp - 2)}`;
+  return `${m.toFixed(digits)}e${fmtExp(exp)}`;
+}
+
 export function fmt(n, digits = 2) {
+  if (n instanceof Decimal) {
+    if (n.lt(0)) return "-" + fmt(n.neg(), digits);
+    if (n.gte(1e300)) return fmtHuge(n, digits);
+    n = n.toNumber();
+  }
+  if (n === 0) n = 0; // no "-0" from Decimal subtraction
   if (!Number.isFinite(n)) return "∞";
   if (n < 0) return "-" + fmt(-n, digits);
   if (n < 1000) return n < 10 && n % 1 ? n.toFixed(1) : Math.floor(n).toLocaleString("en-US");

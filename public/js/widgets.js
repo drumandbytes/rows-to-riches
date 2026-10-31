@@ -1,3 +1,4 @@
+import { big } from "./big.js";
 // Console widgets that unlock as you grow, plus DOM effects (sparks, banners).
 
 const TABLES = ["events", "users", "orders", "clicks", "sessions", "invoices", "telemetry", "dim_customer", "fct_sales", "stg_raw_dump", "page_views", "sensor_readings"];
@@ -31,16 +32,16 @@ export function createQueryLog(el) {
   }
   function loop() {
     // Faster production → faster log, but always readable.
-    const gap = Math.max(350, 2200 - Math.log10(currentRate + 1) * 220);
+    const gap = Math.max(350, 2200 - currentRate.add(1).log10() * 220);
     timer = setTimeout(() => {
       if (!document.hidden) push();
       loop();
     }, gap);
   }
-  let currentRate = 0;
+  let currentRate = big(0);
   return {
     setActive(on, rate) {
-      currentRate = rate;
+      currentRate = big(rate);
       if (on && !active) {
         active = true;
         el.hidden = false;
@@ -67,14 +68,17 @@ export function createSparkline(canvas) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     if (samples.length < 2) return;
-    const max = Math.max(...samples) || 1;
-    const min = Math.min(...samples);
+    // Samples are Decimals; plot them relative to the largest, which always fits a double.
+    const top = samples.reduce((a, b) => a.max(b));
+    const rel = top.gt(0) ? samples.map((v) => v.div(top).toNumber()) : samples.map(() => 0);
+    const max = Math.max(...rel) || 1;
+    const min = Math.min(...rel);
     const span = max - min || max * 0.1 || 1;
     const x = (i) => (i / 59) * w;
     const y = (v) => h - 4 - ((v - min) / span) * (h - 10);
     const accent = getComputedStyle(canvas).getPropertyValue("--accent").trim();
     ctx.beginPath();
-    samples.forEach((v, i) => (i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v))));
+    rel.forEach((v, i) => (i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v))));
     ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -94,7 +98,7 @@ export function createSparkline(canvas) {
   }
   return {
     sample(v) {
-      samples.push(v);
+      samples.push(big(v));
       if (samples.length > 60) samples.shift();
       draw();
     },
