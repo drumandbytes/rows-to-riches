@@ -279,7 +279,7 @@ const LAYERS = [
     have: (s) => s.eq, spendable: (s) => s.eq - s.eqSpent,
     pending: E.pendingEquity, run: E.acquire, verb: "Get acquired",
     progress: (s) => `Next Equity at ${fmt(E.nextEquityAt(s))} civilization rows (${fmt(s.civRows)} so far).`,
-    effect: (s) => `Equity boosts production (now ×${fmt((1 + s.eq) ** 0.25)}) and buys Board seats.`,
+    effect: (s) => `Equity boosts production (now ×${fmt(E.equityProdMult(s))}) and buys Board seats.`,
     confirm: "A bigger fish buys your company. You also lose Insights, Architecture and the Tech Radar.",
     keeps: "Equity, the Board and everything above are kept.",
     done: (g) => `📈 <b>Acquired!</b> +${fmt(g)} Equity. Your new title is 'Head of Data Synergies'.`,
@@ -295,7 +295,7 @@ const LAYERS = [
       E.rndComplete(s)
         ? `Next Xenobyte at ${fmt(E.nextXenoAt(s))} universe rows (${fmt(s.allRows)} so far).`
         : `The aliens only talk to civilizations with a complete R&D Lab (${E.boardLevel(s, "rnd")}/${E.RND_PRODUCERS}, on the Board).`,
-    effect: (s) => `Xenobytes boost production (now ×${fmt((1 + s.xeno) ** 0.25)}) and buy alien tech.`,
+    effect: (s) => `Xenobytes boost production (now ×${fmt(E.xenoProdMult(s))}) and buy alien tech.`,
     confirm: "Aliens arrive. They are very interested in your schema. You also lose Equity and the Board.",
     keeps: "Xenobytes, Xenotech and Axioms are kept.",
     done: (g) => `👽 <b>Contact made.</b> +${fmt(g)} Xenobytes. They brought their own data types.`,

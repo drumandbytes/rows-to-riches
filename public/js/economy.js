@@ -253,6 +253,9 @@ export const TUNING = {
   equityPower: 0.23, equityProdPower: 0.25, insightPower: 1 / 3, insightBonusPower: 1, offlineRate: 0.5,
   // Soft caps: full benefit up to the cap, then value ** softPower past it.
   insightSoftcap: 1000, insightSoftPower: 0.7, equitySoftcap: Infinity, equitySoftPower: 0.5,
+  // Production multipliers from Equity, Xenobytes and Axioms (and Axioms' prestige-gain
+  // boost), soft-capped in multiplier space: ×cap at full strength, then ** multSoftPower.
+  equityMultCap: 100, xenoMultCap: 100, axiomMultCap: 1e3, axiomBoostCap: 100, multSoftPower: 0.5,
   // Completed challenges each prestige needs from the layer below (0 in sims comparing curves).
   gateNeed: 3,
 };
@@ -759,6 +762,10 @@ export function producerMultiplier(s, i) {
   return m;
 }
 
+export const equityProdMult = (s) => softcap((1 + s.eq) ** TUNING.equityProdPower, TUNING.equityMultCap, TUNING.multSoftPower);
+export const xenoProdMult = (s) => softcap((1 + s.xeno) ** 0.25, TUNING.xenoMultCap, TUNING.multSoftPower);
+export const axiomProdMult = (s) => softcap(3 ** s.axioms, TUNING.axiomMultCap, TUNING.multSoftPower);
+
 export function globalMultiplier(s) {
   let m = columnMult(s);
   for (const id of s.upg) {
@@ -769,16 +776,16 @@ export function globalMultiplier(s) {
   if (!layerOff(s, "replat")) m *= 1 + insightBonus(s);
   m *= 1 + (archOn(s, "caching") ? 0.02 : 0.01) * s.ach.length;
   m *= 1.25 ** radarLevel(s, "defaults");
-  if (!layerOff(s, "acq")) m *= (1 + s.eq) ** TUNING.equityProdPower;
+  if (!layerOff(s, "acq")) m *= equityProdMult(s);
   m *= 2 ** boardLevel(s, "synergy");
   if (boardLevel(s, "unicorn")) m *= 10;
-  if (!layerOff(s, "contact")) m *= (1 + s.xeno) ** 0.25;
+  if (!layerOff(s, "contact")) m *= xenoProdMult(s);
   m *= (won(s, "darkforest") ? 3 : 2) ** xenoLevel(s, "warp");
   if (won(s, "hiring")) m *= 5;
   if (won(s, "lockin")) m *= 100;
   m *= challengeMultiplier(s);
   m /= rule(s).prodDiv ?? 1;
-  if (!layerOff(s, "bang")) m *= 3 ** s.axioms;
+  if (!layerOff(s, "bang")) m *= axiomProdMult(s);
   if (archOn(s, "mesh")) m *= 1 + 0.05 * s.prod.filter((c) => c > 0).length;
   // Doubles top out near 1.8e308; keep headroom so rates and costs never hit Infinity.
   return Math.min(m, MULT_CAP);
@@ -1003,7 +1010,7 @@ export function autoBuyShops(s) {
 
 // ---- prestige ----------------------------------------------------------------
 
-const axiomBoost = (s) => 1.5 ** s.axioms;
+const axiomBoost = (s) => softcap(1.5 ** s.axioms, TUNING.axiomBoostCap, TUNING.multSoftPower);
 
 const insightMult = (s) => (1 + 0.15 * radarLevel(s, "literacy")) * 2 ** boardLevel(s, "ir") * axiomBoost(s) * (won(s, "compliance") ? 3 : 1);
 // The epsilon keeps exact powers exact: 1e6 ** (1 / 3) is 99.999…, not 100.
