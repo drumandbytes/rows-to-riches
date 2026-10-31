@@ -478,6 +478,12 @@ const INCIDENTS = [
   { id: "phish", weight: 2, trap: true, labels: ["🎁 Claim your free GPU credits!", "📧 URGENT: verify your password", "💰 You won a Snowfake licence!", "📦 Your package could not be delivered"],
     title: "Phishing Test", desc: "You clicked it. Mandatory security training: production ×0.5 for 60s.", buff: { kind: "prod", mult: 0.5, secs: 60 } },
   { id: "abduction", weight: 2, label: "🛸 Abduction", title: "Abduction", desc: "Production ×77 for 10s. They return the rows slightly probed.", buff: { kind: "prod", mult: 77, secs: 10 }, needs: (s) => (s.xeno_tech.abductions ?? 0) > 0 },
+  // Late eras: these join the pool once their era is reached, so the late game gets new jokes too.
+  { id: "wormhole", weight: 2, label: "🌀 Wormhole shortcut", title: "Wormhole", desc: "Production ×12 for 25s. Latency is now negative; nobody can explain the dashboards.", buff: { kind: "prod", mult: 12, secs: 25 }, needs: (s) => s.contact > 0 },
+  { id: "alienmigration", weight: 1, trap: true, labels: ["👽 Free schema migration, courtesy of the aliens", "🛸 Your mothership's warranty is about to expire"],
+    title: "Alien Phishing", desc: "It was not courtesy. Production ×0.5 for 60s while legal reads the 11-dimensional terms.", buff: { kind: "prod", mult: 0.5, secs: 60 }, needs: (s) => s.contact > 0 },
+  { id: "supernova", weight: 2, label: "💥 Supernova backfill", title: "Supernova", desc: "Instant rows: a star exploded and its logs landed in your bucket.", lump: true, needs: (s) => s.bangs > 0 },
+  { id: "timeline", weight: 1, label: "🕰️ Timeline merge conflict", title: "Timeline Merge", desc: "INSERT ×100 for 10s. Both timelines win; history is rewritten with --force.", buff: { kind: "click", mult: 100, secs: 10 }, needs: (s) => s.bangs >= 10 },
 ];
 
 // Achievements: each gives +1% production (+2% with Caching Layer). Kept forever.

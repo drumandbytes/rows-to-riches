@@ -739,7 +739,7 @@ function resolveIncident(inc) {
     E.earn(S, amount);
     scene.floatText(`+${fmt(amount)}`, "#ffb547");
     scene.burst(12);
-    toast(`📦 <b>Backfill complete</b>: +${fmt(amount)} rows.`, "info");
+    toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: +${fmt(amount)} rows.`, "info");
   }
   saveLocal();
   render(true);
@@ -1446,7 +1446,7 @@ function rotateTicker() {
   const current = envs.at(-1);
   if (!tickerBag.length || tickerEnv !== current) {
     tickerEnv = current;
-    const lines = [...envs.flatMap((id) => TICKER[id] ?? []), ...(TICKER[current] ?? []), ...(TICKER[current] ?? []), ...TICKER.tools, ...(S.replat > 0 ? TICKER.corporate : []), ...dynamicTicker()];
+    const lines = [...envs.flatMap((id) => TICKER[id] ?? []), ...(TICKER[current] ?? []), ...(TICKER[current] ?? []), ...TICKER.tools, ...(S.replat > 0 ? TICKER.corporate : []), ...(S.bangs > 0 ? TICKER.bang : []), ...(S.completions > 0 ? TICKER.catalog : []), ...dynamicTicker()];
     tickerBag = [...new Set(lines)].concat(TICKER[current] ?? []).sort(() => Math.random() - 0.5);
   }
   // Newest on top; on desktop the older lines stay below as a feed (CSS hides them on phones).
