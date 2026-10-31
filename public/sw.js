@@ -14,7 +14,7 @@ const SHELL = [
   "/icon-192.png",
   "/icon-512.png",
   ...["jetbrains-mono", "space-grotesk"].map((f) => `/fonts/${f}-latin-wght-normal.woff2`),
-  ...["main", "economy", "format", "flavor", "scene", "widgets", "sync", "prefs", "audio", "music", "erd", "active", "analytics", "tour"].map((m) => `/js/${m}.js`),
+  ...["main", "economy", "format", "flavor", "scene", "widgets", "sync", "prefs", "audio", "music", "erd", "active", "analytics", "tour", "big", "vendor/break_infinity"].map((m) => `/js/${m}.js`),
 ];
 
 self.addEventListener("install", (event) => {
