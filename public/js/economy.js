@@ -488,9 +488,11 @@ const ROW_ACH = [
   [1000, "Kilo-Exponent"], [1e4, "Scientific Notation Needs Scientific Notation"], [1e6, "A Million Digits"],
   [1e9, "The Exponent Has an Exponent"], [1e12, "Rows All the Way Down"],
 ];
+// From 1e1,000,000 rows (far past finishing the game) they're secret: absurd goals are
+// better found than read about.
 for (const [e, name] of ROW_ACH) {
-  const at = big(`1e${e}`);
-  ACHIEVEMENTS.push({ id: `rows_${e}`, name, desc: `Ingest 1e${e.toLocaleString("en-US")} rows in total.`, test: (s) => s.everRows.gte(at) });
+  const at = Decimal.fromMantissaExponent(1, e);
+  ACHIEVEMENTS.push({ id: `rows_${e}`, name, desc: `Ingest 1e${e.toLocaleString("en-US")} rows in total.`, secret: e >= 1e6, test: (s) => s.everRows.gte(at) });
 }
 for (const p of PRODUCERS) {
   for (const n of [1, 50, 100, 200, 300]) {
@@ -505,11 +507,11 @@ const COUNT_ACH = [
   ["acq", "Get acquired {n} times.", [[1, "Acqui-hired"], [3, "Serial Founder"], [10, "Holding Company"], [25, "Conglomerate"]]],
   ["contact", "Make First Contact {n} times.", [[1, "We Are Not Alone"], [3, "Frequent Flyer"], [10, "Galactic Liaison"]]],
   ["bangs", "Start {n} new universes.", [[1, "Let There Be Rows"], [3, "Cosmic Recurrence"], [10, "Universe Factory"], [50, "Multiverse Operator"], [100, "Big Bang as a Service"], [250, "Cron Job for Creation"]]],
-  ["axioms", "Hold {n} Axioms.", [[10, "Self-Evident"], [100, "Foundations of Mathematics"], [1000, "Gödel Was Right"], [10000, "Axiom of Choice Paralysis"]]],
+  ["axioms", "Hold {n} Axioms.", [[10, "Self-Evident"], [100, "Foundations of Mathematics"], [1000, "Gödel Was Right"], [10000, "Axiom of Choice Paralysis", true]]],
 ];
 for (const [key, desc, list] of COUNT_ACH) {
-  for (const [n, name] of list) {
-    ACHIEVEMENTS.push({ id: `${key}_${n}`, name, desc: desc.replace("{n}", n), test: (s) => s[key] >= n });
+  for (const [n, name, secret] of list) {
+    ACHIEVEMENTS.push({ id: `${key}_${n}`, name, desc: desc.replace("{n}", n), secret: !!secret, test: (s) => s[key] >= n });
   }
 }
 for (const [n, name] of [[1, "Challenge Accepted"], [5, "Overachiever"], [13, "Did Them All"], [50, "Glutton for Punishment"]]) {
@@ -529,7 +531,7 @@ const STAT_ACH = [
   ["rate_1e30", "Firehose", "Reach 1e30 rows/s.", (s) => s.stats.bestRate.gte(1e30)],
   ["rate_1e100", "Googol per Second", "Reach 1e100 rows/s.", (s) => s.stats.bestRate.gte(1e100)],
   ["rate_1e1000", "Throughput Unbound", "Reach 1e1,000 rows/s.", (s) => s.stats.bestRate.gte("1e1000")],
-  ["rate_1e1e6", "Bandwidth Is a Social Construct", "Reach 1e1,000,000 rows/s.", (s) => s.stats.bestRate.gte("1e1000000")],
+  ["rate_1e1e6", "Bandwidth Is a Social Construct", "Reach 1e1,000,000 rows/s.", (s) => s.stats.bestRate.gte("1e1000000"), true],
   ["rescue_1", "Backup Hero", "Restore a table the intern dropped.", (s) => s.stats.rescues >= 1],
   ["rescue_10", "Disaster Recovery Plan", "Restore 10 dropped tables. Maybe revoke the intern's access.", (s) => s.stats.rescues >= 10],
   ["phish_5", "Security Champion", "Pass 5 phishing tests by not clicking.", (s) => s.stats.phishPassed >= 5],
@@ -547,9 +549,9 @@ const STAT_ACH = [
   ["sell_100", "Restructuring", "Sell 100 of one Data Source at once.", (s) => s.stats.bestSell >= 100],
   ["gravity", "Data Gravity", "Produce so much that data gravity kicks in.", (s) => s.stats.bestRate.gt(GRAVITY_AT)],
 ];
-for (const [id, name, desc, test] of STAT_ACH) ACHIEVEMENTS.push({ id, name, desc, test });
+for (const [id, name, desc, test, secret] of STAT_ACH) ACHIEVEMENTS.push({ id, name, desc, test, secret: !!secret });
 for (const [n, name] of [[1, "Single Source of Truth"], [2, "Dashboard v2"], [3, "Third-Party Audit"], [5, "Five-Year Plan"], [10, "Data Mesh of Universes"]]) {
-  ACHIEVEMENTS.push({ id: `catalog_${n}`, name, desc: `Catalog Everything ${n === 1 ? "once" : `${n} times`}.`, test: (s) => s.completions >= n });
+  ACHIEVEMENTS.push({ id: `catalog_${n}`, name, desc: `Catalog Everything ${n === 1 ? "once" : `${n} times`}.`, secret: n >= 5, test: (s) => s.completions >= n });
 }
 ACHIEVEMENTS.push(
   { id: "named", name: "Incorporated", desc: "Give your company a name.", test: (s) => s.company.length > 0 },
@@ -568,6 +570,7 @@ export const SECRETS = [
   ["answer", "The Answer", "Sell your way down to exactly 42 of something.", null],
   ["keepplaying", "Scope Creep", "Finish the game, then decide to keep going anyway.", null],
   ["entropy", "Heat Death", "Reach 500 Big Bangs. The dashboard is still loading.", (s) => s.bangs >= 500],
+  ["outofdigits", "Out of Digits", "Reach 1e1,000,000,000,000,000 rows. The universe's database has run out of digits. There is nothing left to ingest.", (s) => s.everRows.gte(MAX_ROWS)],
   ["phished", "Gone Phishing", "Click a phishing test. IT has scheduled your training.", null],
 ];
 for (const [id, name, desc, derived] of SECRETS) {
@@ -824,7 +827,7 @@ export function globalMultiplier(s) {
   f /= rule(s).prodDiv ?? 1;
   if (!layerOff(s, "bang")) m = m.mul(axiomProdMult(s));
   if (archOn(s, "mesh")) f *= 1 + 0.05 * s.prod.filter((c) => c > 0).length;
-  return m.mul(f);
+  return bigMin(m.mul(f), MAX_ROWS);
 }
 
 /** Rows/s for one producer type, before temporary buffs. */
@@ -846,7 +849,7 @@ export function rawRate(s) {
   return r;
 }
 
-export const baseRate = (s) => gravity(rawRate(s));
+export const baseRate = (s) => bigMin(gravity(rawRate(s)), MAX_ROWS);
 
 function buffMult(s, kind, now) {
   let m = 1;
@@ -892,8 +895,14 @@ export const offlineCapSecs = (s) => (2 + radarLevel(s, "disks")) * 3600;
 /** Seconds of production credited for `secs` away: full speed for the first minute, then TUNING.offlineRate. */
 export const offlineCredit = (secs) => Math.min(secs, 60) + Math.max(0, secs - 60) * TUNING.offlineRate;
 
+// The end of the number line. break_infinity's exponent is a double, exact only up to about
+// 9e15; past that, gains stop registering and values tip into Infinity/NaN. So everything is
+// capped at 1e(1e15): reaching it is a (secret) achievement, never a broken save.
+export const MAX_ROWS = Decimal.fromMantissaExponent(1, 1e15); // big("1e1e15") would parse as 10
+export const atMaxRows = (s) => s.everRows.gte(MAX_ROWS);
+
 export function earn(s, amount) {
-  amount = big(amount);
+  amount = bigMin(amount, MAX_ROWS.sub(s.everRows));
   if (!amount.gt(0)) return;
   s.rows = s.rows.add(amount);
   s.runRows = s.runRows.add(amount);
