@@ -6,6 +6,7 @@
     <title>Rows to Riches — an idle game about data and the company around it</title>
     <meta name="description" content="An idle game about data engineering and corporate life. INSERT rows, survive OKRs, all-hands and meetings, build warehouses and data centers, then re-platform everything until everything is data." />
     <meta name="theme-color" content="#16181c" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -26,7 +27,7 @@
 
     <header class="top">
       <div class="brand">
-        <span class="logo" aria-hidden="true">▦</span>
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 64 64" width="24" height="24" fill="currentColor"><rect x="9" y="11" width="34" height="8" rx="2"/><rect x="9" y="23" width="15" height="6" rx="1.5"/><rect x="28" y="23" width="15" height="6" rx="1.5" opacity=".8"/><rect x="9" y="33" width="15" height="6" rx="1.5" opacity=".8"/><rect x="9" y="43" width="15" height="6" rx="1.5" opacity=".6"/><circle cx="42" cy="42" r="15" style="fill: var(--accent)"/><circle cx="42" cy="42" r="12"/><circle cx="42" cy="42" r="8" style="fill: var(--accent)"/><circle cx="42" cy="42" r="6"/></svg></span>
         <span class="title">Rows<span class="to">to</span>Riches</span>
         <span class="env" id="env" title="Environment">localhost</span>
       </div>
@@ -234,7 +235,7 @@
 
           <div class="section" data-section="save" hidden>
             <h3>Cloud save</h3>
-            <p class="muted embed-note" id="embed-note" hidden>You're playing in an embedded window. Your progress saves here, but cloud sign-in links open in a normal browser tab, which keeps its own separate save. To sync across devices, play at <a href="https://rowstoriches.drumandbytes.dev/" target="_blank" rel="noopener">rowstoriches.drumandbytes.dev</a> and use Export / Import below to move this save there.</p>
+            <p class="muted embed-note" id="embed-note" hidden>You're playing in an embedded window. Your progress saves here. To carry it to another device or to <a href="https://rowstoriches.drumandbytes.dev/" target="_blank" rel="noopener">rowstoriches.drumandbytes.dev</a>, create an account code below and enter it there.</p>
             <div id="cloud"></div>
             <h3>This device</h3>
             <p class="muted">The game autosaves every 5 seconds and whenever you leave the page.</p>
@@ -273,7 +274,7 @@
             <details><summary>Challenges</summary>
               <p>Under Prestige → Challenges. Each one is a run with a restriction. Reach the goal and you get a strong reward until the layer above resets; some let you keep upgrades, columns or more through a prestige. You can abandon a challenge at any time.</p></details>
             <details><summary>Saving and devices</summary>
-              <p>Progress lives in this browser. To play on several devices, sign in with your email under Save → Cloud save and open the link on each one. The save that has ingested more rows in total wins, and you're asked before anything is overwritten.</p></details>
+              <p>Progress lives in this browser. To play on several devices, create an account code under Save → Cloud save and enter it on each one (lost it? any device that is still signed in can make a new one). The save that has ingested more rows in total wins, and you're asked before anything is overwritten.</p></details>
             <details><summary>Install as an app</summary>
               <p>Rows to Riches can be installed like an app and plays fully offline (cloud sync catches up when you're back online).</p>
               <p><b>Desktop Chrome / Edge:</b> Settings → Display → Install, or the install icon in the address bar. <b>Android:</b> browser menu → Install app. <b>iPhone / iPad:</b> Safari's Share button → Add to Home Screen.</p></details>
@@ -308,8 +309,8 @@
               <li>Cloud vendors in the Inbox are parodies. Any resemblance to your actual cloud bill is coincidental.</li>
             </ul>
             <h3>Privacy</h3>
-            <p class="muted">No ads and no cookies. Cloud save stores only your email and your save; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy. Feedback you send is stored with the game context shown in the form, plus your email only if you add one. Nothing else leaves your browser unless you sign in.</p>
-            <p class="muted">Everything loads from this site, which runs on Cloudflare: no Google Fonts, CDNs, trackers or embeds. The one extra request is Cloudflare's own cookieless page-view counter. Feedback reaches me as a Telegram message; sign-in mail is sent through Cloudflare.</p>
+            <p class="muted">No ads and no cookies. Cloud save stores your save and a hash of your account code, nothing else about you; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy. Feedback you send is stored with the game context shown in the form, plus your email only if you add one. Nothing else leaves your browser unless you sign in.</p>
+            <p class="muted">Everything loads from this site, which runs on Cloudflare: no Google Fonts, CDNs, trackers or embeds. The one extra request is Cloudflare's own cookieless page-view counter. Feedback reaches me as a Telegram message.</p>
           </div>
         </div>
       </section>

@@ -17,9 +17,6 @@
       "migrations_dir": "migrations"
     }
   ],
-  // Sign-in links: Cloudflare Email Sending (Workers Paid). Onboard the sending subdomain once with
-  // `npx wrangler email sending enable rowstoriches.drumandbytes.dev`, or every send fails.
-  "send_email": [{ "name": "EMAIL" }],
   "ratelimits": [
     { "name": "LOGIN_LIMITER", "namespace_id": "2001", "simple": { "limit": 5, "period": 60 } },
     { "name": "EVENT_LIMITER", "namespace_id": "2002", "simple": { "limit": 30, "period": 60 } },

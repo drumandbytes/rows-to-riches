@@ -918,15 +918,28 @@ function buildUpgrades() {
 
 $("upg-deployed").addEventListener("toggle", (e) => e.target.open && buildDeployed());
 
-// Up to a few hundred rows, so it's only built while the section is open. Newest first.
+// Up to a few hundred rows, so it's only built while the section is open. Grouped by what
+// each upgrade boosts, in the game's own order. Owned counts only: totals would spoil how
+// much is left to unlock.
 function buildDeployed() {
-  syncList(
-    $("upgrades-owned"),
-    [...S.upg].reverse().map((id) => {
-      const u = E.UPGRADE_BY_ID[id];
-      return { key: id, html: `<li class="item owned"><div class="ico" aria-hidden="true">${u.icon}</div><div><div class="name">${esc(u.name)}</div><div class="sub">${esc(u.desc)}</div></div>${S.kept.upg.includes(id) ? `<span class="chip run" title="Carried over by a retention reward">kept</span>` : "<span></span>"}</li>` };
-    }),
-  );
+  const groups = new Map();
+  for (const u of E.UPGRADES) {
+    if (!S.upg.includes(u.id)) continue;
+    const p = u.target != null ? E.PRODUCERS[u.target] : null;
+    const key = p ? `p${p.i}` : u.kind;
+    if (!groups.has(key)) groups.set(key, { title: p ? `${p.icon} ${p.name}` : u.kind === "click" ? "⌨️ INSERT" : "🛠️ Everything", ups: [] });
+    groups.get(key).ups.push(u);
+  }
+  // Sources first (tier order), then INSERT and global.
+  const order = [...groups.keys()].sort((a, b) => (a[0] === "p" ? Number(a.slice(1)) : 1e3 + (a === "click" ? 0 : 1)) - (b[0] === "p" ? Number(b.slice(1)) : 1e3 + (b === "click" ? 0 : 1)));
+  const items = [];
+  for (const key of order) {
+    const g = groups.get(key);
+    items.push({ key: `h:${key}:${g.ups.length}`, html: `<li class="upg-group">${esc(g.title)} <span class="muted">${g.ups.length} deployed</span></li>` });
+    for (const u of g.ups)
+      items.push({ key: u.id, html: `<li class="item owned"><div class="ico" aria-hidden="true">${u.icon}</div><div><div class="name">${esc(u.name)}</div><div class="sub">${esc(u.desc)}</div></div>${S.kept.upg.includes(u.id) ? `<span class="chip run" title="Carried over by a retention reward">kept</span>` : "<span></span>"}</li>` });
+  }
+  syncList($("upgrades-owned"), items);
 }
 
 function updateUpgrades() {
@@ -1060,16 +1073,41 @@ function updateSettings() {
   $("autoreplat-wrap").hidden = !E.boardLevel(S, "autoreplat");
   if (document.activeElement !== $("opt-autoreplat")) $("opt-autoreplat").value = S.settings.autoReplatAt;
   const box = $("cloud");
-  const state = sync.session.token ? `in:${sync.session.email}` : "out";
+  const state = sync.session.token ? "in" : "out";
   if (box.dataset.state === state) return;
   box.dataset.state = state;
   box.innerHTML = sync.session.token
-    ? `<p>Signed in as <b>${esc(sync.session.email)}</b>. Progress syncs every minute and when you leave the page.</p>
-       <div class="row-buttons"><button type="button" id="sync-now">Sync now</button><button type="button" id="sign-out">Sign out</button><button type="button" class="danger" id="delete-account">Delete account</button></div>
+    ? `<p>Signed in with an account code. Progress syncs every minute and when you leave the page.</p>
+       <div class="row-buttons"><button type="button" id="sync-now">Sync now</button><button type="button" id="new-code">🔑 Get a new account code</button><button type="button" id="sign-out">Sign out</button><button type="button" class="danger" id="delete-account">Delete account</button></div>
        <p class="muted" id="sync-status"></p>`
-    : `<form class="cloud-form" id="login-form"><p class="muted">Play on several devices: enter your email and open the sign-in link on each one. No password. The email is only used for sign-in.</p>
-       <input type="email" id="login-email" required autocomplete="email" placeholder="you@example.com" />
-       <button type="submit">Email me a sign-in link</button><p class="muted" id="login-status"></p></form>`;
+    : `<p class="muted">Play on several devices with an <b>account code</b>: no email, no password. Create one here, then enter it on your other devices.</p>
+       <div class="row-buttons"><button type="button" class="primary" id="create-code">🔑 Create an account code</button></div>
+       <form class="cloud-form" id="code-form"><input type="text" id="code-input" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="R2R-XXXX-XXXX-XXXX-XXXX-XXXX" aria-label="Account code" />
+       <button type="submit">Sign in with code</button><p class="muted" id="code-status"></p></form>`;
+}
+
+function showCode(code, fresh) {
+  const link = `${location.origin}/#code=${code}`;
+  modal(
+    `<h2>${fresh ? "Your account code" : "Your new account code"}</h2>
+     <p class="account-code" id="account-code">${esc(code)}</p>
+     <p>Enter it on your other devices under Settings → Save. Write it down or keep it in your password manager: <b>this is the only time it's shown</b>, and nothing else can recover it.</p>
+     ${fresh ? "" : `<p class="muted">The old code no longer works. Devices already signed in stay signed in.</p>`}
+     <div class="row-buttons"><button type="button" id="copy-code">📋 Copy code</button><button type="button" id="copy-link">🔗 Copy sign-in link</button>${navigator.share ? `<button type="button" id="share-code">📤 Share</button>` : ""}</div>
+     <p class="muted">Anyone with the code or link can play this save, so share it only with your own devices.</p>`,
+    [["I've saved it", "primary"]],
+  );
+  const copy = async (text, btn) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = "✅ Copied";
+    } catch {
+      getSelection().selectAllChildren($("account-code"));
+    }
+  };
+  $("copy-code").onclick = (e) => copy(code, e.currentTarget);
+  $("copy-link").onclick = (e) => copy(link, e.currentTarget);
+  if ($("share-code")) $("share-code").onclick = () => navigator.share({ title: "Rows to Riches account code", text: code, url: link }).catch(() => {});
 }
 
 // ---- cloud -------------------------------------------------------------------
@@ -1131,16 +1169,34 @@ async function reconcileCloud() {
   }
 }
 
-async function handleLoginLink() {
-  const url = new URL(location.href);
-  const token = url.searchParams.get("login");
-  if (!token) return;
-  url.searchParams.delete("login");
-  history.replaceState(null, "", url.pathname + url.search + url.hash);
-  const r = await sync.verifyLink(token);
-  if (r.ok) toast(`☁️ <b>Signed in</b> as ${esc(r.data.email)}.`);
-  else modal(`<h2>Sign-in link didn't work</h2><p>${esc(r.data.error ?? "It may have expired.")} Request a new one under Settings.</p>`, [["OK", "primary"]]);
+// Sign-in links from showCode() carry the code in the fragment, so it never reaches a server log.
+function handleCodeLink() {
+  const m = location.hash.match(/^#code=([\w-]{20,40})$/);
+  if (!m) return;
+  history.replaceState(null, "", location.pathname + location.search);
+  if (sync.session.token) return toast("☁️ Already signed in. Sign out first to switch accounts.");
+  modal(`<h2>Sign in with this account code?</h2><p class="account-code">${esc(m[1])}</p><p>This device will sync with that account. If the cloud save is further along, you'll be asked which one to keep.</p>`, [
+    ["Cancel"],
+    ["Sign in", "primary", () => codeSignIn(m[1])],
+  ]);
 }
+
+async function codeSignIn(code, status) {
+  if (status) status.textContent = "Signing in…";
+  try {
+    const r = await sync.codeLogin(code);
+    if (r.ok) {
+      toast("☁️ <b>Signed in</b> with your account code.");
+      render(true);
+      return reconcileCloud();
+    }
+    if (status) status.textContent = r.data.error ?? `Failed (${r.status}).`;
+    else modal(`<h2>That code didn't work</h2><p>${esc(r.data.error ?? `Failed (${r.status}).`)}</p>`, [["OK", "primary"]]);
+  } catch {
+    if (status) status.textContent = "Couldn't reach the server.";
+  }
+}
+
 
 // ---- small UI helpers --------------------------------------------------------
 
@@ -1301,10 +1357,34 @@ document.addEventListener("click", (e) => {
     else toast(a.secret ? "🤫 A secret. Keep playing… or keep poking around." : `🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
-  else if (t.id === "sign-out") {
-    sync.signOut().finally(() => render(true));
+  else if (t.id === "create-code") {
+    t.disabled = true;
+    sync
+      .createCode()
+      .then((r) => {
+        if (!r.ok) return toast(`☁️ ${esc(r.data.error ?? `Couldn't create a code (${r.status}).`)}`);
+        render(true);
+        showCode(r.data.code, true);
+        reconcileCloud();
+      })
+      .catch(() => toast("☁️ Couldn't reach the server."))
+      .finally(() => (t.disabled = false));
+  } else if (t.id === "new-code") {
+    modal(`<h2>Get a new account code?</h2><p>Your current code stops working. Use this if you lost it, or if someone else has it.</p>`, [
+      ["Cancel"],
+      ["New code", "primary", async () => {
+        const r = await sync.rotateCode().catch(() => null);
+        if (r?.ok) showCode(r.data.code, false);
+        else toast("☁️ Couldn't create a new code right now.");
+      }],
+    ]);
+  } else if (t.id === "sign-out") {
+    modal(`<h2>Sign out?</h2><p>To sign in again you'll need your account code. Lost it? Stay signed in and use <b>Get a new account code</b> first.</p>`, [
+        ["Cancel"],
+        ["Sign out", "danger", () => sync.signOut().finally(() => render(true))],
+      ]);
   } else if (t.id === "delete-account") {
-    modal(`<h2>Delete account?</h2><p>Removes your email and cloud save from the server. Progress on this device stays.</p>`, [
+    modal(`<h2>Delete account?</h2><p>Removes your account, its code and the cloud save from the server. Progress on this device stays.</p>`, [
       ["Cancel"],
       ["Delete", "danger", async () => {
         await sync.deleteAccount();
@@ -1529,19 +1609,9 @@ for (const [id, key, kind] of [
   });
 }
 
-$("cloud").addEventListener("submit", async (e) => {
+$("cloud").addEventListener("submit", (e) => {
   e.preventDefault();
-  const email = $("login-email").value.trim();
-  const status = $("login-status");
-  status.textContent = "Sending…";
-  try {
-    const r = await sync.requestLink(email);
-    status.textContent = r.ok ? `Check ${email} for a sign-in link (valid 15 minutes).` : r.data.error ?? `Failed (${r.status}).`;
-    // Local dev only: the Worker returns the link instead of emailing it.
-    if (r.ok && r.data.devLink) status.innerHTML = `Dev mode: <a href="${esc(r.data.devLink)}">sign-in link</a>`;
-  } catch {
-    status.textContent = "Couldn't reach the server.";
-  }
+  codeSignIn($("code-input").value, $("code-status"));
 });
 
 // ---- feedback -------------------------------------------------------------------
@@ -1568,7 +1638,7 @@ function openFeedback() {
      <div class="feedback">
        <label class="field">Type <select id="fb-category"><option value="bug">🐛 Bug</option><option value="idea">💡 Idea</option><option value="balance">⚖️ Balance</option><option value="other">💬 Other</option></select></label>
        <textarea id="fb-message" maxlength="2000" placeholder="What happened, what would make it better, or what made you laugh…"></textarea>
-       <input type="email" id="fb-contact" placeholder="Email, if you'd like a reply (optional)" value="${esc(sync.session.email ?? "")}" />
+       <input type="email" id="fb-contact" placeholder="Email, if you'd like a reply (optional)" />
        <input type="text" id="fb-website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
        <p class="muted">Sent along: version ${esc(ctx.v)}, ${esc(ctx.env)}, ${esc(ctx.device)}, ${ctx.replat} re-platforms, ${ctx.acq} acquisitions, ~${ctx.playHours}h played. Nothing that identifies you unless you add an email.</p>
        <p class="muted" id="fb-status"></p>
@@ -1746,4 +1816,5 @@ addEventListener("storage", (e) => {
 });
 track("session_start", S);
 addEventListener("pagehide", () => track("session_end", S));
-handleLoginLink().then(reconcileCloud);
+handleCodeLink();
+reconcileCloud();

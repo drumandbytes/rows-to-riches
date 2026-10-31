@@ -2,7 +2,6 @@
 // the server only keeps the latest accepted save per account.
 
 const TOKEN_KEY = "r2r.session";
-const EMAIL_KEY = "r2r.email";
 
 const store = {
   get(k) {
@@ -26,16 +25,11 @@ export const session = {
   get token() {
     return store.get(TOKEN_KEY);
   },
-  get email() {
-    return store.get(EMAIL_KEY);
-  },
-  signIn(token, email) {
+  signIn(token) {
     store.set(TOKEN_KEY, token);
-    store.set(EMAIL_KEY, email);
   },
   signOut() {
     store.set(TOKEN_KEY, null);
-    store.set(EMAIL_KEY, null);
   },
 };
 
@@ -53,13 +47,20 @@ async function api(path, { method = "GET", body, keepalive } = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 
-export const requestLink = (email) => api("login", { method: "POST", body: { email } });
-
-export async function verifyLink(token) {
-  const r = await api("verify", { method: "POST", body: { token } });
-  if (r.ok) session.signIn(r.data.session, r.data.email);
+// Account codes are the only sign-in: no email, no password. The server shows a code once.
+export async function createCode() {
+  const r = await api("code/new", { method: "POST" });
+  if (r.ok) session.signIn(r.data.session);
   return r;
 }
+
+export async function codeLogin(code) {
+  const r = await api("code/login", { method: "POST", body: { code } });
+  if (r.ok) session.signIn(r.data.session);
+  return r;
+}
+
+export const rotateCode = () => api("code/rotate", { method: "POST" });
 
 export const fetchCloud = () => api("save");
 

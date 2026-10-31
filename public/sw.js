@@ -37,7 +37,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(req)
       .then((res) => {
-        // Sign-in links (/?login=…) must not be cached under their token.
+        // Only cache clean URLs, so one page never ends up cached under many query strings.
         if (res.ok && !url.search) {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy));

@@ -48,7 +48,7 @@ Numbers are plain doubles. Each universe caps at 1e300 rows and multipliers cap 
 ## Saves and sync
 
 - The game is local-first. It autosaves to `localStorage` every 5s and whenever the tab is hidden. Export and Import live under Settings.
-- **Cloud sync** is optional. Enter an email, open the magic link on each device, and you're done. No password. The email is the only personal data stored, and Settings → Delete account removes everything.
+- **Cloud sync** is optional. Create an **account code** (`R2R-XXXX-XXXX-XXXX-XXXX-XXXX`, 100 random bits) and enter it, or open its `#code=` link, on your other devices. No email, no password; the server keeps only a hash. Lost it? Any device that's still signed in can make a new one. Settings → Delete account removes everything.
 - When two devices disagree, the save with more all-time rows wins automatically. If the cloud is ahead, the game asks first.
 
 ### Why not a salted hash?
@@ -65,7 +65,7 @@ Achievements are re-derived on the server rather than trusted. A careful cheater
 
 ## Development
 
-Plain ES modules with no build step. One Cloudflare Worker serves `public/` as static assets and handles `/api/*` with D1 and Email Sending.
+Plain ES modules with no build step. One Cloudflare Worker serves `public/` as static assets and handles `/api/*` with D1.
 
 ```bash
 npm install
@@ -75,7 +75,7 @@ npm test             # node:test, economy + plausibility checks
 node tools/sim.js 72 # balance sim: prestige milestones over 72 simulated hours
 ```
 
-`.dev.vars` (gitignored) sets `DEV_RETURN_LINKS=1`, so `/api/login` returns the sign-in link instead of sending an email, and `APP_ORIGIN` points the link at the local server.
+`.dev.vars` (gitignored) sets `APP_ORIGIN` to the local server.
 
 ## Deploying
 
@@ -84,10 +84,9 @@ Infrastructure lives in the org's OpenTofu repos; secrets stay out of state. Fir
 1. **GitHub repo**: `drumandbytes/dnb-tf` (branch `feat/rows-to-riches`) adds this public repo with branch protection from the org ruleset. Plan and apply there (`just kp plan`, `just kp apply`), then push this checkout to it.
 2. **Repo secrets**: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (Actions secrets are deliberately not in dnb-tf).
 3. **D1**: `drumandbytes/dnb-cloudflare-tf` (branch `feat/rows-to-riches`, `rows-to-riches.tf`) creates the `rows-to-riches` database. After applying, put its UUID into `wrangler.jsonc` (`tofu state show cloudflare_d1_database.rows_to_riches_db`).
-4. **Email Sending**: `npx wrangler email sending enable rowstoriches.drumandbytes.dev` (Workers Paid). It adds the `cf-bounce` DNS records for the subdomain.
-5. **Deploy**: merging to `main` runs `.github/workflows/deploy.yml` (tests → D1 migrations → `wrangler deploy`). The Worker's `custom_domain` route creates `rowstoriches.drumandbytes.dev`.
+4. **Deploy**: merging to `main` runs `.github/workflows/deploy.yml` (tests → D1 migrations → `wrangler deploy`). The Worker's `custom_domain` route creates `rowstoriches.drumandbytes.dev`.
    Local deploys (`npm run deploy`) bump the patch version first (`tools/bump-version.js`: package.json plus its copy in `public/js/main.js`), so the About page and feedback show what's live; commit the bump. CI deploys whatever version is committed. For a bigger step: `node tools/bump-version.js minor`.
-6. **Import the new DNS records** into dnb-cloudflare-tf: the two Worker custom-domain records and Email Sending's `cf-bounce.rowstoriches` MX/SPF/DKIM, like road-conditions' `cf-bounce` ones in `drumandbytes-ee.tf`.
+5. **Import the new DNS records** into dnb-cloudflare-tf: the two Worker custom-domain records. `_dmarc.rowstoriches` (`p=reject`) stays: the subdomain sends no mail, so nobody may send as it.
 
 Already covered, nothing to do:
 - **Page views**: Cloudflare Web Analytics is zone-wide and auto-injected on drumandbytes.dev; the CSP allows it.
@@ -95,4 +94,4 @@ Already covered, nothing to do:
 - **Gameplay stats**: the `rows_to_riches_events` Analytics Engine dataset is created on first write.
 - **Embedding**: `frame-ancestors` allows galaxy.click; submitting the game there is done on galaxy.click.
 
-Cost: static assets are free; the API, D1 and Analytics Engine sit well within the Workers Paid plan's included usage, and Email Sending includes 3,000 emails a month per account ($0.35 per 1,000 after).
+Cost: static assets are free; the API, D1 and Analytics Engine sit well within the Workers Paid plan's included usage.
