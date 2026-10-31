@@ -83,7 +83,7 @@ node tools/sim.js 72 # balance sim: prestige milestones over 72 simulated hours
 Infrastructure lives in the org's OpenTofu repos; secrets stay out of state. First publish, in order:
 
 1. **GitHub repo**: `drumandbytes/dnb-tf` (branch `feat/rows-to-riches`) adds this public repo with branch protection from the org ruleset. Plan and apply there (`just kp plan`, `just kp apply`), then push this checkout to it.
-2. **Repo secrets**: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (Actions secrets are deliberately not in dnb-tf).
+2. **Secrets**: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` come from the drumandbytes org secrets (the token is the `dnb-gha-workers-deploy` account token, needs D1 Edit for the migration step); the repo must be in their selected-repositories list. Actions secrets are deliberately not in dnb-tf.
 3. **D1**: `drumandbytes/dnb-cloudflare-tf` (branch `feat/rows-to-riches`, `rows-to-riches.tf`) creates the `rows-to-riches` database. After applying, put its UUID into `wrangler.jsonc` (`tofu state show cloudflare_d1_database.rows_to_riches_db`).
 4. **Deploy**: merging to `main` runs `.github/workflows/deploy.yml` (tests → D1 migrations → `wrangler deploy`). The Worker's `custom_domain` route creates `rowstoriches.drumandbytes.dev`.
    Releases: commits follow Conventional Commits (`feat: …`, `fix: …`). release-please keeps a release PR open with the version bump (package.json and `VERSION` in `public/js/main.js`) and `CHANGELOG.md`; merging it tags `vX.Y.Z`, and the tag runs `deploy.yml` (tests → D1 migrations → `wrangler deploy`). Patch releases auto-merge once CI passes; minor and major wait for you. `npm run deploy` still works for an emergency deploy from a checkout, without a version bump.
