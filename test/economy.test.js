@@ -83,12 +83,12 @@ test("each layer resets the ones below it and keeps its own currency", () => {
 
 test("levelled shops charge growing prices", () => {
   const s = E.newState(T0);
-  s.ins = 7;
+  s.ins = 9;
   assert.ok(E.buyLevel(s, "radar", "defaults")); // 2
-  assert.ok(E.buyLevel(s, "radar", "defaults")); // 4
-  assert.ok(!E.buyLevel(s, "radar", "defaults")); // 8 > 1 left
-  assert.equal(s.insSpent, 6);
-  assert.equal(E.spentOnInsights(s), 6);
+  assert.ok(E.buyLevel(s, "radar", "defaults")); // 6
+  assert.ok(!E.buyLevel(s, "radar", "defaults")); // 18 > 1 left
+  assert.equal(s.insSpent, 8);
+  assert.equal(E.spentOnInsights(s), 8);
 });
 
 test("R&D and contact gate the late sources", () => {
@@ -181,7 +181,7 @@ test("challenges restrict the run, then reward until the layer above resets", ()
   assert.equal(E.checkChallenge(s, T0 + 60e3).challenge.id, "hiring");
   assert.equal(s.chal, null);
   assert.ok(E.producerUnlocked(s, 0));
-  const insightBonus = 1 + s.ins * E.insightPct(s);
+  const insightBonus = 1 + E.insightBonus(s);
   assert.ok(Math.abs(E.globalMultiplier(s) / before - 5 * insightBonus * E.speedBonus(s, "hiring")) < 1e-9);
   // A re-platform keeps the reward; an acquisition drops it.
   E.earn(s, 1e30);
@@ -291,21 +291,34 @@ test("selling refunds half, never free units, and keeps the save plausible", () 
   assert.equal(E.implausible(null, s, 3600), null);
 });
 
-test("a layer's challenges switch off that layer's upgrades and same-layer rewards", () => {
+test("a challenge switches off prestige upgrades from its tier upwards, not rewards", () => {
   const s = E.newState(T0);
   E.earn(s, 1e9);
   s.ins = 200;
   s.radar = { defaults: 3 };
   s.arch = ["medallion"];
+  s.board = { synergy: 2 };
+  s.eq = 10;
+  s.eqSpent = 10;
   s.chalDone = ["hiring"];
+  s.chalEver = ["hiring"];
   s.replat = 3;
   const outside = E.globalMultiplier(s);
   assert.ok(E.startChallenge(s, "budget", T0));
+  // Re-platform tier: Insights, Radar, Board and Equity are all off; the Hiring Freeze reward isn't.
   assert.equal(E.radarLevel(s, "defaults"), 0);
-  assert.ok(!E.won(s, "hiring"));
+  assert.equal(E.boardLevel(s, "synergy"), 0);
+  assert.ok(E.won(s, "hiring"));
   assert.ok(E.globalMultiplier(s) < outside / 5);
   // Spending is still accounted against what's owned, so the server check is unaffected.
   assert.equal(s.radar.defaults, 3);
+  // A tier unlocked at Acquisition keeps the re-platform layer's power.
+  E.abandonChallenge(s);
+  s.acq = 1;
+  s.chalEver.push("budget");
+  assert.ok(E.startChallenge(s, "budget", T0, 2));
+  assert.equal(E.radarLevel(s, "defaults"), 3);
+  assert.equal(E.boardLevel(s, "synergy"), 0);
 });
 
 test("Institutional Memory keeps re-platform completions through acquisitions", () => {
