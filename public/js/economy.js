@@ -221,7 +221,7 @@ export const ARCH = [
   { id: "kappa", name: "Kappa Architecture", cost: 800, desc: "Source upgrades give ×2.25 instead of ×2." },
   { id: "selfheal", name: "Self-healing Pipelines", cost: 1500, desc: "Incidents resolve themselves after 3 seconds." },
   { id: "vectordb", name: "Vector Database", cost: 3000, mult: 3, desc: "Everything ×3. It was Postgres with an extension." },
-  { id: "semantic", name: "Semantic Layer", cost: 4000, desc: "Each Insight gives +4% instead of +3%." },
+  { id: "semantic", name: "Semantic Layer", cost: 4000, desc: "Insights give a third more production bonus (4% per point instead of 3%)." },
   { id: "agi", name: "Autonomous Data Platform", cost: 2e4, mult: 5, desc: "Everything ×5. You are now the intern." },
   { id: "federation", name: "Lakehouse Federation", cost: 1e5, mult: 4, desc: "Everything ×4. Query every lake from every other lake." },
   { id: "lineage", name: "Column-Level Lineage", cost: 1e6, mult: 10, desc: "Everything ×10. You finally know where the numbers come from." },
@@ -230,12 +230,12 @@ export const ARCH = [
 const ARCH_BY_ID = Object.fromEntries(ARCH.map((a) => [a.id, a]));
 
 export const RADAR = [
-  { id: "defaults", name: "Better Defaults", base: 2, growth: 2, max: 500, desc: (l) => `Everything ×1.25 per level (now ×${fmtMult(1.25 ** l)}).` },
+  { id: "defaults", name: "Better Defaults", base: 2, growth: 3, max: 500, desc: (l) => `Everything ×1.25 per level (now ×${fmtMult(1.25 ** l)}).` },
   { id: "pairing", name: "Pair Programming", base: 1, growth: 1.7, max: 100, desc: (l) => `INSERT ×2 per level (now ×${fmtMult(2 ** l)}).` },
   { id: "golden", name: "Golden Images", base: 3, growth: 2.2, max: 12, desc: (l) => `Start every run with free sources: level L gives 10×L of the first source, 10×(L−1) of the second, and so on (now level ${l}).` },
   { id: "reserved", name: "Reserved Instances", base: 5, growth: 2, max: 12, desc: (l) => `Data Sources cost 4% less per level (now −${l * 4}%).` },
   { id: "literacy", name: "Data Literacy", base: 8, growth: 1.9, max: 500, desc: (l) => `+15% Insights from re-platforming per level (now +${l * 15}%).` },
-  { id: "disks", name: "Bigger Disks", base: 2, growth: 1.8, max: 20, desc: (l) => `Offline cap +4h per level (now ${4 + l * 4}h).` },
+  { id: "disks", name: "Bigger Disks", base: 2, growth: 1.8, max: 10, desc: (l) => `Offline cap +1h per level (now ${2 + l}h).` },
   { id: "chaos", name: "Chaos Engineering", base: 10, growth: 2, max: 10, desc: (l) => `Incident multipliers +25% per level (now +${l * 25}%).` },
   { id: "tribal", name: "Tribal Knowledge", base: 6, growth: 2, max: 10, desc: (l) => `Incidents show up 10% more often per level (now +${l * 10}%).` },
   { id: "wide", name: "Wide Tables", base: 20, growth: 2.5, max: 10, desc: (l) => `Each column +2% stronger per level (now +${l * 2}%).` },
@@ -246,6 +246,22 @@ const RADAR_BY_ID = Object.fromEntries(RADAR.map((r) => [r.id, r]));
 // ---- Layer 2: Acquisition → Equity ------------------------------------------
 
 const EQUITY_DIVISOR = 1e23;
+// Knobs tools/sim.js varies through TWEAK (e.g. TWEAK='E.TUNING.equityPower = 0.2').
+// Chosen with tools/sim.js (SUMMARY=1) against runaway feedback: Insights and Better
+// Defaults compound, and doubling Equity every few minutes made acquisitions burst.
+export const TUNING = {
+  equityPower: 0.23, equityProdPower: 0.25, insightPower: 1 / 3, insightBonusPower: 1, offlineRate: 0.5,
+  // Soft caps: full benefit up to the cap, then value ** softPower past it.
+  insightSoftcap: 1000, insightSoftPower: 0.7, equitySoftcap: Infinity, equitySoftPower: 0.5,
+  // Production multipliers from Equity, Xenobytes and Axioms (and Axioms' prestige-gain
+  // boost), soft-capped in multiplier space: ×cap at full strength, then ** multSoftPower.
+  equityMultCap: 100, xenoMultCap: 100, axiomMultCap: 1e3, axiomBoostCap: 100, multSoftPower: 0.5,
+  // Completed challenges each prestige needs from the layer below (0 in sims comparing curves).
+  gateNeed: 3,
+};
+/** Full value up to `cap`, then cap × (x / cap) ** power: strongly diminished past it. */
+export const softcap = (x, cap, power) => (x <= cap ? x : cap * (x / cap) ** power);
+const unsoftcap = (y, cap, power) => (y <= cap ? y : cap * (y / cap) ** (1 / power));
 
 export const BOARD = [
   { id: "autoreplat", name: "Auto Re-platform", base: 1, growth: 1, max: 1, desc: () => "Re-platforms for you when it would multiply your Insights (threshold in Settings)." },
@@ -258,6 +274,7 @@ export const BOARD = [
   { id: "reit", name: "Data Center REIT", base: 3, growth: 4, max: 10, desc: (l) => `Columns cost 20% less per level, compounding (now −${Math.round((1 - 0.8 ** l) * 100)}%).` },
   { id: "unicorn", name: "Unicorn Status", base: 500, growth: 1, max: 1, desc: () => "Everything ×10. Valuation: vibes × 40." },
   { id: "memory", name: "Institutional Memory", base: 3, growth: 1, max: 1, desc: () => "Re-platform challenges you've completed stay completed through acquisitions, rewards included." },
+  { id: "radarbot", name: "Radar Bot", base: 6, growth: 1, max: 1, desc: () => "Buys Architecture and Tech Radar levels for you, cheapest first (toggle in Settings → Game)." },
   { id: "colo", name: "Colocation Lease", base: 2, growth: 3, max: 5, desc: (l) => `Each new company starts ${l} environment${l === 1 ? "" : "s"} up the ladder instead of on localhost (${l}/5).` },
 ];
 export const BOARD_BY_ID = Object.fromEntries(BOARD.map((b) => [b.id, b]));
@@ -277,6 +294,8 @@ export const XENOTECH = [
   { id: "translator", name: "Universal Translator", base: 1, growth: 10, max: 200, desc: (l) => `Equity from acquisitions ×2 per level (now ×${fmtMult(2 ** l)}).` },
   { id: "warp", name: "Warp Drive", base: 1, growth: 8, max: 200, desc: (l) => `Everything ×2 per level (now ×${fmtMult(2 ** l)}).` },
   { id: "abductions", name: "Abduction Insurance", base: 3, growth: 1, max: 1, desc: () => "A new incident: 🛸 Abduction, production ×77 for 10s." },
+  { id: "boardbot", name: "Board Bot", base: 4, growth: 1, max: 1, desc: () => "Buys Board seats for you, cheapest first (toggle in Settings → Game)." },
+  { id: "permaplatform", name: "Permanent Platform", base: 30, growth: 1, max: 1, desc: () => "Architecture and the Tech Radar are never reset: not by acquisitions, not by First Contact." },
   { id: "records", name: "Speedrun Records", base: 3, growth: 1, max: 1, desc: () => "Challenge best times survive every reset, so re-completing a challenge brings its speed bonus straight back." },
   { id: "archive", name: "Galactic Archive", base: 2, growth: 1, max: 1, desc: () => "Acquisition challenges you've completed stay completed through First Contact, rewards included." },
 ];
@@ -290,55 +309,77 @@ const XENOTECH_BY_ID = Object.fromEntries(XENOTECH.map((x) => [x.id, x]));
 
 export const CHALLENGES = [
   // layer "replat": unlocked at 10 Insights
-  { id: "legacy", req: (s) => s.replat >= 2, reqText: "Re-platform 2 times.", layer: "replat", name: "Legacy Migration", goal: 1e5, rule: { noColumns: true },
+  { id: "legacy", req: (s) => s.replat >= 2, reqText: "Re-platform 2 times.", layer: "replat", name: "Legacy Migration", goals: [1.5e5, 8e24, 4e38, 3e42], rule: { noColumns: true },
     restriction: "No columns. The schema is frozen; the DBA retired.", reward: "Each column +10% stronger." },
-  { id: "budget", req: (s) => s.replat >= 3, reqText: "Re-platform 3 times.", layer: "replat", name: "Budget Freeze", goal: 1.5e4, rule: { costMult: 100 },
+  { id: "budget", req: (s) => s.replat >= 3, reqText: "Re-platform 3 times.", layer: "replat", name: "Budget Freeze", goals: [1.5e4, 4e27, 1.5e43, 5e49], rule: { costMult: 100 },
     restriction: "Data Sources cost ×100.", reward: "Data Sources cost 25% less." },
-  { id: "hiring", req: (s) => s.ins >= 25, reqText: "Have 25 Insights.", layer: "replat", name: "Hiring Freeze", goal: 1e4, rule: { minTier: 3 },
+  { id: "hiring", req: (s) => s.ins >= 25, reqText: "Have 25 Insights.", layer: "replat", name: "Hiring Freeze", goals: [1.5e4, 8e27, 3e43, 1e50], rule: { minTier: 3 },
     restriction: "No Interns, Cron Jobs or Python Scripts.", reward: "Everything ×5." },
-  { id: "friday", req: (s) => s.incidents >= 10, reqText: "Resolve 10 incidents.", layer: "replat", name: "Friday Deploy", goal: 6e4, rule: { noClick: true, noUpgrades: true, starter: [10, 5] },
+  { id: "friday", req: (s) => s.incidents >= 10, reqText: "Resolve 10 incidents.", layer: "replat", name: "Friday Deploy", goals: [6e4, 4e24, 1e38, 1.5e44], rule: { noClick: true, noUpgrades: true, starter: [10, 5] },
     restriction: "No INSERT and no upgrades. Just vibes and hope.", reward: "Incidents are twice as strong and twice as frequent." },
-  { id: "compliance", req: (s) => s.ins >= 50, reqText: "Have 50 Insights.", layer: "replat", name: "Compliance Audit", goal: 6e3, rule: { prodDiv: 100 },
+  { id: "compliance", req: (s) => s.ins >= 50, reqText: "Have 50 Insights.", layer: "replat", name: "Compliance Audit", goals: [6e3, 2e26, 1e42, 2.5e48], rule: { prodDiv: 100 },
     restriction: "Production ÷100 while auditors watch.", reward: "Insights from re-platforming ×3." },
-  { id: "monorepo", req: (s) => s.ins >= 100, reqText: "Have 100 Insights.", layer: "replat", name: "Monorepo", goal: 2e5, rule: { noInsights: true },
-    restriction: "Insights give no production bonus.", reward: "Each Insight gives twice the production bonus." },
-  { id: "keepupg", req: (s) => s.replat >= 10, reqText: "Re-platform 10 times.", layer: "replat", name: "Immutable Infrastructure", goal: 2e4, rule: { costMult: 10, noColumns: true },
+  { id: "monorepo", req: (s) => s.ins >= 100, reqText: "Have 100 Insights.", layer: "replat", name: "Monorepo", goals: [2e5, 8e24, 4e36, 6e43], rule: { noInsights: true },
+    restriction: "Insights give no production bonus.", reward: "Insights give twice the production bonus." },
+  { id: "keepupg", req: (s) => s.replat >= 10, reqText: "Re-platform 10 times.", layer: "replat", name: "Immutable Infrastructure", goals: [2e4, 6e24, 3e38, 2.5e42], rule: { costMult: 10, noColumns: true },
     restriction: "Data Sources cost ×10 and no columns.", reward: "Upgrades are kept when you re-platform." },
-  { id: "keepcols", req: (s) => s.chalWins >= 2, reqText: "Complete 2 challenges.", layer: "replat", name: "Schema-on-Write", goal: 2e5, rule: { maxTier: 6 },
+  { id: "keepcols", req: (s) => s.chalWins >= 2, reqText: "Complete 2 challenges.", layer: "replat", name: "Schema-on-Write", goals: [2e5, 4e23, 1.5e35, 6e38], rule: { maxTier: 6 },
     restriction: "Only the first 6 Data Sources.", reward: "Columns are kept when you re-platform." },
-  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goal: 1.2e3, rule: { noClick: true, prodDiv: 10, starter: [10, 5] },
+  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [1.5e3, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10, 5] },
     restriction: "No INSERT, and production ÷10.", reward: "10% of every Data Source is kept when you re-platform." },
   // layer "acq": unlocked after the first Acquisition
-  { id: "takeover", req: (s) => s.acq >= 1, reqText: "Get acquired once.", layer: "acq", name: "Hostile Takeover", goal: 5e27, rule: { prodDiv: 1e4 },
+  { id: "takeover", req: (s) => s.acq >= 1, reqText: "Get acquired once.", layer: "acq", name: "Hostile Takeover", goals: [3e24, 1.5e40, 8e46], rule: { prodDiv: 1e4 },
     restriction: "Production ÷10,000. The new owners are 'reviewing costs'.", reward: "Equity from acquisitions ×3." },
-  { id: "lockin", req: (s) => s.acq >= 2, reqText: "Get acquired 2 times.", layer: "acq", name: "Vendor Lock-in", goal: 2.5e27, rule: { maxTier: 8 },
+  { id: "lockin", req: (s) => s.acq >= 2, reqText: "Get acquired 2 times.", layer: "acq", name: "Vendor Lock-in", goals: [2.5e24, 1.5e36, 4e39], rule: { maxTier: 8 },
     restriction: "Only the first 8 Data Sources.", reward: "Everything ×100." },
-  { id: "busfactor", req: (s) => s.eq >= 20, reqText: "Have 20 Equity.", layer: "acq", name: "Bus Factor 1", goal: 1e31, rule: { noAuto: true, noClick: true, starter: [10, 5] },
+  { id: "busfactor", req: (s) => s.eq >= 20, reqText: "Have 20 Equity.", layer: "acq", name: "Bus Factor 1", goals: [6e27, 2.5e43, 8e49], rule: { noAuto: true, noClick: true, starter: [10, 5] },
     restriction: "No automation, no INSERT. One engineer, on holiday.", reward: "R&D Lab sources ×10." },
-  { id: "zerotrust", req: (s) => s.acq >= 3, reqText: "Get acquired 3 times.", layer: "acq", name: "Zero Trust", goal: 2e27, rule: { noIncidents: true, noUpgrades: true },
+  { id: "zerotrust", req: (s) => s.acq >= 3, reqText: "Get acquired 3 times.", layer: "acq", name: "Zero Trust", goals: [5e24, 1.5e38, 2e44], rule: { noIncidents: true, noUpgrades: true },
     restriction: "No incidents and no upgrades.", reward: "Synergy upgrades give +3% per source instead of +1%." },
-  { id: "keepradar", req: (s) => s.chalWins >= 8, reqText: "Complete 8 challenges.", layer: "acq", name: "Technical Debt", goal: 2.5e28, rule: { prodDiv: 1e3, costMult: 10 },
+  { id: "keepradar", req: (s) => s.chalWins >= 8, reqText: "Complete 8 challenges.", layer: "acq", name: "Technical Debt", goals: [1.5e25, 5e40, 4e47], rule: { prodDiv: 1e3, costMult: 10 },
     restriction: "Production ÷1000 and Data Sources cost ×10.", reward: "The Tech Radar is kept when you get acquired." },
-  { id: "keepins", req: (s) => s.eq >= 100, reqText: "Have 100 Equity.", layer: "acq", name: "Knowledge Transfer", goal: 3e29, rule: { noAuto: true, maxTier: 12 },
+  { id: "keepins", req: (s) => s.eq >= 100, reqText: "Have 100 Equity.", layer: "acq", name: "Knowledge Transfer", goals: [2.5e26, 2e38, 1.5e42], rule: { noAuto: true, maxTier: 12 },
     restriction: "No automation, and only the first 12 Data Sources.", reward: "10% of your Insights are kept when you get acquired." },
   // layer "contact": unlocked after the first First Contact
-  { id: "translation", req: (s) => s.contact >= 1, reqText: "Make First Contact.", layer: "contact", name: "Lost in Translation", goal: 1.5e45, rule: { costMult: 1e6 },
+  { id: "translation", req: (s) => s.contact >= 1, reqText: "Make First Contact.", layer: "contact", name: "Lost in Translation", goals: [5e42, 2.5e49], rule: { costMult: 1e6 },
     restriction: "Everything costs ×1,000,000. The aliens charge per syllable.", reward: "Xenobytes from contact ×3." },
-  { id: "darkforest", req: (s) => s.contact >= 2, reqText: "Make First Contact 2 times.", layer: "contact", name: "Dark Forest", goal: 5e38, rule: { prodDiv: 1e9 },
+  { id: "darkforest", req: (s) => s.contact >= 2, reqText: "Make First Contact 2 times.", layer: "contact", name: "Dark Forest", goals: [1e36, 8e42], rule: { prodDiv: 1e9 },
     restriction: "Production ÷1e9. Stay quiet, or they'll find you.", reward: "Warp Drive gives ×3 per level instead of ×2." },
-  { id: "heatdeath", req: (s) => s.xeno >= 50, reqText: "Have 50 Xenobytes.", layer: "contact", name: "Heat Death Speedrun", goal: 1e36, rule: { noColumns: true, noUpgrades: true },
+  { id: "heatdeath", req: (s) => s.xeno >= 50, reqText: "Have 50 Xenobytes.", layer: "contact", name: "Heat Death Speedrun", goals: [2.5e34, 1.5e38], rule: { noColumns: true, noUpgrades: true },
     restriction: "No columns and no upgrades.", reward: "Alien Data Sources ×1000." },
-  { id: "keepeq", req: (s) => s.chalWins >= 15, reqText: "Complete 15 challenges.", layer: "contact", name: "Cultural Exchange", goal: 1.5e41, rule: { prodDiv: 1e6, noIncidents: true },
+  { id: "keepeq", req: (s) => s.chalWins >= 15, reqText: "Complete 15 challenges.", layer: "contact", name: "Cultural Exchange", goals: [4e38, 1.5e45], rule: { prodDiv: 1e6, noIncidents: true },
     restriction: "Production ÷1,000,000 and no incidents.", reward: "10% of your Equity is kept through First Contact." },
-  { id: "keepcontact", req: (s) => s.xeno >= 500, reqText: "Have 500 Xenobytes.", layer: "contact", name: "Seed Vault", goal: 3e40, rule: { noUpgrades: true, minTier: 5 },
+  { id: "keepcontact", req: (s) => s.xeno >= 500, reqText: "Have 500 Xenobytes.", layer: "contact", name: "Seed Vault", goals: [1.5e38, 1.5e44], rule: { noUpgrades: true, minTier: 5 },
     restriction: "No upgrades, and none of the first 5 Data Sources.", reward: "Architecture and the Tech Radar are kept through First Contact." },
   // layer "bang": unlocked after the first Big Bang; nothing resets these
-  { id: "keepxeno", req: (s) => s.bangs >= 1, reqText: "Start a new universe.", layer: "bang", name: "Entropy Reversal", goal: 6e3, rule: { prodDiv: 1e12 },
+  { id: "keepxeno", req: (s) => s.bangs >= 1, reqText: "Start a new universe.", layer: "bang", name: "Entropy Reversal", goals: [1.5e40], rule: { prodDiv: 1e12 },
     restriction: "Production ÷1e12.", reward: "Xenotech is kept through Big Bangs." },
-  { id: "keepboard", req: (s) => s.bangs >= 2, reqText: "Start 2 new universes.", layer: "bang", name: "Recurring Revenue", goal: 1.2e4, rule: { noColumns: true, costMult: 1e6 },
+  { id: "keepboard", req: (s) => s.bangs >= 2, reqText: "Start 2 new universes.", layer: "bang", name: "Recurring Revenue", goals: [5e41], rule: { noColumns: true, costMult: 1e6 },
     restriction: "No columns, and Data Sources cost ×1,000,000.", reward: "The Board is kept through Big Bangs." },
 ];
 export const CHALLENGE_BY_ID = Object.fromEntries(CHALLENGES.map((c) => [c.id, c]));
+
+// Tiers. A challenge has one tier per prestige layer from its own up to Big Bang: tier t
+// opens once layer LAYER_ORDER[layer + t − 1] is unlocked and you've ever beaten tier t − 1.
+// While you play a tier, prestige power from its unlock layer and every layer above is off,
+// so the goals (c.goals[t − 1], fixed numbers) test the power you have below it. Tier I
+// gives the named reward; each higher tier adds TIER_REWARD to production. A completion is
+// stored under its key ("legacy", "legacy#2", …) and drops when the layer above its unlock
+// layer resets.
+export const LAYER_ORDER = ["replat", "acq", "contact", "bang"];
+const layerIdx = (layer) => LAYER_ORDER.indexOf(layer);
+export const TIER_REWARD = 3;
+export const tierCount = (c) => LAYER_ORDER.length - layerIdx(c.layer);
+export const tierKey = (c, t) => (t === 1 ? c.id : `${c.id}#${t}`);
+/** { challenge, tier, layer (where the tier unlocks) } for a key, or null. */
+export function parseTier(key) {
+  const [id, t = "1"] = String(key ?? "").split("#");
+  const c = CHALLENGE_BY_ID[id];
+  const tier = Number(t);
+  if (!c || !Number.isInteger(tier) || tier < 1 || tier > tierCount(c)) return null;
+  return { challenge: c, tier, layer: LAYER_ORDER[layerIdx(c.layer) + tier - 1] };
+}
+export const tierGoal = (c, t) => c.goals[t - 1];
 export const CHALLENGE_LAYERS = [
   { id: "replat", name: "Re-platform challenges", until: "next Acquisition", unlocked: (s) => s.ins >= 10 || s.acq + s.contact + s.bangs > 0, hint: "Unlocks at 10 Insights." },
   { id: "acq", name: "Acquisition challenges", until: "next First Contact", unlocked: (s) => s.acq + s.contact + s.bangs > 0, hint: "Unlocks after your first Acquisition." },
@@ -526,7 +567,7 @@ export function newState(now = Date.now()) {
     eq: 0, eqSpent: 0, eqFree: 0, board: {},
     xeno: 0, xenoSpent: 0, xeno_tech: {},
     axioms: 0, finale: false,
-    chal: null, chalDone: [], chalWins: 0, chalBest: {},
+    chal: null, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
     momentum: 0,
     okr: null, // quarterly OKRs: { quarter, endsAt (online ms), items: [{ kind, label, base, target, done }] }
     inbox: [],
@@ -542,6 +583,8 @@ export function newState(now = Date.now()) {
       // Auto-buyer, per category (Settings → Game → Automation).
       autoSources: false, autoStrategy: "value", autoSkip: [],
       autoUpgrades: false, upgStrategy: "cheapest", autoColumns: false,
+      // Prestige shop bots, once owned (Radar Bot, Board Bot, 1 Axiom).
+      autoRadar: true, autoBoard: true, autoXeno: true,
     },
   };
 }
@@ -572,20 +615,22 @@ export function normalize(raw, now = Date.now()) {
   s.board = normalizeLevels(raw.board, BOARD);
   s.xeno_tech = normalizeLevels(raw.xeno_tech, XENOTECH);
   s.ach = [...new Set(Array.isArray(s.ach) ? s.ach : [])].filter((id) => ACH_BY_ID[id]);
-  s.chalDone = [...new Set(Array.isArray(raw.chalDone) ? raw.chalDone : [])].filter((id) => CHALLENGE_BY_ID[id]);
+  s.chalDone = [...new Set(Array.isArray(raw.chalDone) ? raw.chalDone : [])].filter((k) => parseTier(k));
+  // Older saves didn't track tiers ever beaten; what's completed now certainly was.
+  s.chalEver = [...new Set([...(Array.isArray(raw.chalEver) ? raw.chalEver : []), ...s.chalDone])].filter((k) => parseTier(k));
   s.chalBest = {};
-  for (const [id, ms] of Object.entries(raw.chalBest ?? {})) if (CHALLENGE_BY_ID[id] && Number.isFinite(ms) && ms > 0) s.chalBest[id] = Math.min(ms, CHALLENGE_LIMIT_MS);
+  for (const [k, ms] of Object.entries(raw.chalBest ?? {})) if (parseTier(k) && Number.isFinite(ms) && ms > 0) s.chalBest[k] = Math.min(ms, CHALLENGE_LIMIT_MS);
   // What an acquisition carried over for free; bounded by what the Board and rewards allow.
-  const keepAll = s.chalDone.includes("keepradar") || s.chalDone.includes("keepcontact");
+  const keepAll = s.chalDone.includes("keepradar") || s.chalDone.includes("keepcontact") || s.xeno_tech.permaplatform;
   const keep = keepAll ? 1 : 0.1 * (s.board.parachute ?? 0);
   s.freeIns = {
-    arch: s.board.handcuffs || s.chalDone.includes("keepcontact") ? (Array.isArray(raw.freeIns?.arch) ? raw.freeIns.arch : []).filter((id) => s.arch.includes(id)) : [],
+    arch: s.board.handcuffs || s.chalDone.includes("keepcontact") || s.xeno_tech.permaplatform ? (Array.isArray(raw.freeIns?.arch) ? raw.freeIns.arch : []).filter((id) => s.arch.includes(id)) : [],
     radar: Object.fromEntries(
       RADAR.map((r) => [r.id, Math.min(Math.floor(Number(raw.freeIns?.radar?.[r.id]) || 0), Math.floor(r.max * keep), s.radar[r.id] ?? 0)]).filter(([, l]) => l > 0),
     ),
   };
   // A Board kept by Probe Swarm (or Recurring Revenue) is free; otherwise nothing is.
-  s.eqFree = s.xeno_tech.probes || s.chalDone.includes("keepboard") ? Math.min(s.eqFree, spentOnEquity(s)) : 0;
+  s.eqFree = s.xeno_tech.probes || s.chalDone.includes("keepboard") || s.axioms >= 10 ? Math.min(s.eqFree, spentOnEquity(s)) : 0;
   s.xenoFree = s.chalDone.includes("keepxeno") ? Math.min(num(raw.xenoFree), spentOnXeno(s)) : 0;
   const k = raw.kept ?? {};
   s.kept = {
@@ -602,7 +647,7 @@ export function normalize(raw, now = Date.now()) {
   if (raw.settings?.autoSources === undefined && raw.settings?.auto) Object.assign(s.settings, { autoSources: true, autoUpgrades: true, autoColumns: true });
   s.settings.autoSkip = (Array.isArray(s.settings.autoSkip) ? s.settings.autoSkip : []).filter((id) => PRODUCERS.some((p) => p.id === id));
   s.finale = !!s.finale;
-  s.chal = CHALLENGE_BY_ID[raw.chal] ? raw.chal : null;
+  s.chal = parseTier(raw.chal) ? raw.chal : null;
   s.chalWins = Math.floor(num(raw.chalWins));
   s.momentum = Math.min(1, num(raw.momentum));
   const okr = raw.okr;
@@ -628,27 +673,33 @@ export function normalize(raw, now = Date.now()) {
 const has = (list, id) => list.includes(id);
 /** Company names: printable characters only, 32 at most. Escaped again wherever it's rendered. */
 export const cleanCompany = (name) => (typeof name === "string" ? name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 32) : "");
-// A layer's challenges are played without that layer's own prestige power: re-platform
-// challenges switch off Insights, Architecture and the Tech Radar; acquisition challenges
-// the Board and Equity; First Contact challenges Xenotech; Big Bang challenges Axioms. Same-
-// layer challenge rewards are off too. So a challenge's static goal stays a real challenge
-// however much of that currency you've piled up. Lower layers still help.
-const chalLayer = (s) => CHALLENGE_BY_ID[s.chal]?.layer;
-export const layerOff = (s, layer) => chalLayer(s) === layer;
+// Challenges switch off prestige power from the tier's unlock layer upwards: Insights,
+// Architecture and the Tech Radar (re-platform), the Board and Equity (acquisition),
+// Xenotech and Xenobytes (First Contact), Axioms (Big Bang). Challenge rewards stay on. So a
+// challenge's static goal stays a real challenge however much currency you've piled up.
+// Everything from the active tier's unlock layer upwards is off.
+const offFrom = (s) => {
+  const t = parseTier(s.chal);
+  return t ? layerIdx(t.layer) : Infinity;
+};
+export const layerOff = (s, layer) => layerIdx(layer) >= offFrom(s);
 export const radarLevel = (s, id) => (layerOff(s, "replat") ? 0 : (s.radar[id] ?? 0));
 export const boardLevel = (s, id) => (layerOff(s, "acq") ? 0 : (s.board[id] ?? 0));
 export const xenoLevel = (s, id) => (layerOff(s, "contact") ? 0 : (s.xeno_tech[id] ?? 0));
 export const archOn = (s, id) => !layerOff(s, "replat") && s.arch.includes(id);
 /** The active challenge's rule set ({} outside challenges). */
-export const rule = (s) => CHALLENGE_BY_ID[s.chal]?.rule ?? {};
-/** A challenge reward in effect (not while playing a challenge of the same layer). */
-export const won = (s, id) => s.chalDone.includes(id) && !layerOff(s, CHALLENGE_BY_ID[id].layer);
+export const rule = (s) => parseTier(s.chal)?.challenge.rule ?? {};
+/** A challenge reward in effect. Rewards stay on inside challenges: only prestige upgrades
+ *  and currencies are switched off. */
+export const won = (s, key) => s.chalDone.includes(key);
 export const automationAllowed = (s) => !rule(s).noAuto;
 export const incidentsAllowed = (s) => !rule(s).noIncidents;
 export const clickAllowed = (s) => !rule(s).noClick;
 const challengeLayerUnlocked = (s, layer) => CHALLENGE_LAYERS.find((l) => l.id === layer).unlocked(s);
 /** Both the tier and the challenge's own requirement must be met. Completed ones stay listed. */
 export const challengeUnlocked = (s, c) => challengeLayerUnlocked(s, c.layer) && c.req(s);
+export const tierUnlocked = (s, c, t) =>
+  t === 1 ? challengeUnlocked(s, c) : t <= tierCount(c) && challengeLayerUnlocked(s, LAYER_ORDER[layerIdx(c.layer) + t - 1]) && s.chalEver.includes(tierKey(c, t - 1));
 
 // ---- costs -------------------------------------------------------------------
 
@@ -693,6 +744,8 @@ export function alienTypeFor(s, n) {
 
 // ---- production --------------------------------------------------------------
 
+/** Production bonus from Insights (0.5 = +50%): full up to 1,000 Insights, soft-capped past that. */
+export const insightBonus = (s) => softcap(s.ins ** TUNING.insightBonusPower, TUNING.insightSoftcap, TUNING.insightSoftPower) * insightPct(s);
 export const insightPct = (s) => (rule(s).noInsights ? 0 : (archOn(s, "semantic") ? 0.04 : 0.03) * (won(s, "monorepo") ? 2 : 1));
 
 export function producerMultiplier(s, i) {
@@ -709,6 +762,10 @@ export function producerMultiplier(s, i) {
   return m;
 }
 
+export const equityProdMult = (s) => softcap((1 + s.eq) ** TUNING.equityProdPower, TUNING.equityMultCap, TUNING.multSoftPower);
+export const xenoProdMult = (s) => softcap((1 + s.xeno) ** 0.25, TUNING.xenoMultCap, TUNING.multSoftPower);
+export const axiomProdMult = (s) => softcap(3 ** s.axioms, TUNING.axiomMultCap, TUNING.multSoftPower);
+
 export function globalMultiplier(s) {
   let m = columnMult(s);
   for (const id of s.upg) {
@@ -716,19 +773,19 @@ export function globalMultiplier(s) {
     if (u.kind === "global") m *= u.mult;
   }
   if (!layerOff(s, "replat")) for (const id of s.arch) m *= ARCH_BY_ID[id].mult ?? 1;
-  if (!layerOff(s, "replat")) m *= 1 + s.ins * insightPct(s);
+  if (!layerOff(s, "replat")) m *= 1 + insightBonus(s);
   m *= 1 + (archOn(s, "caching") ? 0.02 : 0.01) * s.ach.length;
   m *= 1.25 ** radarLevel(s, "defaults");
-  if (!layerOff(s, "acq")) m *= (1 + s.eq) ** 0.25;
+  if (!layerOff(s, "acq")) m *= equityProdMult(s);
   m *= 2 ** boardLevel(s, "synergy");
   if (boardLevel(s, "unicorn")) m *= 10;
-  if (!layerOff(s, "contact")) m *= (1 + s.xeno) ** 0.25;
+  if (!layerOff(s, "contact")) m *= xenoProdMult(s);
   m *= (won(s, "darkforest") ? 3 : 2) ** xenoLevel(s, "warp");
   if (won(s, "hiring")) m *= 5;
   if (won(s, "lockin")) m *= 100;
-  m *= speedMultiplier(s);
+  m *= challengeMultiplier(s);
   m /= rule(s).prodDiv ?? 1;
-  if (!layerOff(s, "bang")) m *= 3 ** s.axioms;
+  if (!layerOff(s, "bang")) m *= axiomProdMult(s);
   if (archOn(s, "mesh")) m *= 1 + 0.05 * s.prod.filter((c) => c > 0).length;
   // Doubles top out near 1.8e308; keep headroom so rates and costs never hit Infinity.
   return Math.min(m, MULT_CAP);
@@ -795,7 +852,9 @@ export function upgradeUnlocked(s, u) {
   return s.runRows >= u.need.rows;
 }
 
-export const offlineCapSecs = (s) => (4 + 4 * radarLevel(s, "disks")) * 3600;
+export const offlineCapSecs = (s) => (2 + radarLevel(s, "disks")) * 3600;
+/** Seconds of production credited for `secs` away: full speed for the first minute, then TUNING.offlineRate. */
+export const offlineCredit = (secs) => Math.min(secs, 60) + Math.max(0, secs - 60) * TUNING.offlineRate;
 
 const MULT_CAP = 1e200;
 
@@ -918,19 +977,51 @@ export function buyLevel(s, shop, id) {
   return true;
 }
 
+// Axiom milestones: Big Bang automation and permanence, by Axioms owned.
+export const AXIOM_MILESTONES = [
+  { at: 1, id: "xenobot", text: "Xenotech buys itself, cheapest first (toggle in Settings → Game)." },
+  { at: 10, id: "boardstays", text: "The Board is never reset: not by First Contact, not by a Big Bang." },
+];
+export const axiomMilestone = (s, id) => s.axioms >= AXIOM_MILESTONES.find((m) => m.id === id).at && !layerOff(s, "bang");
+
+/** Prestige auto-buyers (Radar Bot, Board Bot, Axiom milestone): cheapest first, per shop. */
+export function autoBuyShops(s) {
+  let bought = 0;
+  const shop = (on, options) => {
+    if (!on) return;
+    for (let guard = 0; guard < 1000; guard++) {
+      const opts = options().sort((a, b) => a.cost - b.cost);
+      if (!opts.length || !opts[0].buy()) return;
+      bought++;
+    }
+  };
+  shop(boardLevel(s, "radarbot") && s.settings.autoRadar, () => [
+    ...ARCH.filter((a) => !s.arch.includes(a.id)).map((a) => ({ cost: a.cost, buy: () => buyArch(s, a.id) })),
+    ...RADAR.filter((r) => (s.radar[r.id] ?? 0) < r.max).map((r) => ({ cost: levelCost(r, s.radar[r.id] ?? 0), buy: () => buyLevel(s, "radar", r.id) })),
+  ]);
+  shop(xenoLevel(s, "boardbot") && s.settings.autoBoard, () =>
+    BOARD.filter((b) => (s.board[b.id] ?? 0) < b.max).map((b) => ({ cost: levelCost(b, s.board[b.id] ?? 0), buy: () => buyLevel(s, "board", b.id) })),
+  );
+  shop(axiomMilestone(s, "xenobot") && s.settings.autoXeno, () =>
+    XENOTECH.filter((x) => (s.xeno_tech[x.id] ?? 0) < x.max).map((x) => ({ cost: levelCost(x, s.xeno_tech[x.id] ?? 0), buy: () => buyLevel(s, "xeno", x.id) })),
+  );
+  return bought;
+}
+
 // ---- prestige ----------------------------------------------------------------
 
-const axiomBoost = (s) => 1.5 ** s.axioms;
+const axiomBoost = (s) => softcap(1.5 ** s.axioms, TUNING.axiomBoostCap, TUNING.multSoftPower);
 
 const insightMult = (s) => (1 + 0.15 * radarLevel(s, "literacy")) * 2 ** boardLevel(s, "ir") * axiomBoost(s) * (won(s, "compliance") ? 3 : 1);
-const insightsFor = (s) => Math.floor(Math.cbrt(Math.max(0, s.coRows) / INSIGHT_DIVISOR) * insightMult(s));
+// The epsilon keeps exact powers exact: 1e6 ** (1 / 3) is 99.999…, not 100.
+const insightsFor = (s) => Math.floor((Math.max(0, s.coRows) / INSIGHT_DIVISOR) ** TUNING.insightPower * insightMult(s) + 1e-9);
 export const pendingInsights = (s) => Math.max(0, insightsFor(s) + s.insCarry - s.ins);
-export const nextInsightAt = (s) => ((insightsFor(s) + 1) / insightMult(s)) ** 3 * INSIGHT_DIVISOR;
+export const nextInsightAt = (s) => ((insightsFor(s) + 1) / insightMult(s)) ** (1 / TUNING.insightPower) * INSIGHT_DIVISOR;
 
 const equityMult = (s) => 2 ** xenoLevel(s, "translator") * axiomBoost(s) * (won(s, "takeover") ? 3 : 1);
-const equityFor = (s) => Math.floor((Math.max(0, s.civRows) / EQUITY_DIVISOR) ** 0.25 * equityMult(s));
+const equityFor = (s) => Math.floor(softcap((Math.max(0, s.civRows) / EQUITY_DIVISOR) ** TUNING.equityPower * equityMult(s), TUNING.equitySoftcap, TUNING.equitySoftPower) + 1e-9);
 export const pendingEquity = (s) => Math.max(0, equityFor(s) + s.eqCarry - s.eq);
-export const nextEquityAt = (s) => ((equityFor(s) + 1) / equityMult(s)) ** 4 * EQUITY_DIVISOR;
+export const nextEquityAt = (s) => (unsoftcap(equityFor(s) + 1, TUNING.equitySoftcap, TUNING.equitySoftPower) / equityMult(s)) ** (1 / TUNING.equityPower) * EQUITY_DIVISOR;
 
 const xenoMult = (s) => axiomBoost(s) * (won(s, "translation") ? 3 : 1);
 const xenoFor = (s) => Math.floor((Math.max(0, s.allRows) / XENO_DIVISOR) ** 0.2 * xenoMult(s));
@@ -967,8 +1058,9 @@ function resetCompany(s, now, { keepArch = false, keepRadar = false } = {}) {
   s.insCarry = won(s, "keepins") ? Math.floor(s.ins * 0.1) : 0;
   s.ins = s.insCarry;
   s.insSpent = 0;
-  if (!keepArch && !boardLevel(s, "handcuffs")) s.arch = [];
-  const keep = keepRadar || won(s, "keepradar") ? 1 : 0.1 * boardLevel(s, "parachute");
+  const perma = !!s.xeno_tech.permaplatform;
+  if (!keepArch && !perma && !boardLevel(s, "handcuffs")) s.arch = [];
+  const keep = keepRadar || perma || won(s, "keepradar") ? 1 : 0.1 * boardLevel(s, "parachute");
   const radar = {};
   for (const [id, l] of Object.entries(s.radar)) if (Math.floor(l * keep) > 0) radar[id] = Math.floor(l * keep);
   s.radar = radar;
@@ -982,11 +1074,11 @@ function resetCivilization(s, now, keepBoard = false) {
   s.eqCarry = won(s, "keepeq") ? Math.floor(s.eq * 0.1) : 0;
   s.eq = s.eqCarry;
   s.eqSpent = 0;
-  const board = keepBoard || xenoLevel(s, "probes") > 0;
+  const board = keepBoard || xenoLevel(s, "probes") > 0 || axiomMilestone(s, "boardstays");
   if (!board) s.board = {};
   s.eqFree = board ? spentOnEquity(s) : 0;
-  // Seed Vault keeps architecture and radar; resetCompany marks them free.
-  const vault = won(s, "keepcontact");
+  // Seed Vault or Permanent Platform keeps architecture and radar; resetCompany marks them free.
+  const vault = won(s, "keepcontact") || !!s.xeno_tech.permaplatform;
   if (!vault) {
     s.arch = [];
     s.radar = {};
@@ -1016,13 +1108,13 @@ export function replatform(s, now = Date.now()) {
 // Prestige gates: each layer needs completed challenges from the layer below, so challenges
 // can't be skipped. Completions of a layer are dropped by the next prestige up unless an
 // upgrade keeps them (Institutional Memory, Galactic Archive).
-export const GATE_NEED = 3;
+export const GATE_NEED = TUNING.gateNeed;
 export const GATE_LAYER = { acq: "replat", contact: "acq", bang: "contact" };
-export const gateHave = (s, layer) => s.chalDone.filter((id) => CHALLENGE_BY_ID[id].layer === GATE_LAYER[layer]).length;
-export const gateOpen = (s, layer) => !GATE_LAYER[layer] || gateHave(s, layer) >= GATE_NEED;
+export const gateHave = (s, layer) => s.chalDone.filter((k) => !k.includes("#") && CHALLENGE_BY_ID[k].layer === GATE_LAYER[layer]).length;
+export const gateOpen = (s, layer) => !GATE_LAYER[layer] || gateHave(s, layer) >= TUNING.gateNeed;
 
 function dropRewards(s, layers) {
-  const dropped = (id) => layers.includes(CHALLENGE_BY_ID[id].layer);
+  const dropped = (key) => layers.includes(parseTier(key).layer);
   s.chalDone = s.chalDone.filter((id) => !dropped(id));
   // Speedrun Records (Xenotech) keeps best times; otherwise they go with the completion.
   if (!s.xeno_tech.records) for (const id of Object.keys(s.chalBest)) if (dropped(id)) delete s.chalBest[id];
@@ -1056,7 +1148,7 @@ export function bigBang(s, now = Date.now()) {
   const gain = pendingAxioms(s);
   if (gain < 1 || !gateOpen(s, "bang")) return 0;
   const keepXeno = won(s, "keepxeno");
-  const keepBoard = won(s, "keepboard");
+  const keepBoard = won(s, "keepboard") || axiomMilestone(s, "boardstays");
   dropRewards(s, ["replat", "acq", "contact"]);
   s.stats.companyStartedAt = now;
   s.axioms += gain;
@@ -1075,13 +1167,13 @@ export function bigBang(s, now = Date.now()) {
 }
 
 /** Starts a challenge: banks pending Insights like a re-platform, then a fresh run under its rule. */
-export function startChallenge(s, id, now = Date.now()) {
+export function startChallenge(s, id, now = Date.now(), tier = 1) {
   const c = CHALLENGE_BY_ID[id];
   // Completed ones can be replayed to beat your best time.
-  if (!c || !challengeUnlocked(s, c)) return false;
+  if (!c || !tierUnlocked(s, c, tier)) return false;
   if (pendingInsights(s) >= 1) replatform(s, now);
   resetRun(s, now);
-  s.chal = id;
+  s.chal = tierKey(c, tier);
   // Starter sources are granted with the challenge's rules in force: Golden Images is a
   // Tech Radar item (off in re-platform challenges), and locked tiers get none.
   s.prod = starterProducers(s).map((n, i) => (producerUnlocked(s, i) ? n : 0));
@@ -1095,28 +1187,33 @@ export const abandonChallenge = (s) => (s.chal = null);
 // finish and ×1.5 at half the limit. Best times are kept per challenge (see dropRewards).
 export const CHALLENGE_LIMIT_MS = 60 * 60e3;
 export const challengeElapsed = (s, now = Date.now()) => Math.max(0, now - s.runStartedAt);
-export const speedBonus = (s, id) => (s.chalBest[id] ? 2 - Math.min(1, s.chalBest[id] / CHALLENGE_LIMIT_MS) : 1);
-const speedMultiplier = (s) => s.chalDone.reduce((m, id) => (won(s, id) ? m * speedBonus(s, id) : m), 1);
+export const speedBonus = (s, key) => (s.chalBest[key] ? 2 - Math.min(1, s.chalBest[key] / CHALLENGE_LIMIT_MS) : 1);
+/** Speed bonuses of every completion in effect, times TIER_REWARD per higher tier. */
+const challengeMultiplier = (s) =>
+  s.chalDone.reduce((m, key) => (won(s, key) ? m * speedBonus(s, key) * (key.includes("#") ? TIER_REWARD : 1) : m), 1);
 
 /** Completes the active challenge if its goal is met: returns { challenge, ms, record }.
  *  Fails it once the time limit has passed: returns { challenge, failed: true }. */
 export function checkChallenge(s, now = Date.now()) {
-  const c = CHALLENGE_BY_ID[s.chal];
-  if (!c) return null;
+  const t = parseTier(s.chal);
+  if (!t) return null;
+  const { challenge: c, tier } = t;
+  const key = s.chal;
   const ms = challengeElapsed(s, now);
-  if (s.runRows < c.goal) {
+  if (s.runRows < tierGoal(c, tier)) {
     if (ms <= CHALLENGE_LIMIT_MS) return null;
     s.chal = null;
-    return { challenge: c, failed: true };
+    return { challenge: c, tier, key, failed: true };
   }
   s.chal = null;
-  if (!s.chalDone.includes(c.id)) {
-    s.chalDone.push(c.id);
+  if (!s.chalDone.includes(key)) {
+    s.chalDone.push(key);
     s.chalWins += 1;
   }
-  const record = !s.chalBest[c.id] || ms < s.chalBest[c.id];
-  if (record) s.chalBest[c.id] = Math.max(1, ms);
-  return { challenge: c, ms, record };
+  if (!s.chalEver.includes(key)) s.chalEver.push(key);
+  const record = !s.chalBest[key] || ms < s.chalBest[key];
+  if (record) s.chalBest[key] = Math.max(1, ms);
+  return { challenge: c, tier, key, ms, record };
 }
 
 /** Newly earned achievement ids (also records them on s). */

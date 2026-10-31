@@ -178,6 +178,10 @@
               <label class="toggle"><input type="checkbox" id="opt-auto-columns" /> Auto-buy columns (when one costs under half your bank)</label>
             </div>
             <p class="muted" id="auto-gitops-hint" hidden>Upgrade and column auto-buying unlock with <b>GitOps</b> on the Board.</p>
+            <label class="toggle" id="auto-radar-wrap" hidden><input type="checkbox" id="opt-auto-radar" /> Radar Bot: auto-buy Architecture and Tech Radar</label>
+            <label class="toggle" id="auto-board-wrap" hidden><input type="checkbox" id="opt-auto-board" /> Board Bot: auto-buy Board seats</label>
+            <label class="toggle" id="auto-xeno-wrap" hidden><input type="checkbox" id="opt-auto-xeno" /> Auto-buy Xenotech (1 Axiom)</label>
+            <label class="toggle" id="chal-confirm-wrap" hidden><input type="checkbox" id="opt-chal-confirm" /> Ask before starting a challenge</label>
             <label class="toggle" id="autoreplat-wrap" hidden>Auto re-platform when Insights would grow ×<input type="number" id="opt-autoreplat" min="1.1" step="0.1" value="2" /></label>
           </div>
 
@@ -256,7 +260,7 @@
             <p><button type="button" data-feedback="1">💬 Send feedback</button> <span class="muted">Found a bug or have an idea? Tell me.</span></p>
             <p><button type="button" id="replay-tour">🧭 Replay the walkthrough</button></p>
             <details open><summary>The basics</summary>
-              <p>Press <b>INSERT</b> to add rows by hand. Fast presses build a combo, up to +100%. Spend rows on <b>Data Sources</b>, which produce rows on their own, even while the game is closed (up to your offline cap). Each card shows its share of your output. The bar under INSERT tracks your way to the next <b>environment</b> (each one changes the scenery, music and news) and estimates how long it takes at your current rate. Need an exact number for an objective? Switch the buy bar to <b>sell</b> to sell sources back for half their price (free starter units can't be sold, and a sold source leaves the auto-buyer).</p>
+              <p>Press <b>INSERT</b> to add rows by hand. Fast presses build a combo, up to +100%. Spend rows on <b>Data Sources</b>, which produce rows on their own, even while the game is closed (at half speed, for up to 2 hours; Bigger Disks on the Tech Radar extends that to 12). Each card shows its share of your output. The bar under INSERT tracks your way to the next <b>environment</b> (each one changes the scenery, music and news) and estimates how long it takes at your current rate. Need an exact number for an objective? Switch the buy bar to <b>sell</b> to sell sources back for half their price (free starter units can't be sold, and a sold source leaves the auto-buyer).</p>
               <p><b>Upgrades</b> double sources, link neighbouring sources (synergies) or boost INSERT; the ones you own are listed under <i>Deployed this run</i>. <b>Schema</b> columns multiply everything, at a steep price.</p>
               <p><b>Data gravity:</b> past 1 quadrillion rows/s, data gets heavy and extra production has diminishing returns (a square-root-ish curve). Bigger multipliers still help; they just help less. Stats shows how much gravity is costing you.</p></details>
             <details><summary>Corporate life</summary>
@@ -274,8 +278,8 @@
               <p>Acquisition, First Contact and Big Bang each need <b>3 completed challenges</b> from the layer below (see Challenges). Every new company starts back on localhost and climbs the environments again, faster each time; the Board's Colocation Lease lets new companies start higher.</p>
               <p>A good rule of thumb: prestige when it would roughly double the currency you have.</p></details>
             <details><summary>Challenges</summary>
-              <p>Under Prestige → Challenges. Each one is a run with a restriction, played <b>without that layer's own upgrades</b>: no Insights, Architecture or Tech Radar in a re-platform challenge; no Board or Equity in an acquisition challenge; no Xenotech in a First Contact challenge. Goals are fixed.</p>
-              <p>You have <b>one hour</b>. Run out of time and the challenge fails; try again whenever you like. Finish and you get its reward plus a <b>speed bonus</b> to production, up to ×2 for a very fast run (×1.5 at half the time). You can replay a completed challenge to beat your best time.</p>
+              <p>Under Prestige → Challenges. Each one is a run with a restriction. Every challenge has <b>tiers</b>, one per prestige layer from its own upwards (a re-platform challenge has I–IV). A tier switches off all prestige upgrades and currencies from the layer it unlocks at and above: tier I of a re-platform challenge plays with no Insights, Architecture, Tech Radar, Board, Equity, Xenotech or Axioms; its tier II (after your first Acquisition) keeps your Insights but not the Board. Challenge rewards you've earned stay on. Goals are fixed numbers.</p>
+              <p>You have <b>one hour</b>. Run out of time and the challenge fails; try again whenever you like. Finish and you get its reward (tier I) or production ×3 (higher tiers), plus a <b>speed bonus</b>: up to ×2 for a very fast run, ×1.5 at half the time. You can replay a completed tier to beat your best time. After your first completion, the start dialog offers "Don't ask again".</p>
               <p>Rewards and best times last until the layer above resets. Institutional Memory (Board) keeps re-platform completions through acquisitions, Galactic Archive (Xenotech) keeps acquisition completions through First Contact, and Speedrun Records (Xenotech) keeps every best time.</p></details>
             <details><summary>Saving and devices</summary>
               <p>Progress lives in this browser. To play on several devices, create an account code under Save → Cloud save and enter it on each one (lost it? any device that is still signed in can make a new one). The save that has ingested more rows in total wins, and you're asked before anything is overwritten.</p></details>

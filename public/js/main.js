@@ -103,12 +103,13 @@ function applyOffline() {
   S.stats.longestAway = Math.max(S.stats.longestAway, away * 1000);
   // Buffs don't keep running while the game is closed.
   if (away > 60) S.buffs = [];
-  S.lastTick = now - counted * 1000;
+  // Offline runs at reduced speed; a quick tab switch (the first minute) doesn't.
+  S.lastTick = now - E.offlineCredit(counted) * 1000;
   const gained = E.tick(S, now);
   if (away > 60 && gained > 0) {
     const joke = OFFLINE_JOKES[Math.floor(Math.random() * OFFLINE_JOKES.length)](Math.max(1, Math.round(counted / 60)));
-    const capped = away > counted ? `<p class="muted">Counted ${fmtDuration(counted)} of ${fmtDuration(away)} (offline cap). Architecture upgrades raise the cap.</p>` : "";
-    modal(`<h2>Welcome back</h2><p>While you were away for ${fmtDuration(away)}, your pipelines ingested <b>${fmt(gained)}</b> rows.</p><p class="muted">${esc(joke)}</p>${capped}`, [["Nice", "primary"]]);
+    const capped = away > counted ? ` Only the first ${fmtDuration(counted)} count (Bigger Disks on the Tech Radar raises the cap).` : "";
+    modal(`<h2>Welcome back</h2><p>While you were away for ${fmtDuration(away)}, your pipelines ingested <b>${fmt(gained)}</b> rows.</p><p class="muted">${esc(joke)}</p><p class="muted">Offline, pipelines run at ${E.TUNING.offlineRate * 100}% speed.${capped}</p>`, [["Nice", "primary"]]);
   }
 }
 
@@ -210,12 +211,26 @@ function onBuyProducer(i, btn) {
   afterPurchase();
 }
 
+// Upgrades bought in quick succession share one toast instead of stacking up.
+let deployBatch = [];
+let deployTimer = 0;
+function deployedToast(u) {
+  deployBatch.push(u);
+  clearTimeout(deployTimer);
+  deployTimer = setTimeout(() => {
+    const [first, ...rest] = deployBatch;
+    deployBatch = [];
+    if (!rest.length) toast(`${first.icon} <b>${esc(first.name)}</b> deployed.`, "info");
+    else toast(`🚀 <b>${rest.length + 1} upgrades</b> deployed: ${[first, ...rest].map((u) => `${u.icon} ${esc(u.name)}`).join(", ")}.`, "info");
+  }, 700);
+}
+
 function onBuyUpgrade(id, btn) {
   E.tick(S, Date.now());
   if (!E.buyUpgrade(S, id)) return audio.sfx("deny");
   audio.sfx("upgrade");
   sparkFrom(btn);
-  toast(`🛠️ <b>${esc(E.UPGRADE_BY_ID[id].name)}</b> deployed.`, "info");
+  deployedToast(E.UPGRADE_BY_ID[id]);
   afterPurchase();
 }
 
@@ -252,7 +267,7 @@ const LAYERS = [
     have: (s) => s.ins, spendable: (s) => s.ins - s.insSpent,
     pending: E.pendingInsights, run: E.replatform, verb: "Re-platform",
     progress: (s) => `Next Insight at ${fmt(E.nextInsightAt(s))} company rows (${fmt(s.coRows)} so far).`,
-    effect: (s) => `Each Insight gives +${E.insightPct(s) * 100}% production (now +${fmt(s.ins * E.insightPct(s) * 100)}%).`,
+    effect: (s) => `Insights boost production: +${E.insightPct(s) * 100}% per point, with diminishing returns (now +${fmt(E.insightBonus(s) * 100)}%).`,
     confirm: "Rewrite everything in this year's hot new stack. You lose rows, Data Sources, upgrades and columns.",
     keeps: "Insights, Architecture, Tech Radar and everything above are kept.",
     done: (g) => `💡 <b>Re-platformed.</b> +${fmt(g)} Insights. The new stack is mostly YAML.`,
@@ -264,7 +279,7 @@ const LAYERS = [
     have: (s) => s.eq, spendable: (s) => s.eq - s.eqSpent,
     pending: E.pendingEquity, run: E.acquire, verb: "Get acquired",
     progress: (s) => `Next Equity at ${fmt(E.nextEquityAt(s))} civilization rows (${fmt(s.civRows)} so far).`,
-    effect: (s) => `Equity boosts production (now ×${fmt((1 + s.eq) ** 0.25)}) and buys Board seats.`,
+    effect: (s) => `Equity boosts production (now ×${fmt(E.equityProdMult(s))}) and buys Board seats.`,
     confirm: "A bigger fish buys your company. You also lose Insights, Architecture and the Tech Radar.",
     keeps: "Equity, the Board and everything above are kept.",
     done: (g) => `📈 <b>Acquired!</b> +${fmt(g)} Equity. Your new title is 'Head of Data Synergies'.`,
@@ -280,7 +295,7 @@ const LAYERS = [
       E.rndComplete(s)
         ? `Next Xenobyte at ${fmt(E.nextXenoAt(s))} universe rows (${fmt(s.allRows)} so far).`
         : `The aliens only talk to civilizations with a complete R&D Lab (${E.boardLevel(s, "rnd")}/${E.RND_PRODUCERS}, on the Board).`,
-    effect: (s) => `Xenobytes boost production (now ×${fmt((1 + s.xeno) ** 0.25)}) and buy alien tech.`,
+    effect: (s) => `Xenobytes boost production (now ×${fmt(E.xenoProdMult(s))}) and buy alien tech.`,
     confirm: "Aliens arrive. They are very interested in your schema. You also lose Equity and the Board.",
     keeps: "Xenobytes, Xenotech and Axioms are kept.",
     done: (g) => `👽 <b>Contact made.</b> +${fmt(g)} Xenobytes. They brought their own data types.`,
@@ -292,8 +307,11 @@ const LAYERS = [
     id: "bang", icon: "🌀", name: "Big Bang", cur: "Axioms",
     have: (s) => s.axioms, spendable: () => 0,
     pending: E.pendingAxioms, run: E.bigBang, verb: "Big Bang",
-    progress: (s) => (E.canBigBang(s) ? `Axioms grow with universe rows: one per 30 orders of magnitude (${fmt(s.allRows)} so far).` : "Own Everything Is Data to end this universe."),
-    effect: (s) => `Each Axiom: production ×3 and every prestige gain ×1.5 (you have ${s.axioms}).`,
+    progress: (s) =>
+      E.canBigBang(s)
+        ? `Ready. A Big Bang turns this universe's rows into Axioms: one per 30 orders of magnitude (${fmt(s.allRows)} rows so far).`
+        : "Not yet: the universe ends once you own the final Data Source, Everything Is Data. Then a Big Bang turns its rows into Axioms.",
+    effect: (s) => `Axioms are permanent. Each one triples all production and makes every other prestige currency (Insights, Equity, Xenobytes) grow 1.5× faster. You have ${s.axioms}.`,
     confirm: "End this universe and start a new one. Everything resets except Axioms, the Data Catalog and lifetime stats.",
     keeps: "Axioms are permanent.",
     done: (g) => `🌀 <b>Let there be rows.</b> +${g} Axioms. A new universe boots up on localhost.`,
@@ -387,7 +405,7 @@ function renderPrestige() {
     $("prestige-seg").innerHTML = seg;
   }
   if (prestigeTab === "chal") {
-    setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, played without that layer's own upgrades (no Insights, Architecture or Tech Radar in a re-platform challenge, no Board or Equity in an acquisition challenge, and so on). Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${S.chalDone.length}</b> active · ${fmt(S.chalWins)} all-time</div></div>`);
+    setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${S.chalDone.length}</b> active · ${fmt(S.chalWins)} all-time</div></div>`);
     setHtml("prestige-shops", renderChallenges());
     return;
   }
@@ -409,7 +427,11 @@ function renderPrestige() {
     $("prestige-card").dataset.html = card;
     $("prestige-card").innerHTML = card;
   }
-  const shops = l.shops.map(renderShop).join("") || `<p class="muted">Axioms are never spent. They just make every future universe faster.</p>`;
+  const shops =
+    l.shops.map(renderShop).join("") ||
+    `<p class="muted">Axioms are never spent. They make every future universe faster, and owning enough unlocks milestones:</p><ul class="list">${E.AXIOM_MILESTONES.map(
+      (m) => `<li class="item ${S.axioms >= m.at ? "owned" : ""}"><div class="ico" aria-hidden="true">${S.axioms >= m.at ? "✅" : "🌀"}</div><div><div class="name">${m.at} Axiom${m.at === 1 ? "" : "s"}</div><div class="sub">${esc(m.text)}</div></div><span></span></li>`,
+    ).join("")}</ul>`;
   if ($("prestige-shops").dataset.html !== shops) {
     $("prestige-shops").dataset.html = shops;
     $("prestige-shops").innerHTML = shops;
@@ -423,55 +445,80 @@ function setHtml(id, html) {
   el.innerHTML = html;
 }
 
+const ROMAN = ["", "I", "II", "III", "IV"];
+const TIER_UNLOCK = { acq: "your first Acquisition", contact: "First Contact", bang: "a Big Bang" };
+// What a tier switches off: its unlock layer and everything above.
+const OFF_NAMES = { replat: "Insights, Architecture, Tech Radar", acq: "Board, Equity", contact: "Xenotech, Xenobytes", bang: "Axioms" };
+const tierOff = (layer) => E.LAYER_ORDER.slice(E.LAYER_ORDER.indexOf(layer)).map((l) => OFF_NAMES[l]).join(", ");
+
 function renderChallenges() {
   return E.CHALLENGE_LAYERS.map((layer) => {
     if (!layer.unlocked(S)) return `<h3>${esc(layer.name)}</h3><p class="muted">🔒 ${esc(layer.hint)}</p>`;
     const items = E.CHALLENGES.filter((c) => c.layer === layer.id)
       .map((c) => {
-        // Completed, even while a same-layer challenge has its reward switched off.
-        const won = S.chalDone.includes(c.id);
-        const active = S.chal === c.id;
         const open = E.challengeUnlocked(S, c);
-        const best = S.chalBest[c.id];
-        const btn = active
-          ? `<button class="buy" type="button" data-abandon="1">Abandon</button>`
-          : won
-            ? `<button class="buy" type="button" data-challenge="${c.id}" ${S.chal ? "disabled" : ""} title="Replay for a better time">Retry</button>`
-            : open
-              ? `<button class="buy" type="button" data-challenge="${c.id}" ${S.chal ? "disabled" : ""}>Start</button>`
-              : `<button class="buy" type="button" disabled>🔒 Locked</button>`;
-        const lock = !open && !won ? `<div class="sub">🔒 ${esc(c.reqText)}</div>` : "";
-        return `<li class="item chal ${won ? "owned" : ""} ${active ? "active" : ""} ${!open && !won ? "locked" : ""}"><div class="ico" aria-hidden="true">${won ? "🏆" : open ? "🏁" : "🔒"}</div>
-          <div><div class="name">${esc(c.name)} <span class="lv">goal ${fmt(c.goal)} rows</span></div>
-          ${lock}<div class="sub">⛓ ${esc(c.restriction)}</div><div class="sub reward">🎁 ${esc(c.reward)}</div>${best ? `<div class="sub">⏱️ Best ${fmtDuration(best / 1000)} · speed bonus ×${E.speedBonus(S, c.id).toFixed(2)}${won ? "" : " (complete it again to switch it on)"}</div>` : ""}</div>${btn}</li>`;
+        const anyDone = S.chalDone.includes(c.id);
+        const activeHere = E.parseTier(S.chal)?.challenge === c;
+        const tiers = [];
+        for (let t = 1; t <= E.tierCount(c); t++) {
+          const key = E.tierKey(c, t);
+          const tl = E.parseTier(key).layer;
+          // Completed, even while a challenge switches its reward off.
+          const done = S.chalDone.includes(key);
+          const active = S.chal === key;
+          const unlocked = E.tierUnlocked(S, c, t);
+          const best = S.chalBest[key];
+          const status = best ? `⏱️ ${fmtDuration(best / 1000)} · ×${E.speedBonus(S, key).toFixed(2)}${t > 1 ? ` · ×${E.TIER_REWARD}` : ""}${done ? "" : " (beat it again to switch on)"}` : "";
+          const lock = t === 1 ? c.reqText : !S.chalEver.includes(E.tierKey(c, t - 1)) ? `Beat tier ${ROMAN[t - 1]} first.` : `Unlocks after ${TIER_UNLOCK[tl]}.`;
+          const btn = active
+            ? `<button type="button" data-abandon="1">Abandon</button>`
+            : unlocked
+              ? `<button type="button" data-challenge="${c.id}" data-tier="${t}" ${S.chal ? "disabled" : ""}>${done ? "Retry" : "Start"}</button>`
+              : `<button type="button" disabled>🔒</button>`;
+          tiers.push(`<div class="tier ${done ? "done" : ""} ${active ? "active" : ""} ${unlocked ? "" : "locked"}"><b>${done ? "✓ " : ""}${ROMAN[t]}</b><span>${unlocked || done ? `goal ${fmt(E.tierGoal(c, t))}` : esc(lock)}</span><span class="muted">${status}</span>${btn}</div>`);
+        }
+        return `<li class="item chal ${anyDone ? "owned" : ""} ${activeHere ? "active" : ""} ${!open && !anyDone ? "locked" : ""}"><div class="ico" aria-hidden="true">${anyDone ? "🏆" : open ? "🏁" : "🔒"}</div>
+          <div><div class="name">${esc(c.name)}</div>
+          <div class="sub">⛓ ${esc(c.restriction)}</div><div class="sub reward">🎁 ${esc(c.reward)}${E.tierCount(c) > 1 ? ` Higher tiers: production ×${E.TIER_REWARD} each.` : ""}</div>
+          <div class="tiers">${tiers.join("")}</div></div><span></span></li>`;
       })
       .join("");
-    return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}; the faster you finish, the bigger the speed bonus (up to ×2).</p><ul class="list">${items}</ul>`;
+    return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)} per attempt; the faster you finish, the bigger the speed bonus (up to ×2). Each tier switches off the prestige power of the layer it unlocks at and everything above.</p><ul class="list">${items}</ul>`;
   }).join("");
 }
 
-function onStartChallenge(id) {
+function startChallengeNow(c, tier) {
+  E.tick(S, Date.now());
+  if (E.startChallenge(S, c.id, Date.now(), tier)) {
+    toast(`🏁 <b>${esc(c.name)} ${ROMAN[tier]}</b> started. Good luck.`);
+    afterPurchase();
+  }
+}
+
+function onStartChallenge(id, tier = 1) {
   const c = E.CHALLENGE_BY_ID[id];
+  if (prefs.skipChalConfirm) return startChallengeNow(c, tier);
+  const layer = E.parseTier(E.tierKey(c, tier)).layer;
   modal(
-    `<h2>🏁 ${esc(c.name)}</h2><p>⛓ ${esc(c.restriction)}</p><p>Goal: <b>${fmt(c.goal)}</b> rows in the challenge run.</p><p>🎁 ${esc(c.reward)}</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>`,
+    `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p><p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.tierGoal(c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
+     ${S.chalEver.length ? `<label class="toggle"><input type="checkbox" id="skip-chal-confirm" /> Don't ask again (Settings → Game turns it back on)</label>` : ""}`,
     [["Cancel"], ["Start challenge", "primary", () => {
-      E.tick(S, Date.now());
-      if (E.startChallenge(S, id)) {
-        toast(`🏁 <b>${esc(c.name)}</b> started. Good luck.`);
-        afterPurchase();
-      }
+      if ($("skip-chal-confirm")?.checked) setPref("skipChalConfirm", true);
+      startChallengeNow(c, tier);
     }]],
   );
 }
 
 function renderChallengeBanner() {
-  const c = E.CHALLENGE_BY_ID[S.chal];
+  const t = E.parseTier(S.chal);
   const el = $("chal-banner");
-  el.hidden = !c;
-  if (!c) return;
-  const pct = Math.min(100, (Math.log10(Math.max(1, S.runRows)) / Math.log10(c.goal)) * 100);
+  el.hidden = !t;
+  if (!t) return;
+  const { challenge: c, tier } = t;
+  const goal = E.tierGoal(c, tier);
+  const pct = Math.min(100, (Math.log10(Math.max(1, S.runRows)) / Math.log10(goal)) * 100);
   const left = Math.max(0, E.CHALLENGE_LIMIT_MS - E.challengeElapsed(S)) / 1000;
-  setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)}</b><span>${fmt(S.runRows)} / ${fmt(c.goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
+  setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><span>${fmt(S.runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
 }
 
 // ---- inbox -----------------------------------------------------------------------
@@ -559,7 +606,7 @@ const SOURCE_STRATEGIES = {
 function autoBuy() {
   if (!E.automationAllowed(S)) return;
   const set = S.settings;
-  let bought = false;
+  let bought = E.autoBuyShops(S) > 0;
   if (gitopsOwned() && set.autoColumns && E.columnCost(S.cols, S) < S.rows * 0.5) bought = E.buyColumn(S) || bought;
   if (gitopsOwned() && set.autoUpgrades) {
     const list = availableUpgrades().filter((u) => u.cost <= S.rows);
@@ -1020,7 +1067,7 @@ function updateSchema() {
   const btn = $("add-column");
   const frozen = E.rule(S).noColumns;
   btn.textContent = frozen
-    ? `🔒 Schema frozen by the ${E.CHALLENGE_BY_ID[S.chal].name} challenge`
+    ? `🔒 Schema frozen by the ${E.parseTier(S.chal).challenge.name} challenge`
     : `ALTER TABLE rows ADD COLUMN ${E.columnName(S.cols)} — ${fmt(cost)} rows (each column ×${each})`;
   btn.disabled = frozen || cost > S.rows;
   btn.classList.toggle("affordable", !frozen && cost <= S.rows);
@@ -1080,7 +1127,8 @@ function updateStats() {
 
 function updateSettings() {
   if (document.activeElement !== $("opt-company")) $("opt-company").value = S.company;
-  const automation = autoBuyerOwned() || E.boardLevel(S, "autoreplat");
+  const bots = { radar: (S.board.radarbot ?? 0) > 0, board: (S.xeno_tech.boardbot ?? 0) > 0, xeno: S.axioms >= 1 };
+  const automation = autoBuyerOwned() || E.boardLevel(S, "autoreplat") || bots.radar || bots.board || bots.xeno;
   $("auto-none").hidden = !!automation;
   $("auto-wrap").hidden = !autoBuyerOwned();
   $("auto-gitops").hidden = !gitopsOwned();
@@ -1092,6 +1140,12 @@ function updateSettings() {
   $("opt-upg-strategy").value = set.upgStrategy;
   $("opt-auto-columns").checked = set.autoColumns;
   $("autoreplat-wrap").hidden = !E.boardLevel(S, "autoreplat");
+  for (const k of ["radar", "board", "xeno"]) {
+    $(`auto-${k}-wrap`).hidden = !bots[k];
+    $(`opt-auto-${k}`).checked = set[`auto${k[0].toUpperCase()}${k.slice(1)}`];
+  }
+  $("chal-confirm-wrap").hidden = !S.chalEver.length;
+  $("opt-chal-confirm").checked = !prefs.skipChalConfirm;
   if (document.activeElement !== $("opt-autoreplat")) $("opt-autoreplat").value = S.settings.autoReplatAt;
   const box = $("cloud");
   const state = sync.session.token ? "in" : "out";
@@ -1344,7 +1398,7 @@ document.addEventListener("click", (e) => {
     prestigeTab = t.dataset.layer;
     render(true);
   } else if (t.dataset.prestige) onPrestige(LAYER_BY_ID[t.dataset.prestige]);
-  else if (t.dataset.challenge) onStartChallenge(t.dataset.challenge);
+  else if (t.dataset.challenge) onStartChallenge(t.dataset.challenge, Number(t.dataset.tier ?? 1));
   else if (t.closest("[data-request]")) active.answer(t.closest("[data-request]").dataset.request);
   else if (t.dataset.okrToggle) $("okr-strip").classList.toggle("open");
   else if (t.dataset.feedback) openFeedback();
@@ -1511,6 +1565,7 @@ for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"],
     render(true);
   });
 }
+$("opt-chal-confirm").addEventListener("change", (e) => setPref("skipChalConfirm", !e.target.checked));
 $("opt-quality").addEventListener("change", (e) => {
   setPref("quality", e.target.value);
   showPrefs();
@@ -1623,6 +1678,7 @@ $("opt-autoreplat").addEventListener("change", (e) => {
 // Auto-buyer settings live in the save (they're about this game, not this device).
 for (const [id, key, kind] of [
   ["opt-auto-sources", "autoSources", "check"], ["opt-auto-upgrades", "autoUpgrades", "check"], ["opt-auto-columns", "autoColumns", "check"],
+  ["opt-auto-radar", "autoRadar", "check"], ["opt-auto-board", "autoBoard", "check"], ["opt-auto-xeno", "autoXeno", "check"],
   ["opt-auto-strategy", "autoStrategy", "value"], ["opt-upg-strategy", "upgStrategy", "value"],
 ]) {
   $(id).addEventListener("change", (e) => {
@@ -1750,14 +1806,15 @@ function loop() {
   const result = E.checkChallenge(S, now);
   if (result?.failed) {
     audio.sfx("deny");
-    toast(`⏱️ <b>${esc(result.challenge.name)}</b> ran out of time. Try again whenever you're ready.`);
+    toast(`⏱️ <b>${esc(result.challenge.name)} ${ROMAN[result.tier]}</b> ran out of time. Try again whenever you're ready.`);
     structureKey = "";
   } else if (result) {
     const c = result.challenge;
-    track("challenge", S, { detail: c.id });
+    track("challenge", S, { detail: result.key.replace("#", "_t") });
     confetti(60);
     const time = fmtDuration(result.ms / 1000);
-    toast(`🏁 <b>${esc(c.name)} complete</b> in ${time}${result.record ? " (new best)" : ""}. ${esc(c.reward)} Speed bonus ×${E.speedBonus(S, c.id).toFixed(2)}.`);
+    const reward = result.tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}.`;
+    toast(`🏁 <b>${esc(c.name)} ${ROMAN[result.tier]} complete</b> in ${time}${result.record ? " (new best)" : ""}. ${reward} Speed bonus ×${E.speedBonus(S, result.key).toFixed(2)}.`);
     structureKey = "";
   }
   autoPrestige();
