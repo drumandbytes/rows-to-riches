@@ -31,11 +31,12 @@
         <span class="title">Rows<span class="to">to</span>Riches</span>
         <span class="env" id="env" title="Environment">localhost</span>
       </div>
-      <button type="button" class="inbox-btn" id="inbox-btn" aria-label="Inbox">📬<i class="badge" id="inbox-badge" hidden></i></button>
       <div class="counter">
         <div class="rows"><span id="rows">0</span> <small>rows</small></div>
         <div class="rate"><span class="pulse" aria-hidden="true"></span><span id="rate">0</span>/s</div>
       </div>
+      <!-- Rightmost, so the counter's changing width never moves it. -->
+      <button type="button" class="inbox-btn" id="inbox-btn" aria-label="Inbox">📬<i class="badge" id="inbox-badge" hidden></i></button>
     </header>
 
     <main class="layout">
