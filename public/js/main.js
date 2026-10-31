@@ -1297,6 +1297,43 @@ async function codeSignIn(code, status) {
 }
 
 
+// ---- what's new ----------------------------------------------------------------
+
+const RELEASE_INTROS = [
+  (v) => `IT has deployed v${v}. Nobody was consulted.`,
+  (v) => `v${v} is live. The change advisory board approved it retroactively.`,
+  (v) => `A new release, v${v}, went out on a Friday afternoon. Here's what changed.`,
+];
+
+/** The changelog section for one version, as plain bullet texts ([] if it isn't there). */
+async function releaseNotes(version) {
+  try {
+    const res = await fetch("/CHANGELOG.md", { cache: "no-store" });
+    if (!res.ok) return [];
+    const md = await res.text();
+    const start = md.search(new RegExp(`^## \\[?${version.replace(/\./g, "\\.")}\\]?`, "m"));
+    if (start < 0) return [];
+    const section = md.slice(start).split(/\n## /)[0];
+    return [...section.matchAll(/^\* (.+)$/gm)].map((m) => m[1].replace(/\s*\(\[[0-9a-f]{7}\]\([^)]*\)\)$/, "").replace(/\*\*/g, ""));
+  } catch {
+    return []; // offline, or a local build without a changelog
+  }
+}
+
+async function showWhatsNew(version, { quiet = false } = {}) {
+  const notes = await releaseNotes(version);
+  if (!notes.length) return quiet || toast("No release notes for this version yet.");
+  const intro = RELEASE_INTROS[Math.floor(Math.random() * RELEASE_INTROS.length)](version);
+  modal(`<h2>📰 What's new</h2><p class="muted">${esc(intro)}</p><ul class="whats-new">${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>`, [["Nice", "primary"]]);
+}
+
+// Once per new version, and never on a first visit (that's the walkthrough's moment).
+function checkWhatsNew() {
+  const seen = prefs.seenVersion;
+  setPref("seenVersion", VERSION);
+  if (seen && seen !== VERSION) setTimeout(() => showWhatsNew(VERSION, { quiet: true }), 1500);
+}
+
 // ---- the end -------------------------------------------------------------------
 
 const COMPLETION_TEXTS = [
@@ -1508,6 +1545,7 @@ document.addEventListener("click", (e) => {
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
   else if (t.id === "catalog-btn") confirmCatalog();
+  else if (t.id === "whats-new") showWhatsNew(VERSION);
   else if (t.id === "create-code") {
     t.disabled = true;
     sync
@@ -1941,6 +1979,7 @@ applyOffline();
 render(true);
 // Fresh saves only: someone syncing an old save onto a new device doesn't need the tour.
 if (!prefs.tourDone && S.everRows.lt(50)) setTimeout(() => tour.start(), 600);
+checkWhatsNew();
 rotateTicker();
 shownRows = S.rows;
 animateCounter();
