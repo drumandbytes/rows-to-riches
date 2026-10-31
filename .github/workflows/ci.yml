@@ -26,6 +26,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node --test
+      # A minute of real play in the runner's Chrome: load, click, buy, every tab, reload.
+      - run: npm run test:browser
       # Generative music: no wrong notes, clashes or awkward leaps in any mood.
       - run: node tools/music-audit.js
       # Bundles the Worker without deploying: catches import/config mistakes.
