@@ -53,6 +53,16 @@ const ANNOUNCEMENTS = [
   "Congratulations to the data team, who we will now call 'the AI team'.",
   "Hybrid work means you can choose which four days you come in.",
 ];
+// Joins the all-hands deck once the company has met aliens / outlived a universe.
+const LATE_ANNOUNCEMENTS = [
+  [(s) => s.contact > 0, "We'd like to welcome our new colleagues from the Hive. Please don't @ all of them."],
+  [(s) => s.contact > 0, "Return to office now includes the mothership. Parking is limited."],
+  [(s) => s.contact > 0, "The galactic expansion is on track. The galaxy has not been informed."],
+  [(s) => s.bangs > 0, "Congratulations on surviving another universe. Your PTO balance did not."],
+  [(s) => s.bangs > 0, "The heat death of the universe has been moved to next quarter."],
+  [(s) => s.bangs > 0, "Our vision for the next universe: the same as this one, but with better observability."],
+  [(s) => s.completions > 0, "Now that we've cataloged everything, our new goal is to catalog it again. Faster."],
+];
 
 const RATINGS = [
   { min: 3, name: "Exceeds expectations", text: "Your manager says the word \"impact\" six times. A real bonus this time.", reward: { prod: [3, 300] } },
@@ -107,7 +117,22 @@ const REQUESTS = [
     b: { label: "Touch grass", desc: "Production ×1.2 for 120s (you come back rested)", fx: { prod: [1.2, 120] } } },
   { from: "Data Governance", icon: "📋", title: "Please fill in the data catalog", text: "Every table needs an owner, a description and a vibe.",
     a: { label: "Document everything", desc: "Production ×0.8 for 60s, then +6 min of rows", fx: { prod: [0.8, 60], rows: 360 } },
-    b: { label: "Write 'TODO' in every field", desc: "+1 min of rows", fx: { rows: 60 } } },
+    b: { label: "Write 'TODO' in every field", desc: "+1 min of rows", fx: { rows: 60 } } },  // Late eras: `when` keeps these out of the pool until the story gets there.
+  { from: "Alien Procurement", icon: "👽", title: "Security questionnaire (412 questions)", text: "Before signing, the hive mind needs your SOC 2 report. In all 11 dimensions.", when: (s) => s.contact > 0,
+    a: { label: "Fill it in honestly", desc: "Counts as a meeting, production ×1.5 for 90s once the deal closes", fx: { meeting: 1, prod: [1.5, 90] } },
+    b: { label: "Send last year's answers", desc: "+5 min of rows. They will notice next year.", fx: { rows: 300 } } },
+  { from: "Interstellar Legal", icon: "⚖️", title: "Data residency: which galaxy?", text: "Andromedan law says Andromedan rows never leave Andromeda. Light is slow.", when: (s) => s.contact > 0,
+    a: { label: "Build a local region", desc: "Production ×0.6 for 60s, then +10 min of rows from the local customers", fx: { prod: [0.6, 60], rows: 600 } },
+    b: { label: "Declare the galaxy 'edge'", desc: "60%: nothing happens. 40%: a fine of 10% of your bank", fx: { gamble: [0.6, {}, { rows: -0.1 }] } } },
+  { from: "The Previous Universe", icon: "🌌", title: "Can you restore my backups?", text: "I may have left something important in there. Like physics.", when: (s) => s.bangs > 0,
+    a: { label: "Restore from cosmic background radiation", desc: "+10 min of rows; it's mostly noise, but it's noise you own", fx: { rows: 600 } },
+    b: { label: "Point them at the retention policy", desc: "Full momentum", fx: { momentum: 1 } } },
+  { from: "Calendar", icon: "📅", title: "Invite: Sync with all your alternate selves (∞ min)", text: "Every timeline is invited. Cameras on.", meeting: true, when: (s) => s.bangs > 0,
+    a: { label: "Attend (all of you)", desc: "Counts as a meeting, INSERT ×25 for 45s from the extra hands", fx: { meeting: 1, click: [25, 45] } },
+    b: { label: "Let the other yous go", desc: "Production ×1.3 for 90s", fx: { prod: [1.3, 90] } } },
+  { from: "External Audit", icon: "🔍", title: "Annual audit of Everything", text: "We need a sample of 25 rows. From each thing that exists.", when: (s) => s.completions > 0,
+    a: { label: "Provide the full catalog", desc: "Production ×0.7 for 60s, then +15 min of rows (clean opinion)", fx: { prod: [0.7, 60], rows: 900 } },
+    b: { label: "Sample creatively", desc: "+3 min of rows", fx: { rows: 180 } } },
 ];
 
 export function createActive(ctx) {
@@ -172,7 +197,7 @@ export function createActive(ctx) {
   function allHands(s) {
     const hit = s.okr.items.filter((x) => x.done).length;
     const rating = RATINGS.find((r) => hit >= r.min);
-    const lines = [...ANNOUNCEMENTS].sort(() => rnd() - 0.5).slice(0, 2);
+    const lines = [...ANNOUNCEMENTS, ...LATE_ANNOUNCEMENTS.filter(([when]) => when(s)).map(([, text]) => text)].sort(() => rnd() - 0.5).slice(0, 2);
     apply(s, rating.reward.prod ? { prod: rating.reward.prod } : rating.reward, "All-hands bonus");
     s.stats.quarters++;
     if (hit === 3) confetti(80);
@@ -239,7 +264,8 @@ export function createActive(ctx) {
       nextRequestAt = now + (150 + rnd() * 180) * 1000;
     }
     if (!request && requestsUnlocked(s) && now >= nextRequestAt && !$("modal").open) {
-      request = { r: REQUESTS[Math.floor(rnd() * REQUESTS.length)], until: now + 30_000 };
+      const pool = REQUESTS.filter((r) => !r.when || r.when(s));
+      request = { r: pool[Math.floor(rnd() * pool.length)], until: now + 30_000 };
       sfx(request.r.meeting ? "mail" : "incident");
     }
   }
