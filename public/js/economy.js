@@ -532,6 +532,9 @@ const STAT_ACH = [
   ["gravity", "Data Gravity", "Produce so much that data gravity kicks in.", (s) => s.stats.bestRate > GRAVITY_AT],
 ];
 for (const [id, name, desc, test] of STAT_ACH) ACHIEVEMENTS.push({ id, name, desc, test });
+for (const [n, name] of [[1, "Single Source of Truth"], [2, "Dashboard v2"], [3, "Third-Party Audit"], [5, "Five-Year Plan"], [10, "Data Mesh of Universes"]]) {
+  ACHIEVEMENTS.push({ id: `catalog_${n}`, name, desc: `Catalog Everything ${n === 1 ? "once" : `${n} times`}.`, test: (s) => s.completions >= n });
+}
 ACHIEVEMENTS.push(
   { id: "named", name: "Incorporated", desc: "Give your company a name.", test: (s) => s.company.length > 0 },
   { id: "clickme", name: "Click Me", desc: "Click this achievement.", test: (s) => s.secrets.includes("clickme") },
@@ -547,6 +550,8 @@ export const SECRETS = [
   ["inboxzero", "Inbox Zero", "Read every email (at least 10 of them).", null],
   ["readdocs", "Read the Docs", "Open every Help section. Nobody does this.", null],
   ["answer", "The Answer", "Sell your way down to exactly 42 of something.", null],
+  ["keepplaying", "Scope Creep", "Finish the game, then decide to keep going anyway.", null],
+  ["entropy", "Heat Death", "Reach 500 Big Bangs. The dashboard is still loading.", (s) => s.bangs >= 500],
   ["phished", "Gone Phishing", "Click a phishing test. IT has scheduled your training.", null],
 ];
 for (const [id, name, desc, derived] of SECRETS) {
@@ -555,7 +560,7 @@ for (const [id, name, desc, derived] of SECRETS) {
 export const ACH_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
 
 const COUNTERS = ["rows", "runRows", "coRows", "civRows", "allRows", "everRows", "ins", "insSpent", "eq", "eqSpent", "eqFree", "xeno", "xenoSpent"];
-const INT_COUNTERS = ["cols", "clicks", "incidents", "replat", "acq", "contact", "bangs", "axioms"];
+const INT_COUNTERS = ["cols", "clicks", "incidents", "replat", "acq", "contact", "bangs", "axioms", "completions"];
 
 export function newState(now = Date.now()) {
   return {
@@ -574,9 +579,11 @@ export function newState(now = Date.now()) {
     company: "", secrets: [],
     // Carried over for free by retention rewards; the server subtracts these from "spent".
     kept: { upg: [], cols: 0, prod: [] }, insCarry: 0, eqCarry: 0, xenoFree: 0,
-    stats: { upgBought: 0, colsBought: 0, sold: 0, bestSell: 0, momentumSecs: 0, rescues: 0, phishPassed: 0, okrs: 0, quarters: 0, requests: 0, meetings: 0, maxMomentum: 0, bestRate: 0, bestClick: 0, bestCombo: 0, fastestReplat: 0, fastestAcq: 0, longestAway: 0, onlineMs: 0, runClicks: 0, companyStartedAt: now },
-    ach: [], clicks: 0, incidents: 0, replat: 0, acq: 0, contact: 0, bangs: 0,
-    startedAt: now, runStartedAt: now, lastTick: now,
+    stats: { upgBought: 0, colsBought: 0, sold: 0, bestSell: 0, momentumSecs: 0, rescues: 0, phishPassed: 0, okrs: 0, quarters: 0, requests: 0, meetings: 0, maxMomentum: 0, bestRate: 0, bestClick: 0, bestCombo: 0, fastestReplat: 0, fastestAcq: 0, longestAway: 0, onlineMs: 0, runClicks: 0, companyStartedAt: now, firstCompletionMs: 0 },
+    ach: [], clicks: 0, incidents: 0, replat: 0, acq: 0, contact: 0, bangs: 0, completions: 0,
+    // playthroughStartedAt: since the last Catalog Everything (or the start); firstCompletionMs
+    // in stats is the time of the very first playthrough, the one that counts.
+    startedAt: now, playthroughStartedAt: now, runStartedAt: now, lastTick: now,
     buffs: [],
     settings: {
       sci: false, buy: 1, autoReplatAt: 2,
@@ -584,7 +591,9 @@ export function newState(now = Date.now()) {
       autoSources: false, autoStrategy: "value", autoSkip: [],
       autoUpgrades: false, upgStrategy: "cheapest", autoColumns: false,
       // Prestige shop bots, once owned (Radar Bot, Board Bot, 1 Axiom).
-      autoRadar: true, autoBoard: true, autoXeno: true,
+      autoRadar: true, autoBoard: true, autoXeno: true, autoBang: true,
+      // Set once the completion pop-up has been shown in this playthrough.
+      catalogSeen: false,
     },
   };
 }
@@ -608,6 +617,7 @@ export function normalize(raw, now = Date.now()) {
   for (const k of INT_COUNTERS) s[k] = Math.floor(s[k]);
   // Older saves lack the outer layers: everything so far belongs to one company.
   for (const k of ["coRows", "civRows", "everRows"]) if (raw[k] === undefined) s[k] = s.allRows;
+  if (!Number.isFinite(raw.playthroughStartedAt)) s.playthroughStartedAt = s.startedAt;
   s.prod = PRODUCERS.map((_, i) => Math.floor(num(raw.prod?.[i])));
   s.upg = [...new Set(Array.isArray(s.upg) ? s.upg : [])].filter((id) => UPGRADE_BY_ID[id]);
   s.arch = [...new Set(Array.isArray(s.arch) ? s.arch : [])].filter((id) => ARCH_BY_ID[id]);
@@ -621,17 +631,17 @@ export function normalize(raw, now = Date.now()) {
   s.chalBest = {};
   for (const [k, ms] of Object.entries(raw.chalBest ?? {})) if (parseTier(k) && Number.isFinite(ms) && ms > 0) s.chalBest[k] = Math.min(ms, CHALLENGE_LIMIT_MS);
   // What an acquisition carried over for free; bounded by what the Board and rewards allow.
-  const keepAll = s.chalDone.includes("keepradar") || s.chalDone.includes("keepcontact") || s.xeno_tech.permaplatform;
+  const keepAll = s.chalDone.includes("keepradar") || s.chalDone.includes("keepcontact") || s.xeno_tech.permaplatform || s.bangs >= 10;
   const keep = keepAll ? 1 : 0.1 * (s.board.parachute ?? 0);
   s.freeIns = {
-    arch: s.board.handcuffs || s.chalDone.includes("keepcontact") || s.xeno_tech.permaplatform ? (Array.isArray(raw.freeIns?.arch) ? raw.freeIns.arch : []).filter((id) => s.arch.includes(id)) : [],
+    arch: s.board.handcuffs || s.chalDone.includes("keepcontact") || s.xeno_tech.permaplatform || s.bangs >= 10 ? (Array.isArray(raw.freeIns?.arch) ? raw.freeIns.arch : []).filter((id) => s.arch.includes(id)) : [],
     radar: Object.fromEntries(
       RADAR.map((r) => [r.id, Math.min(Math.floor(Number(raw.freeIns?.radar?.[r.id]) || 0), Math.floor(r.max * keep), s.radar[r.id] ?? 0)]).filter(([, l]) => l > 0),
     ),
   };
   // A Board kept by Probe Swarm (or Recurring Revenue) is free; otherwise nothing is.
-  s.eqFree = s.xeno_tech.probes || s.chalDone.includes("keepboard") || s.axioms >= 10 ? Math.min(s.eqFree, spentOnEquity(s)) : 0;
-  s.xenoFree = s.chalDone.includes("keepxeno") ? Math.min(num(raw.xenoFree), spentOnXeno(s)) : 0;
+  s.eqFree = s.xeno_tech.probes || s.chalDone.includes("keepboard") || s.bangs >= 20 ? Math.min(s.eqFree, spentOnEquity(s)) : 0;
+  s.xenoFree = s.chalDone.includes("keepxeno") || s.bangs >= 50 ? Math.min(num(raw.xenoFree), spentOnXeno(s)) : 0;
   const k = raw.kept ?? {};
   s.kept = {
     upg: s.chalDone.includes("keepupg") ? (Array.isArray(k.upg) ? k.upg : []).filter((id) => s.upg.includes(id)) : [],
@@ -784,6 +794,8 @@ export function globalMultiplier(s) {
   if (won(s, "hiring")) m *= 5;
   if (won(s, "lockin")) m *= 100;
   m *= challengeMultiplier(s);
+  if (bangMilestone(s, "tenfold")) m *= 10 ** bangMilestonesReached(s);
+  m *= NG_PROD ** s.completions;
   m /= rule(s).prodDiv ?? 1;
   if (!layerOff(s, "bang")) m *= axiomProdMult(s);
   if (archOn(s, "mesh")) m *= 1 + 0.05 * s.prod.filter((c) => c > 0).length;
@@ -977,12 +989,26 @@ export function buyLevel(s, shop, id) {
   return true;
 }
 
-// Axiom milestones: Big Bang automation and permanence, by Axioms owned.
-export const AXIOM_MILESTONES = [
+// Big Bang milestones, by Big Bangs done. 10/20/50 make a layer's purchases and challenge
+// completions permanent. Its currency still resets: it's the fuel each prestige refills,
+// and a carried-over pile would make "prestige when it doubles" never fire again. Past 50
+// the milestones are about climbing faster.
+export const BANG_MILESTONES = [
   { at: 1, id: "xenobot", text: "Xenotech buys itself, cheapest first (toggle in Settings → Game)." },
-  { at: 10, id: "boardstays", text: "The Board is never reset: not by First Contact, not by a Big Bang." },
+  { at: 10, id: "keepreplat", text: "Architecture, the Tech Radar and re-platform challenge completions never reset again." },
+  { at: 20, id: "keepacq", text: "The Board and acquisition challenge completions never reset again." },
+  { at: 50, id: "keepcontact", text: "Xenotech and First Contact challenge completions never reset again. Catalog Everything unlocks." },
+  { at: 75, id: "axioms2", text: "Axioms per Big Bang ×2." },
+  { at: 100, id: "autobang", text: "Big Bangs happen by themselves once the universe has run its course (toggle in Settings → Game)." },
+  { at: 150, id: "speedsquared", text: "Challenge speed bonuses count twice." },
+  { at: 200, id: "axioms4", text: "Axioms per Big Bang ×2 again." },
+  { at: 300, id: "tenfold", text: "Production ×10 for every Big Bang milestone reached." },
+  { at: 500, id: "heatdeath", text: "???" , secret: true },
 ];
-export const axiomMilestone = (s, id) => s.axioms >= AXIOM_MILESTONES.find((m) => m.id === id).at && !layerOff(s, "bang");
+const BANG_MILESTONE_BY_ID = Object.fromEntries(BANG_MILESTONES.map((m) => [m.id, m]));
+export const bangMilestone = (s, id) => s.bangs >= BANG_MILESTONE_BY_ID[id].at && !layerOff(s, "bang");
+export const bangMilestonesReached = (s) => BANG_MILESTONES.filter((m) => s.bangs >= m.at).length;
+const permanent = (s, layer) => s.bangs >= BANG_MILESTONE_BY_ID[{ replat: "keepreplat", acq: "keepacq", contact: "keepcontact" }[layer]].at;
 
 /** Prestige auto-buyers (Radar Bot, Board Bot, Axiom milestone): cheapest first, per shop. */
 export function autoBuyShops(s) {
@@ -1002,7 +1028,7 @@ export function autoBuyShops(s) {
   shop(xenoLevel(s, "boardbot") && s.settings.autoBoard, () =>
     BOARD.filter((b) => (s.board[b.id] ?? 0) < b.max).map((b) => ({ cost: levelCost(b, s.board[b.id] ?? 0), buy: () => buyLevel(s, "board", b.id) })),
   );
-  shop(axiomMilestone(s, "xenobot") && s.settings.autoXeno, () =>
+  shop(bangMilestone(s, "xenobot") && s.settings.autoXeno, () =>
     XENOTECH.filter((x) => (s.xeno_tech[x.id] ?? 0) < x.max).map((x) => ({ cost: levelCost(x, s.xeno_tech[x.id] ?? 0), buy: () => buyLevel(s, "xeno", x.id) })),
   );
   return bought;
@@ -1010,7 +1036,10 @@ export function autoBuyShops(s) {
 
 // ---- prestige ----------------------------------------------------------------
 
-const axiomBoost = (s) => softcap(1.5 ** s.axioms, TUNING.axiomBoostCap, TUNING.multSoftPower);
+// New Game+: each Catalog Everything makes the next playthrough slightly stronger.
+export const NG_PROD = 2;
+export const NG_GAIN = 1.25;
+const axiomBoost = (s) => NG_GAIN ** s.completions * softcap(1.5 ** s.axioms, TUNING.axiomBoostCap, TUNING.multSoftPower);
 
 const insightMult = (s) => (1 + 0.15 * radarLevel(s, "literacy")) * 2 ** boardLevel(s, "ir") * axiomBoost(s) * (won(s, "compliance") ? 3 : 1);
 // The epsilon keeps exact powers exact: 1e6 ** (1 / 3) is 99.999…, not 100.
@@ -1028,9 +1057,35 @@ const xenoFor = (s) => Math.floor((Math.max(0, s.allRows) / XENO_DIVISOR) ** 0.2
 export const pendingXeno = (s) => (rndComplete(s) ? Math.max(0, xenoFor(s) - s.xeno) : 0);
 export const nextXenoAt = (s) => ((xenoFor(s) + 1) / xenoMult(s)) ** 5 * XENO_DIVISOR;
 
+// ---- the end: Catalog Everything -------------------------------------------------
+// Opens with the 50-Big-Bang milestone. Wipes the playthrough completely (Axioms and Big
+// Bangs too) for New Game+; keeps achievements, secrets, lifetime stats, the company name,
+// settings and the inbox.
+export const canCatalog = (s) => s.bangs >= BANG_MILESTONE_BY_ID.keepcontact.at;
+/** Marks this playthrough as finished; returns its time in ms the first time it's called. */
+export function markCompletion(s, now = Date.now()) {
+  if (!canCatalog(s) || s.settings.catalogSeen) return 0;
+  s.settings.catalogSeen = true;
+  const ms = Math.max(0, now - s.playthroughStartedAt);
+  if (!s.completions && !s.stats.firstCompletionMs) s.stats.firstCompletionMs = ms;
+  return ms;
+}
+export function catalogEverything(s, now = Date.now()) {
+  if (!canCatalog(s)) return false;
+  const keep = {
+    ach: s.ach, secrets: s.secrets, stats: { ...s.stats, companyStartedAt: now }, company: s.company, inbox: s.inbox,
+    settings: { ...s.settings, catalogSeen: false, env: undefined, finaleSeen: false },
+    everRows: s.everRows, startedAt: s.startedAt, clicks: s.clicks, incidents: s.incidents, completions: s.completions + 1,
+  };
+  for (const k of Object.keys(s)) delete s[k];
+  Object.assign(s, newState(now), keep);
+  return true;
+}
+
 /** The finale (owning Everything Is Data once) unlocks the Big Bang for the rest of the universe. */
 export const canBigBang = (s) => !!s.finale || s.prod[FINAL_PRODUCER] > 0;
-export const pendingAxioms = (s) => (canBigBang(s) ? axiomsFor(s.allRows) : 0);
+const axiomGainMult = (s) => (bangMilestone(s, "axioms2") ? 2 : 1) * (bangMilestone(s, "axioms4") ? 2 : 1);
+export const pendingAxioms = (s) => (canBigBang(s) ? axiomsFor(s.allRows) * axiomGainMult(s) : 0);
 
 /** Free sources at the start of a run: Golden Images gives 10 per level of the first sources. */
 function starterProducers(s) {
@@ -1058,7 +1113,7 @@ function resetCompany(s, now, { keepArch = false, keepRadar = false } = {}) {
   s.insCarry = won(s, "keepins") ? Math.floor(s.ins * 0.1) : 0;
   s.ins = s.insCarry;
   s.insSpent = 0;
-  const perma = !!s.xeno_tech.permaplatform;
+  const perma = !!s.xeno_tech.permaplatform || permanent(s, "replat");
   if (!keepArch && !perma && !boardLevel(s, "handcuffs")) s.arch = [];
   const keep = keepRadar || perma || won(s, "keepradar") ? 1 : 0.1 * boardLevel(s, "parachute");
   const radar = {};
@@ -1074,11 +1129,11 @@ function resetCivilization(s, now, keepBoard = false) {
   s.eqCarry = won(s, "keepeq") ? Math.floor(s.eq * 0.1) : 0;
   s.eq = s.eqCarry;
   s.eqSpent = 0;
-  const board = keepBoard || xenoLevel(s, "probes") > 0 || axiomMilestone(s, "boardstays");
+  const board = keepBoard || xenoLevel(s, "probes") > 0 || permanent(s, "acq");
   if (!board) s.board = {};
   s.eqFree = board ? spentOnEquity(s) : 0;
   // Seed Vault or Permanent Platform keeps architecture and radar; resetCompany marks them free.
-  const vault = won(s, "keepcontact") || !!s.xeno_tech.permaplatform;
+  const vault = won(s, "keepcontact") || !!s.xeno_tech.permaplatform || permanent(s, "replat");
   if (!vault) {
     s.arch = [];
     s.radar = {};
@@ -1126,7 +1181,7 @@ export function acquire(s, now = Date.now()) {
   const took = now - s.stats.companyStartedAt;
   if (took > 0 && (!s.stats.fastestAcq || took < s.stats.fastestAcq)) s.stats.fastestAcq = took;
   s.stats.companyStartedAt = now;
-  if (!s.board.memory) dropRewards(s, ["replat"]);
+  if (!s.board.memory && !permanent(s, "replat")) dropRewards(s, ["replat"]);
   s.eq += gain;
   s.acq += 1;
   resetCompany(s, now);
@@ -1136,7 +1191,7 @@ export function acquire(s, now = Date.now()) {
 export function firstContact(s, now = Date.now()) {
   const gain = pendingXeno(s);
   if (gain < 1 || !gateOpen(s, "contact")) return 0;
-  dropRewards(s, [...(s.board.memory ? [] : ["replat"]), ...(s.xeno_tech.archive ? [] : ["acq"])]);
+  dropRewards(s, [...(s.board.memory || permanent(s, "replat") ? [] : ["replat"]), ...(s.xeno_tech.archive || permanent(s, "acq") ? [] : ["acq"])]);
   s.stats.companyStartedAt = now;
   s.xeno += gain;
   s.contact += 1;
@@ -1147,9 +1202,9 @@ export function firstContact(s, now = Date.now()) {
 export function bigBang(s, now = Date.now()) {
   const gain = pendingAxioms(s);
   if (gain < 1 || !gateOpen(s, "bang")) return 0;
-  const keepXeno = won(s, "keepxeno");
-  const keepBoard = won(s, "keepboard") || axiomMilestone(s, "boardstays");
-  dropRewards(s, ["replat", "acq", "contact"]);
+  const keepXeno = won(s, "keepxeno") || permanent(s, "contact");
+  const keepBoard = won(s, "keepboard") || permanent(s, "acq");
+  dropRewards(s, ["replat", "acq", "contact"].filter((l) => !permanent(s, l)));
   s.stats.companyStartedAt = now;
   s.axioms += gain;
   s.bangs += 1;
@@ -1187,7 +1242,7 @@ export const abandonChallenge = (s) => (s.chal = null);
 // finish and ×1.5 at half the limit. Best times are kept per challenge (see dropRewards).
 export const CHALLENGE_LIMIT_MS = 60 * 60e3;
 export const challengeElapsed = (s, now = Date.now()) => Math.max(0, now - s.runStartedAt);
-export const speedBonus = (s, key) => (s.chalBest[key] ? 2 - Math.min(1, s.chalBest[key] / CHALLENGE_LIMIT_MS) : 1);
+export const speedBonus = (s, key) => (s.chalBest[key] ? (2 - Math.min(1, s.chalBest[key] / CHALLENGE_LIMIT_MS)) ** (bangMilestone(s, "speedsquared") ? 2 : 1) : 1);
 /** Speed bonuses of every completion in effect, times TIER_REWARD per higher tier. */
 const challengeMultiplier = (s) =>
   s.chalDone.reduce((m, key) => (won(s, key) ? m * speedBonus(s, key) * (key.includes("#") ? TIER_REWARD : 1) : m), 1);
@@ -1289,7 +1344,7 @@ export function implausible(prev, next, elapsedSecs) {
   if (spentOnEquity(next) - next.eqFree > tol(next.eqSpent) || next.eqSpent > tol(next.eq)) return "equity spending does not add up";
   if (next.xeno > xenoFor(next)) return "too many xenobytes";
   if (spentOnXeno(next) - next.xenoFree > tol(next.xenoSpent) || next.xenoSpent > tol(next.xeno)) return "xenobyte spending does not add up";
-  if (next.axioms > Math.log10(next.everRows + 1)) return "too many axioms";
+  if (next.axioms > next.bangs * axiomsFor(ROW_CAP) * 4 + 1) return "too many axioms";
   if (next.finale && !next.xeno_tech.contact) return "finale without contact";
   // First upload: measure against an empty save, over the time the caller allows.
   prev ??= newState(0);

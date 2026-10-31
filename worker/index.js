@@ -150,7 +150,7 @@ async function handlePutSave(request, user, env) {
 
 // Anonymous gameplay analytics. No cookies, no user or device ids, no IPs stored: just an
 // event name, coarse context and a few numbers, written to Workers Analytics Engine.
-const EVENTS = new Set(["session_start", "session_end", "snapshot", "replat", "acq", "contact", "bang", "finale", "challenge", "quarter"]);
+const EVENTS = new Set(["session_start", "session_end", "snapshot", "replat", "acq", "contact", "bang", "finale", "challenge", "quarter", "catalog"]);
 const LABEL = /^[a-z0-9_-]{0,24}$/;
 const NUMBERS = ["sessionSecs", "playHours", "log10Rows", "replat", "acq", "contact", "bangs", "ach", "chalWins", "quarters"];
 

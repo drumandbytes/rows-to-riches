@@ -429,9 +429,11 @@ function renderPrestige() {
   }
   const shops =
     l.shops.map(renderShop).join("") ||
-    `<p class="muted">Axioms are never spent. They make every future universe faster, and owning enough unlocks milestones:</p><ul class="list">${E.AXIOM_MILESTONES.map(
-      (m) => `<li class="item ${S.axioms >= m.at ? "owned" : ""}"><div class="ico" aria-hidden="true">${S.axioms >= m.at ? "✅" : "🌀"}</div><div><div class="name">${m.at} Axiom${m.at === 1 ? "" : "s"}</div><div class="sub">${esc(m.text)}</div></div><span></span></li>`,
-    ).join("")}</ul>`;
+    `<p class="muted">Axioms are never spent; they make every future universe faster. Big Bangs themselves unlock milestones (you've done ${S.bangs}):</p><ul class="list">${E.BANG_MILESTONES.map((m) => {
+      const got = S.bangs >= m.at;
+      const text = m.secret && !got ? "Keep going. Something happens." : m.secret ? "The universe has run out of things to measure. The dashboard is still loading." : m.text;
+      return `<li class="item ${got ? "owned" : ""}"><div class="ico" aria-hidden="true">${got ? "✅" : "🌀"}</div><div><div class="name">${m.at} Big Bang${m.at === 1 ? "" : "s"}</div><div class="sub">${esc(text)}</div></div><span></span></li>`;
+    }).join("")}</ul>${E.canCatalog(S) ? `<div class="replat-card catalog"><div class="num">🗂️ Catalog Everything</div><div class="muted">The real end. Everything resets, Axioms and Big Bangs included, and you start a New Game+ ×${E.NG_PROD} stronger (production) and ×${E.NG_GAIN} faster (prestige gains) per completion. Achievements, the Data Catalog and lifetime stats stay. Completions so far: ${S.completions}.</div><button class="big affordable" type="button" id="catalog-btn">Catalog Everything</button></div>` : ""}`;
   if ($("prestige-shops").dataset.html !== shops) {
     $("prestige-shops").dataset.html = shops;
     $("prestige-shops").innerHTML = shops;
@@ -561,9 +563,12 @@ function openMail(id) {
   );
 }
 
-// Board / Xenotech automation, checked every tick.
+// Board / Xenotech / Big Bang automation, checked every tick.
 function autoPrestige() {
   if (!E.automationAllowed(S) || S.chal) return;
+  if (E.bangMilestone(S, "autobang") && S.settings.autoBang && E.canBigBang(S) && E.gateOpen(S, "bang") && E.pendingAxioms(S) >= 1) {
+    doPrestige(LAYER_BY_ID.bang, true);
+  }
   if (E.boardLevel(S, "autoreplat") && E.pendingInsights(S) >= Math.max(3, S.ins * (S.settings.autoReplatAt - 1))) {
     doPrestige(LAYER_BY_ID.replat, true);
   }
@@ -1127,7 +1132,7 @@ function updateStats() {
 
 function updateSettings() {
   if (document.activeElement !== $("opt-company")) $("opt-company").value = S.company;
-  const bots = { radar: (S.board.radarbot ?? 0) > 0, board: (S.xeno_tech.boardbot ?? 0) > 0, xeno: S.axioms >= 1 };
+  const bots = { radar: (S.board.radarbot ?? 0) > 0, board: (S.xeno_tech.boardbot ?? 0) > 0, xeno: S.bangs >= 1, bang: S.bangs >= 100 };
   const automation = autoBuyerOwned() || E.boardLevel(S, "autoreplat") || bots.radar || bots.board || bots.xeno;
   $("auto-none").hidden = !!automation;
   $("auto-wrap").hidden = !autoBuyerOwned();
@@ -1140,7 +1145,7 @@ function updateSettings() {
   $("opt-upg-strategy").value = set.upgStrategy;
   $("opt-auto-columns").checked = set.autoColumns;
   $("autoreplat-wrap").hidden = !E.boardLevel(S, "autoreplat");
-  for (const k of ["radar", "board", "xeno"]) {
+  for (const k of ["radar", "board", "xeno", "bang"]) {
     $(`auto-${k}-wrap`).hidden = !bots[k];
     $(`opt-auto-${k}`).checked = set[`auto${k[0].toUpperCase()}${k.slice(1)}`];
   }
@@ -1274,6 +1279,57 @@ async function codeSignIn(code, status) {
   }
 }
 
+
+// ---- the end -------------------------------------------------------------------
+
+const COMPLETION_TEXTS = [
+  (t) => `<p>The universe, all matter and antimatter, is now cataloged, modelled, and has a dashboard.</p><p>Nobody has opened the dashboard.</p><p><b>Time to insight: ${t}.</b> Leadership would like it in less next quarter.</p>`,
+  (t) => `<p><b>Everything is data. Data is everything.</b></p><p>Every particle has a primary key. Dark matter turned out to be an unindexed table.</p><p>The board congratulates you and has scheduled a meeting to discuss what's next. The meeting has no agenda.</p><p><b>Completed in ${t}.</b></p>`,
+  (t) => `<p>All matter and antimatter is now modelled, governed and visible on one dashboard. Your Snowfake bill for this quarter is the universe.</p><p><b>Completed in ${t}.</b> Share it, or keep going. Somewhere, a stakeholder already has a follow-up question.</p>`,
+];
+
+function showCompletion(ms) {
+  const t = fmtDuration(ms / 1000);
+  const first = !S.completions;
+  confetti(200);
+  audio.sfx("prestige");
+  const share = `I cataloged the entire universe in Rows to Riches${first ? ` in ${t}` : ""}. It has a dashboard now. https://rowstoriches.drumandbytes.dev/`;
+  modal(
+    `<h2>🎉 Congratulations</h2>${COMPLETION_TEXTS[Math.floor(Math.random() * COMPLETION_TEXTS.length)](t)}
+     <p class="muted">${first ? "This was your first playthrough; that time is your record." : `Playthrough #${S.completions + 1}.`} You can <b>Catalog Everything</b> now to start a stronger New Game+, or keep playing: Big Bangs keep scaling (Prestige → Big Bang).</p>
+     <div class="row-buttons"><button type="button" id="share-completion">📤 Share</button></div>`,
+    [
+      ["Keep playing", "", () => {
+        grantSecret("keepplaying");
+      }],
+      ["Catalog Everything", "primary", confirmCatalog],
+    ],
+  );
+  $("share-completion").onclick = async (e) => {
+    try {
+      if (navigator.share) await navigator.share({ title: "Rows to Riches", text: share });
+      else {
+        await navigator.clipboard.writeText(share);
+        e.currentTarget.textContent = "✅ Copied";
+      }
+    } catch {
+      /* cancelled */
+    }
+  };
+}
+
+function confirmCatalog() {
+  modal(
+    `<h2>🗂️ Catalog Everything?</h2><p>Everything resets: rows, sources, every prestige layer, Axioms and Big Bangs. You start over with New Game+: production ×${E.NG_PROD ** (S.completions + 1)} and prestige gains ×${(E.NG_GAIN ** (S.completions + 1)).toFixed(2)} for the whole playthrough.</p><p class="muted">Achievements, the Data Catalog, lifetime stats and your company name stay.</p>`,
+    [["Cancel"], ["Catalog Everything", "primary", () => {
+      if (!E.catalogEverything(S, Date.now())) return;
+      track("catalog", S);
+      toast(`🗂️ <b>Everything cataloged.</b> New Game+ ${S.completions}. Back to one CSV on localhost.`);
+      afterPurchase();
+      selectTab("sources");
+    }]],
+  );
+}
 
 // ---- small UI helpers --------------------------------------------------------
 
@@ -1434,6 +1490,7 @@ document.addEventListener("click", (e) => {
     else toast(a.secret ? "🤫 A secret. Keep playing… or keep poking around." : `🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
+  else if (t.id === "catalog-btn") confirmCatalog();
   else if (t.id === "create-code") {
     t.disabled = true;
     sync
@@ -1678,7 +1735,7 @@ $("opt-autoreplat").addEventListener("change", (e) => {
 // Auto-buyer settings live in the save (they're about this game, not this device).
 for (const [id, key, kind] of [
   ["opt-auto-sources", "autoSources", "check"], ["opt-auto-upgrades", "autoUpgrades", "check"], ["opt-auto-columns", "autoColumns", "check"],
-  ["opt-auto-radar", "autoRadar", "check"], ["opt-auto-board", "autoBoard", "check"], ["opt-auto-xeno", "autoXeno", "check"],
+  ["opt-auto-radar", "autoRadar", "check"], ["opt-auto-board", "autoBoard", "check"], ["opt-auto-xeno", "autoXeno", "check"], ["opt-auto-bang", "autoBang", "check"],
   ["opt-auto-strategy", "autoStrategy", "value"], ["opt-upg-strategy", "upgStrategy", "value"],
 ]) {
   $(id).addEventListener("change", (e) => {
@@ -1819,6 +1876,8 @@ function loop() {
   }
   autoPrestige();
   checkFinale();
+  const completed = E.markCompletion(S, now);
+  if (completed) showCompletion(completed);
   checkInbox();
   active.tick();
   if (new Date().getHours() === 3) grantSecret("nightowl");
