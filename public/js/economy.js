@@ -70,7 +70,7 @@ const TIER_NAMES = {
   intern: ["Keyboard Shortcuts", "Freeze Panes", "VLOOKUP Mastery", "Pivot Tables", "Power Query", "Macros (Signed)", "Return Offer", "Promoted to Analyst", "Runs the Finance Model"],
   cron: ["crontab.guru", "flock(1)", "Log Rotation", "Timezone Awareness", "Retries With Jitter", "Cron Jobs for the Cron Jobs", "systemd timers", "Distributed Cron", "Leap-Second Proof"],
   script: ["Virtualenvs", "Type Hints", "Pandas", "Vectorized Ops", "Polars Rewrite", "Async Everything", "It Has Tests Now", "Packaged Properly", "No GIL"],
-  postgres: ["Indexes", "VACUUM ANALYZE", "Connection Pooling", "Read Replicas", "Partitioning", "Fivetrain Connector", "Unplugged Nobody's Desk Fan", "Columnar Extension", "Postgres for Everything"],
+  postgres: ["Indexes", "VACUUM ANALYZE", "Connection Pooling", "Read Replicas", "Partitioning", "Sixtran Connector", "Unplugged Nobody's Desk Fan", "Columnar Extension", "Postgres for Everything"],
   dag: ["Idempotent Tasks", "Sensors", "Backfills", "Dynamic Task Mapping", "dbd Models (Jinja Inside)", "SLA Misses Muted", "The DAG of DAGs", "Deferrable Operators", "Zero Zombie Tasks"],
   stream: ["Consumer Groups", "Compaction", "Airbite Sync", "Exactly-Once Semantics", "Tiered Storage", "Zero-Copy", "Stream-Table Duality", "Infinite Retention", "Rebalance-Free"],
   spark: ["Broadcast Joins", "Adaptive Query Execution", "Skew Hints", "Native Engine", "Spot Instances", "Dynamic Allocation", "Coalesced Shuffles", "No More OOMs", "Shuffle-less"],
