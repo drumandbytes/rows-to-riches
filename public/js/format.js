@@ -7,7 +7,7 @@ export const NOTATIONS = {
   words: "Board memo (1.23 million … 4.56 novenonagintillion)",
   data: "Storage invoice (1.23 G … 4.56 bronto)",
   scientific: "Data scientist (1.23e6)",
-  engineering: "Senior engineer (12.3e6)",
+  engineering: "Senior engineer (12.3E6)",
   binary: "Disk vendor (1.16 Gi)",
   hex: "Core dump (0x1.65ap+30)",
   roman: "Legacy mainframe (CXXIII × 10^XLII)",
@@ -86,7 +86,14 @@ export function fmt(n, digits = 2) {
   const tier = Math.floor(exp / 3);
   if (FANCY[notation]) return FANCY[notation](n, exp);
   const mantissa = (n / 1000 ** tier).toFixed(digits);
-  if (notation === "engineering") return `${mantissa}e${tier * 3}`;
+  // Calculator style: three significant digits and a capital E, so it never looks like
+  // scientific even when the exponent is a multiple of 3.
+  if (notation === "engineering") {
+    let t = tier;
+    let m = Number((n / 1000 ** t).toPrecision(3));
+    if (m >= 1000) [m, t] = [m / 1000, t + 1]; // 999.6 rounds up to the next tier
+    return `${m}E${t * 3}`;
+  }
   if (notation === "words" && tier <= 101) return `${mantissa} ${tier < WORDS.length ? WORDS[tier] : conwayWechsler(tier - 1)}`;
   if (notation === "data" && tier < DATA.length) return `${mantissa} ${DATA[tier]}`;
   // Suffixes run out at vigintillion; past that (and for "scientific") it's scientific.

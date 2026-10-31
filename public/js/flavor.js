@@ -39,6 +39,14 @@ export const TICKER = {
     "Data quality score: vibes.",
     "Legal asks where the data lives. You point vaguely upward.",
   ],
+  hybrid: [
+    "The on-prem team and the cloud team now hold separate stand-ups about each other.",
+    "A VPN tunnel connects the two halves of your data. Nobody knows who owns the VPN.",
+    "Half the servers are in the cloud. The other half are in a cupboard labelled 'cloud'.",
+    "Finance asked whether the hybrid strategy saves money. The strategy asked for more budget.",
+    "Your data gravity now has two centres. They are drifting apart.",
+    "The migration to the cloud is 50% complete, as it has been for three years.",
+  ],
   multiregion: [
     "Latency between regions is now measured in coffee breaks.",
     "Someone asked which region is the source of truth. It was a trick question.",
@@ -48,6 +56,14 @@ export const TICKER = {
     "Failover tested successfully. In the wrong direction.",
     "Your cache has a cache.",
   ],
+  edge: [
+    "A smart fridge in Helsinki is now your busiest replica.",
+    "Edge node #48,211 is a vending machine. It serves Snickers and SELECT queries.",
+    "Your latency is down to 2 ms. Your monitoring bill is up 2,000%.",
+    "A traffic light went offline and took a shard with it.",
+    "Somebody's smart toaster is running your compaction jobs. The toast is excellent.",
+    "Every device with a power cord now runs a sidecar. Several without one, somehow.",
+  ],
   quantum: [
     "The quantum computer finished the query. It also finished every other query.",
     "Your qubits are entangled with the marketing team's roadmap.",
@@ -56,6 +72,14 @@ export const TICKER = {
     "Your index is in superposition until somebody runs EXPLAIN.",
     "The quantum team says the bug both is and isn't fixed.",
     "Shor's algorithm factored your AWS bill. It's still huge.",
+  ],
+  lunar: [
+    "Moon base alpha is mostly racks. The astronauts sleep in the hot aisle.",
+    "Round-trip latency to the Moon is 2.6 seconds. The PM calls it 'near real-time'.",
+    "Lunar cooling is free. Lunar shipping is not.",
+    "A rover replaced a failed disk. It took eleven days and was considered a success.",
+    "Your far-side data center has never been seen from Earth. Neither has its documentation.",
+    "Low gravity, low humidity, high egress fees.",
   ],
   planetary: [
     "The Sahara is now a cold-storage tier. Ironically.",
@@ -74,6 +98,14 @@ export const TICKER = {
     "Light-speed is now officially your bottleneck.",
     "The Moon has been provisioned as a read replica.",
   ],
+  dyson: [
+    "The Sun has been wrapped in solar panels. It's now 'Sun (managed)'.",
+    "Your power supply is a star. The SLA is 99.999% until it goes red giant.",
+    "A Dyson swarm segment failed. The incident review blamed a solar flare and Kevin.",
+    "Astronomers on other planets report the Sun has gone dim. Your ESG report disagrees.",
+    "Infinite energy unlocked. The cloud bill found a way to grow anyway.",
+    "The swarm runs Kubernetes. Of course it runs Kubernetes.",
+  ],
   interstellar: [
     "A probe returned from Neptune with a 404.",
     "The Voyager team asked you to stop overwriting their telemetry.",
@@ -90,6 +122,14 @@ export const TICKER = {
     "They have 7 kinds of NULL. You have been doing it wrong.",
     "An alien filed a Jira ticket. It was in hexadecimal poetry.",
     "The aliens are impressed by your Postgres. They are less impressed by your naming.",
+  ],
+  galactic: [
+    "The galactic core is your hot storage. The outer arms are Glacier.",
+    "Andromeda has requested a migration plan. Expected collision: 4.5 billion years.",
+    "A black hole ate a shard. Recovery point objective: the heat death of the universe.",
+    "Light from your oldest replica takes 100,000 years to reach the newest. Eventual consistency, indeed.",
+    "The Milky Way is now one big data lake. It's mostly swamp.",
+    "Your galactic governance board meets once per orbit of the galaxy. Agenda: still item 1.",
   ],
   multiverse: [
     "Your evil twin uses NoSQL. Everyone is fine with it.",
