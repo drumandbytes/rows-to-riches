@@ -1,4 +1,4 @@
-import { implausible, normalize, ACHIEVEMENTS } from "../public/js/economy.js";
+import { implausible, normalize, ACHIEVEMENTS, big } from "../public/js/economy.js";
 
 const SESSION_IDLE_MS = 180 * 86_400_000;
 const MIN_SAVE_INTERVAL_MS = 10_000;
@@ -130,7 +130,7 @@ async function handlePutSave(request, user, env) {
 
   const stored = await getSave(env, user.id);
   if (stored && now - stored.updatedAt < MIN_SAVE_INTERVAL_MS && !body.force) return json({ error: "Saving too often." }, 429);
-  if (stored && next.everRows < (stored.save.everRows ?? stored.save.allRows) && !body.force) return json({ error: "Cloud save is ahead.", save: stored.save }, 409);
+  if (stored && next.everRows.lt(big(stored.save.everRows ?? stored.save.allRows ?? 0)) && !body.force) return json({ error: "Cloud save is ahead.", save: stored.save }, 409);
 
   // Two ways a save can be plausible: grown from the stored one since its upload, or grown
   // from nothing since the save says it started (another device may have been far ahead

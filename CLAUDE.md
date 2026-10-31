@@ -14,6 +14,8 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 
 ## Rules of thumb
 
+- Big numbers: rows, rates, costs, multipliers and prestige currencies are break_infinity `Decimal`s (`public/js/big.js`, vendored in `public/js/vendor/`), good to 1e9e15. Use their methods (`.add`, `.mul`, `.gte`…), never `+`, `*` or `<`: `Decimal.valueOf()` returns a string, so `d + 1` silently concatenates. Counts and levels stay plain numbers. Saves store Decimals as strings; `normalize()` revives them (and old numeric saves) with `bigSafe`. Visuals that need a plain number get a ratio or a `log10()`.
+
 - Saves are versioned (`SAVE_VERSION`). New fields go in `newState()`, and `normalize()` fills them into old saves. Never rename or reuse ids (producers, upgrades, arch, achievements): they're stored in players' saves.
 - Balance changes: run `node tools/sim.js 72` and check that no layer snowballs (acquisitions or contacts every few minutes for hours means a feedback exponent near 1). Then run `node --test`. The honest-play tests check that real progress still passes `implausible()`. Loosen `maxBuff()` / `MAX_CLICKS_PER_SEC` there if a new mechanic can legitimately beat them.
 - Client clicks are capped at 20/s to match the server budget.

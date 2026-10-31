@@ -1,3 +1,4 @@
+import { fmt as fmtNum } from "./format.js";
 // Active play for the mid and late game, as corporate satire: quarterly OKRs graded at an
 // all-hands, and stakeholder requests / meeting invites that ask you to choose.
 // Rewards are only production or INSERT boosts and rows, which the server's plausibility
@@ -18,13 +19,14 @@ const OKR_KINDS = {
   },
   clicks: { when: () => true, setup: (_s, _E, rnd) => { const n = 200 + Math.floor(rnd() * 4) * 100; return { add: n, label: `Hands-on leadership: INSERT ${n} times` }; }, value: (s) => s.clicks },
   incidents: { when: () => true, setup: (_s, _E, rnd) => { const n = 2 + Math.floor(rnd() * 2); return { add: n, label: `Operational excellence: resolve ${n} incidents` }; }, value: (s) => s.incidents },
+  // Tracked as log10(rows/s), so base and target stay plain numbers however big the rate gets.
   rate: {
-    when: (s, E) => E.baseRate(s) > 0,
+    when: (s, E) => E.baseRate(s).gt(0),
     setup: (s, E, rnd) => {
       const k = 3 + Math.floor(rnd() * 3);
-      return { abs: E.baseRate(s) * k, label: `Grow throughput ${k}× (to ${"{target}"} rows/s)` };
+      return { abs: E.baseRate(s).log10() + Math.log10(k), label: `Grow throughput ${k}× (to ${fmtNum(E.baseRate(s).mul(k))} rows/s)` };
     },
-    value: (s, E) => E.baseRate(s),
+    value: (s, E) => E.baseRate(s).max(1e-300).log10(),
   },
   upgrades: { when: () => true, setup: (_s, _E, rnd) => { const n = 3 + Math.floor(rnd() * 3); return { add: n, label: `Ship ${n} upgrades (any upgrades; nobody checks)` }; }, value: (s) => s.stats.upgBought },
   columns: { when: (s, E) => !E.rule(s).noColumns, setup: () => ({ add: 1, label: "Data modelling: add a column to the schema" }), value: (s) => s.stats.colsBought },
@@ -133,8 +135,8 @@ export function createActive(ctx) {
       apply(s, won ? win : lose, name);
       return won ? "It worked out." : "It did not work out.";
     }
-    if (fx.rows > 0) E.earn(s, E.baseRate(s) * fx.rows + 13);
-    if (fx.rows < 0) s.rows -= s.rows * -fx.rows;
+    if (fx.rows > 0) E.earn(s, E.baseRate(s).mul(fx.rows).add(13));
+    if (fx.rows < 0) s.rows = s.rows.mul(1 + fx.rows);
     if (fx.prod) buff(s, "prod", fx.prod[0], fx.prod[1], name);
     if (fx.click) buff(s, "click", fx.click[0], fx.click[1], `${name} (INSERT)`);
     if (fx.momentum) s.momentum = 1;
@@ -150,7 +152,7 @@ export function createActive(ctx) {
       const x = k.setup(s, E, rnd);
       const base = k.value(s, E, x);
       const target = x.abs ?? base + x.add;
-      return { kind, label: x.label.replace("{target}", fmt(target)), base, target, i: x.i, done: false };
+      return { kind, label: x.label, base, target, i: x.i, done: false };
     });
     s.okr = { quarter: (s.okr?.quarter ?? s.stats.quarters) + 1, endsAt: s.stats.onlineMs + QUARTER_MS, items };
   }

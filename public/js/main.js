@@ -128,11 +128,11 @@ function doInsert(x, y) {
   combo = now - lastClickAt < 600 ? combo + 1 : 1;
   lastClickAt = now;
   E.tick(S, now);
-  const v = E.clickValue(S, now) * comboMult();
+  const v = E.clickValue(S, now).mul(comboMult());
   E.earn(S, v);
   S.clicks++;
   S.stats.runClicks++;
-  S.stats.bestClick = Math.max(S.stats.bestClick, v);
+  S.stats.bestClick = E.big(S.stats.bestClick).max(v);
   scene.burst(combo >= 10 ? 3 : 1);
   audio.sfx("click", combo);
   E.addMomentum(S);
@@ -264,10 +264,10 @@ function afterPurchase() {
 const LAYERS = [
   {
     id: "replat", icon: "💡", name: "Re-platform", cur: "Insights",
-    have: (s) => s.ins, spendable: (s) => s.ins - s.insSpent,
+    have: (s) => s.ins, spendable: (s) => s.ins.sub(s.insSpent),
     pending: E.pendingInsights, run: E.replatform, verb: "Re-platform",
     progress: (s) => `Next Insight at ${fmt(E.nextInsightAt(s))} company rows (${fmt(s.coRows)} so far).`,
-    effect: (s) => `Insights boost production: +${E.insightPct(s) * 100}% per point, with diminishing returns (now +${fmt(E.insightBonus(s) * 100)}%).`,
+    effect: (s) => `Insights boost production: +${E.insightPct(s) * 100}% per point, with diminishing returns (now +${fmt(E.insightBonus(s).mul(100))}%).`,
     confirm: "Rewrite everything in this year's hot new stack. You lose rows, Data Sources, upgrades and columns.",
     keeps: "Insights, Architecture, Tech Radar and everything above are kept.",
     done: (g) => `💡 <b>Re-platformed.</b> +${fmt(g)} Insights. The new stack is mostly YAML.`,
@@ -276,7 +276,7 @@ const LAYERS = [
   },
   {
     id: "acq", icon: "📈", name: "Acquisition", cur: "Equity",
-    have: (s) => s.eq, spendable: (s) => s.eq - s.eqSpent,
+    have: (s) => s.eq, spendable: (s) => s.eq.sub(s.eqSpent),
     pending: E.pendingEquity, run: E.acquire, verb: "Get acquired",
     progress: (s) => `Next Equity at ${fmt(E.nextEquityAt(s))} civilization rows (${fmt(s.civRows)} so far).`,
     effect: (s) => `Equity boosts production (now ×${fmt(E.equityProdMult(s))}) and buys Board seats.`,
@@ -289,7 +289,7 @@ const LAYERS = [
   },
   {
     id: "contact", icon: "👽", name: "First Contact", cur: "Xenobytes",
-    have: (s) => s.xeno, spendable: (s) => s.xeno - s.xenoSpent,
+    have: (s) => s.xeno, spendable: (s) => s.xeno.sub(s.xenoSpent),
     pending: E.pendingXeno, run: E.firstContact, verb: "Make contact",
     progress: (s) =>
       E.rndComplete(s)
@@ -335,7 +335,7 @@ const RETENTION = { replat: ["keepupg", "keepcols", "keepsrc"], acq: ["keepradar
 
 function onPrestige(layer) {
   const gain = layer.pending(S);
-  if (gain < 1 || !E.gateOpen(S, layer.id)) return;
+  if (E.big(gain).lt(1) || !E.gateOpen(S, layer.id)) return;
   const kept = (RETENTION[layer.id] ?? []).filter((id) => E.won(S, id)).map((id) => `<li>${esc(E.CHALLENGE_BY_ID[id].reward)}</li>`);
   modal(
     `<h2>${layer.icon} ${layer.verb}?</h2><p>${esc(layer.confirm)}</p><p>You gain <b>${fmt(gain)} ${layer.cur}</b>.</p><p class="muted">${esc(layer.keeps)}</p>${kept.length ? `<p>🏆 Challenge rewards in effect:</p><ul class="kept">${kept.join("")}</ul>` : ""}`,
@@ -346,7 +346,7 @@ function onPrestige(layer) {
 function doPrestige(layer, quiet = false) {
   E.tick(S, Date.now());
   const gain = layer.run(S);
-  if (gain < 1) return;
+  if (E.big(gain).lt(1)) return;
   track(layer.id, S);
   if (!quiet) {
     toast(layer.done(gain));
@@ -359,11 +359,11 @@ function doPrestige(layer, quiet = false) {
 function shopItems(shop) {
   // Architecture is paid in Insights like the Radar, so it borrows the Radar's currency keys.
   const [defs, key, cur, spent] = E.SHOPS[shop === "arch" ? "radar" : shop];
-  const free = S[cur] - S[spent];
+  const free = S[cur].sub(S[spent]);
   if (shop === "arch") {
     return E.ARCH.map((a) => {
       const owned = S.arch.includes(a.id);
-      return { id: a.id, name: a.name, desc: a.desc, owned, cost: a.cost, afford: !owned && free >= a.cost, label: owned ? "Owned" : `${fmt(a.cost)} ${SHOP_META.arch.cur}` };
+      return { id: a.id, name: a.name, desc: a.desc, owned, cost: a.cost, afford: !owned && free.gte(a.cost), label: owned ? "Owned" : `${fmt(a.cost)} ${SHOP_META.arch.cur}` };
     });
   }
   return Object.values(defs).map((d) => {
@@ -371,7 +371,7 @@ function shopItems(shop) {
     const maxed = l >= d.max;
     const cost = E.levelCost(d, l);
     const lv = d.max === 1 ? "" : d.max >= 100 ? `Lv ${l}` : `Lv ${l}/${d.max}`;
-    return { id: d.id, name: d.name, lv, desc: d.desc(l), owned: maxed, cost, afford: !maxed && free >= cost, label: maxed ? (d.max === 1 ? "Owned" : "MAX") : `${fmt(cost)} ${SHOP_META[shop].cur}` };
+    return { id: d.id, name: d.name, lv, desc: d.desc(l), owned: maxed, cost, afford: !maxed && free.gte(cost), label: maxed ? (d.max === 1 ? "Owned" : "MAX") : `${fmt(cost)} ${SHOP_META[shop].cur}` };
   });
 }
 
@@ -387,9 +387,21 @@ function renderShop(shop) {
   return `<h3>${meta.title}</h3><p class="muted">${meta.note}</p><ul class="list">${items}</ul>`;
 }
 
+// Tab dot / auto-prestige rule of thumb: the pending gain would at least double what you have.
+// Measured against what this company (civilization, universe) earned, so carried-over
+// currency from the Big Bang milestones doesn't stop prestige from paying off.
+const wouldDouble = (l) => E.big(l.pending(S)).gte((l.id === "bang" ? E.big(l.have(S)) : E.layerEarned(S, l.id)).max(1));
+
+/** Each source's share of production (plain numbers that sum to 1), for the scene. */
+function sourceShares(gm) {
+  const rates = E.PRODUCERS.map((p) => (S.prod[p.i] ? E.producerRate(S, p.i, gm) : E.big(0)));
+  const total = rates.reduce((a, b) => a.add(b), E.big(0));
+  return rates.map((r) => (total.gt(0) ? r.div(total).toNumber() : 0));
+}
+
 function renderPrestige() {
   // Tab dot: some layer would at least double its currency.
-  const ready = LAYERS.some((l) => l.visible(S) && E.gateOpen(S, l.id) && l.pending(S) >= Math.max(1, l.have(S)));
+  const ready = LAYERS.some((l) => l.visible(S) && E.gateOpen(S, l.id) && wouldDouble(l));
   $("ins-dot").hidden = !ready;
   if (tab !== "prestige") return;
   const visible = LAYERS.filter((l) => l.visible(S));
@@ -397,7 +409,7 @@ function renderPrestige() {
   const next = LAYERS.find((l) => !l.visible(S));
   if (prestigeTab === "chal" ? !E.CHALLENGE_LAYERS.some((l) => l.unlocked(S)) : !LAYER_BY_ID[prestigeTab]?.visible(S)) prestigeTab = "replat";
   const seg =
-    visible.map((l) => `<button type="button" data-layer="${l.id}" class="${l.id === prestigeTab ? "on" : ""}">${l.icon} ${l.name}${l.pending(S) >= Math.max(1, l.have(S)) ? ' <i class="mini-dot"></i>' : ""}</button>`).join("") +
+    visible.map((l) => `<button type="button" data-layer="${l.id}" class="${l.id === prestigeTab ? "on" : ""}">${l.icon} ${l.name}${wouldDouble(l) ? ' <i class="mini-dot"></i>' : ""}</button>`).join("") +
     (chalOpen ? `<button type="button" data-layer="chal" class="${prestigeTab === "chal" ? "on" : ""}">🏁 Challenges</button>` : "") +
     (next ? `<button type="button" disabled title="${esc(next.teaser)}">🔒 ???</button>` : "");
   if ($("prestige-seg").dataset.html !== seg) {
@@ -416,7 +428,7 @@ function renderPrestige() {
   const gateNote = gate
     ? `<div class="gate ${open ? "ok" : ""}">${open ? "✅" : "🔒"} Needs ${E.GATE_NEED} completed ${esc(LAYER_BY_ID[gate].name)} challenges: <b>${Math.min(E.gateHave(S, l.id), E.GATE_NEED)}/${E.GATE_NEED}</b>${open ? "" : ` (🏁 Challenges tab)`}</div>`
     : "";
-  const can = gain >= 1 && open;
+  const can = E.big(gain).gte(1) && open;
   const card = `<div class="replat-card">
     <div class="muted">${l.cur}: <b>${fmt(l.have(S))}</b>${l.shops.length ? ` · spendable ${fmt(l.spendable(S))}` : ""}</div>
     <div class="num">+${fmt(gain)} ${l.icon}</div>
@@ -518,7 +530,7 @@ function renderChallengeBanner() {
   if (!t) return;
   const { challenge: c, tier } = t;
   const goal = E.tierGoal(c, tier);
-  const pct = Math.min(100, (Math.log10(Math.max(1, S.runRows)) / Math.log10(goal)) * 100);
+  const pct = Math.min(100, (S.runRows.max(1).log10() / Math.log10(goal)) * 100);
   const left = Math.max(0, E.CHALLENGE_LIMIT_MS - E.challengeElapsed(S)) / 1000;
   setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><span>${fmt(S.runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
 }
@@ -569,10 +581,10 @@ function autoPrestige() {
   if (E.bangMilestone(S, "autobang") && S.settings.autoBang && E.canBigBang(S) && E.gateOpen(S, "bang") && E.pendingAxioms(S) >= 1) {
     doPrestige(LAYER_BY_ID.bang, true);
   }
-  if (E.boardLevel(S, "autoreplat") && E.pendingInsights(S) >= Math.max(3, S.ins * (S.settings.autoReplatAt - 1))) {
+  if (E.boardLevel(S, "autoreplat") && E.pendingInsights(S).gte(E.big(3).max(E.layerEarned(S, "replat").mul(S.settings.autoReplatAt - 1)))) {
     doPrestige(LAYER_BY_ID.replat, true);
   }
-  if (E.xenoLevel(S, "hive") && E.gateOpen(S, "acq") && E.pendingEquity(S) >= Math.max(1, S.eq)) {
+  if (E.xenoLevel(S, "hive") && E.gateOpen(S, "acq") && E.pendingEquity(S).gte(E.layerEarned(S, "acq").max(1))) {
     doPrestige(LAYER_BY_ID.acq);
   }
 }
@@ -598,13 +610,13 @@ const gitopsOwned = () => E.boardLevel(S, "gitops") > 0;
 
 // Each source strategy scores the affordable candidates; the auto-buyer buys the top one.
 const SOURCE_STRATEGIES = {
-  value: (i, gm) => (E.PRODUCERS[i].rate * E.producerMultiplier(S, i) * gm) / E.producerCost(S, i, 1),
-  cheapest: (i) => -E.producerCost(S, i, 1),
+  value: (i, gm) => E.big(gm).mul(E.PRODUCERS[i].rate * E.producerMultiplier(S, i)).div(E.producerCost(S, i, 1)).log10(),
+  cheapest: (i) => -E.producerCost(S, i, 1).log10(),
   newest: (i) => i,
   // Fewest rows needed to reach the next ×2 threshold wins.
   milestone: (i) => {
     const target = E.nextTierAt(S, i);
-    return target === null ? -Infinity : -E.producerCost(S, i, target - S.prod[i]);
+    return target === null ? -Infinity : -E.producerCost(S, i, target - S.prod[i]).log10();
   },
 };
 
@@ -612,12 +624,12 @@ function autoBuy() {
   if (!E.automationAllowed(S)) return;
   const set = S.settings;
   let bought = E.autoBuyShops(S) > 0;
-  if (gitopsOwned() && set.autoColumns && E.columnCost(S.cols, S) < S.rows * 0.5) bought = E.buyColumn(S) || bought;
+  if (gitopsOwned() && set.autoColumns && E.columnCost(S.cols, S).lt(S.rows.mul(0.5))) bought = E.buyColumn(S) || bought;
   if (gitopsOwned() && set.autoUpgrades) {
-    const list = availableUpgrades().filter((u) => u.cost <= S.rows);
+    const list = availableUpgrades().filter((u) => S.rows.gte(u.cost));
     if (set.upgStrategy === "production") list.sort((a, b) => UPG_RANK[a.kind] - UPG_RANK[b.kind] || a.cost - b.cost);
     for (const u of list) {
-      if (u.cost > S.rows) continue;
+      if (S.rows.lt(u.cost)) continue;
       bought = E.buyUpgrade(S, u.id) || bought;
     }
   }
@@ -628,7 +640,7 @@ function autoBuy() {
       let best = -1;
       let bestScore = -Infinity;
       for (const p of E.PRODUCERS) {
-        if (!E.producerUnlocked(S, p.i) || set.autoSkip.includes(p.id) || E.producerCost(S, p.i, 1) > S.rows) continue;
+        if (!E.producerUnlocked(S, p.i) || set.autoSkip.includes(p.id) || E.producerCost(S, p.i, 1).gt(S.rows)) continue;
         const sc = score(p.i, gm);
         if (sc > bestScore) [best, bestScore] = [p.i, sc];
       }
@@ -681,8 +693,8 @@ function spawnIncident() {
 
 function lostTable() {
   E.tick(S, Date.now());
-  const lost = S.rows * 0.1;
-  S.rows -= lost;
+  const lost = S.rows.mul(0.1);
+  S.rows = S.rows.sub(lost);
   toast(`💀 <b>Table lost.</b> Nobody restored it in time: −${fmt(lost)} rows. The intern has been promoted to manager.`);
   audio.sfx("deny");
 }
@@ -690,7 +702,7 @@ function lostTable() {
 function passedPhish() {
   S.stats.phishPassed++;
   E.tick(S, Date.now());
-  const amount = E.baseRate(S) * 120 + 13;
+  const amount = E.baseRate(S).mul(120).add(13);
   E.earn(S, amount);
   toast(`✅ <b>Phishing test passed.</b> IT is proud of you: +${fmt(amount)} rows.`, "info");
   audio.sfx("achievement");
@@ -707,7 +719,7 @@ function resolveIncident(inc) {
   }
   if (inc.rescue) {
     S.stats.rescues++;
-    const amount = E.baseRate(S) * 60 + 13;
+    const amount = E.baseRate(S).mul(60).add(13);
     E.earn(S, amount);
     toast(`🧯 <b>${inc.title}</b>: ${esc(inc.desc)} +${fmt(amount)} rows.`);
   } else if (inc.trap) {
@@ -721,7 +733,7 @@ function resolveIncident(inc) {
     S.buffs.push({ kind: inc.buff.kind, mult, until: now + secs * 1000, name: inc.title });
     toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: ×${mult} for ${secs}s.`, "info");
   } else if (inc.lump) {
-    const amount = Math.min(E.baseRate(S) * 900, S.rows * E.backfillCap(S)) + 13;
+    const amount = E.baseRate(S).mul(900).min(S.rows.mul(E.backfillCap(S))).add(13);
     E.earn(S, amount);
     scene.floatText(`+${fmt(amount)}`, "#ffb547");
     scene.burst(12);
@@ -742,7 +754,7 @@ function render(force = false) {
   const fp = footprint();
   scene.update({
     prod: S.prod,
-    rates: E.PRODUCERS.map((p) => (S.prod[p.i] ? E.producerRate(S, p.i, gm) : 0)),
+    rates: sourceShares(gm),
     env,
     sink: fp.idx,
     progress: fp.progress,
@@ -750,7 +762,7 @@ function render(force = false) {
   checkEnvironment(env);
   audio.setMood(env.scene);
   $("rate").textContent = fmt(r);
-  $("rate").parentElement.title = E.rawRate(S) > E.GRAVITY_AT ? `Data gravity: past ${fmt(E.GRAVITY_AT)} rows/s, extra production has diminishing returns. Raw: ${fmt(E.rawRate(S))}/s.` : "";
+  $("rate").parentElement.title = E.rawRate(S).gt(E.GRAVITY_AT) ? `Data gravity: past ${fmt(E.GRAVITY_AT)} rows/s, extra production has diminishing returns. Raw: ${fmt(E.rawRate(S))}/s.` : "";
   $("env").textContent = env.name;
   $("env").title = `Environment: ${env.name}. ${env.desc}`;
   $("env-path").textContent = env.name;
@@ -794,7 +806,8 @@ function render(force = false) {
 // Smoothly rolls the big counter towards the real bank; drops snap instantly.
 function animateCounter() {
   const target = S.rows;
-  shownRows = target < shownRows || Math.abs(target - shownRows) < 1 ? target : shownRows + (target - shownRows) * 0.2;
+  shownRows = E.big(shownRows);
+  shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(0.2));
   $("rows").textContent = fmt(shownRows);
   requestAnimationFrame(animateCounter);
 }
@@ -817,7 +830,7 @@ function visibleKey() {
   return [src, upg, S.upg.length, S.arch.join(), S.ach.length, S.ins, S.settings.buy].join("|");
 }
 
-const sourceVisible = (p) => E.producerUnlocked(S, p.i) && (p.i === 0 || S.prod[p.i] > 0 || S.prod[p.i - 1] > 0 || S.runRows >= p.cost * 0.5);
+const sourceVisible = (p) => E.producerUnlocked(S, p.i) && (p.i === 0 || S.prod[p.i] > 0 || S.prod[p.i - 1] > 0 || S.runRows.gte(p.cost * 0.5));
 
 function lockedHint(p) {
   if (E.producerUnlocked(S, p.i)) return `Unlocks at ${fmt(p.cost * 0.5)} rows this run.`;
@@ -838,10 +851,11 @@ function renderBuffs(now) {
 function footprint() {
   const units = E.STORAGE_UNITS;
   let idx = 0;
-  for (let i = 0; i < units.length; i++) if (E.envRows(S) >= units[i][1]) idx = i;
+  const rowsLog = E.envRows(S).max(1).log10();
+  for (let i = 0; i < units.length; i++) if (rowsLog >= Math.log10(units[i][1])) idx = i;
   const next = units[idx + 1];
   // Log-scale progress so the ring keeps moving between units 1000× apart.
-  const progress = next ? Math.min(1, Math.log10(Math.max(1, E.envRows(S) / units[idx][1])) / Math.log10(next[1] / units[idx][1])) : 1;
+  const progress = next ? Math.min(1, Math.max(0, rowsLog - Math.log10(units[idx][1])) / Math.log10(next[1] / units[idx][1])) : 1;
   return { idx, progress };
 }
 
@@ -849,8 +863,8 @@ function footprint() {
 // is flavour underneath. The ETA uses the current rate, so it shrinks as you grow.
 function renderFootprint({ idx }, rate) {
   const [name, size] = E.STORAGE_UNITS[idx];
-  const amount = E.envRows(S) / size;
-  const plural = amount >= 2 ? (name.endsWith("y") ? name.slice(0, -1) + "ies" : name + "s") : name;
+  const amount = E.envRows(S).div(size);
+  const plural = amount.gte(2) ? (name.endsWith("y") ? name.slice(0, -1) + "ies" : name + "s") : name;
   const next = E.nextEnvironment(S);
   let head;
   let progress = 1;
@@ -858,7 +872,7 @@ function renderFootprint({ idx }, rate) {
   else if (next.rowsLeft === null) head = `next environment: <b>???</b> · rows alone won't get you there`;
   else {
     progress = next.progress;
-    const eta = rate > 0 ? ` · ~${fmtDuration(next.rowsLeft / rate)} at this rate` : "";
+    const eta = E.big(rate).gt(0) ? ` · ~${fmtDuration(next.rowsLeft.div(rate).min(1e12).toNumber())} at this rate` : "";
     // Rows left rather than a percentage: the bar is log-scale, so "68%" can still mean hours.
     head = `next environment: <b>???</b> · ${fmt(next.rowsLeft)} rows to go${eta}`;
   }
@@ -925,13 +939,13 @@ const sharePct = (f) => (f >= 0.995 ? "100%" : f >= 0.1 ? `${Math.round(f * 100)
 function updateSources() {
   if (tab !== "sources") return;
   const gm = E.globalMultiplier(S);
-  const raw = E.rawRate(S) || 1;
+  const raw = E.rawRate(S).max(1e-300);
   for (const li of $("sources").querySelectorAll("li[data-i]")) {
     const i = Number(li.dataset.i);
     const p = E.PRODUCERS[i];
     const n = buyAmount(i);
     const cost = E.producerCost(S, i, n);
-    const each = p.rate * E.producerMultiplier(S, i) * gm;
+    const each = E.big(gm).mul(p.rate * E.producerMultiplier(S, i));
     const owned = S.prod[i];
     li.querySelector(".count").textContent = owned ? `×${owned}` : "";
     li.classList.toggle("running", owned > 0);
@@ -946,7 +960,7 @@ function updateSources() {
     }
     const total = E.producerRate(S, i, gm);
     li.querySelector(".sub").textContent = owned
-      ? `${fmt(each)}/s each · ${fmt(total)}/s total · ${sharePct(total / raw)} of output`
+      ? `${fmt(each)}/s each · ${fmt(total)}/s total · ${sharePct(total.div(raw).toNumber())} of output`
       : `${fmt(each)}/s each · ${p.flavor}`;
     // Run bar: more units → shorter batch cycle.
     const dur = owned ? `${Math.max(0.35, 4 / (1 + Math.log2(owned))).toFixed(2)}s` : "0s";
@@ -963,8 +977,8 @@ function updateSources() {
     }
     const html = `Buy ${n}<small>${fmt(cost)}</small>`;
     if (btn.innerHTML !== html) btn.innerHTML = html;
-    btn.disabled = cost > S.rows;
-    li.classList.toggle("affordable", cost <= S.rows);
+    btn.disabled = cost.gt(S.rows);
+    li.classList.toggle("affordable", cost.lte(S.rows));
   }
 }
 
@@ -1017,15 +1031,15 @@ function buildDeployed() {
 
 function updateUpgrades() {
   const list = availableUpgrades();
-  $("upg-dot").hidden = !list.some((u) => u.cost <= S.rows);
+  $("upg-dot").hidden = !list.some((u) => S.rows.gte(u.cost));
   if (tab !== "upgrades") return;
   for (const li of $("upgrades").querySelectorAll("li[data-u]")) {
     const u = E.UPGRADE_BY_ID[li.dataset.u];
     const blocked = E.rule(S).noUpgrades;
     const btn = li.querySelector(".buy");
-    btn.disabled = blocked || u.cost > S.rows;
+    btn.disabled = blocked || S.rows.lt(u.cost);
     btn.title = blocked ? "Upgrades are disabled by the current challenge." : "";
-    li.classList.toggle("affordable", !blocked && u.cost <= S.rows);
+    li.classList.toggle("affordable", !blocked && S.rows.gte(u.cost));
   }
   if (E.rule(S).noUpgrades) $("upg-owned").textContent = "🔒 disabled by the current challenge";
 }
@@ -1074,8 +1088,8 @@ function updateSchema() {
   btn.textContent = frozen
     ? `🔒 Schema frozen by the ${E.parseTier(S.chal).challenge.name} challenge`
     : `ALTER TABLE rows ADD COLUMN ${E.columnName(S.cols)} — ${fmt(cost)} rows (each column ×${each})`;
-  btn.disabled = frozen || cost > S.rows;
-  btn.classList.toggle("affordable", !frozen && cost <= S.rows);
+  btn.disabled = frozen || cost.gt(S.rows);
+  btn.classList.toggle("affordable", !frozen && cost.lte(S.rows));
 }
 
 function buildAch() {
@@ -1113,7 +1127,7 @@ function updateStats() {
     ["Rows this universe", fmt(S.allRows)],
     ["Rows ever", fmt(S.everRows)],
     ["Best rows/s", fmt(S.stats.bestRate)],
-    ["Data gravity", E.rawRate(S) > E.GRAVITY_AT ? `−${(100 * (1 - E.baseRate(S) / E.rawRate(S))).toFixed(1)}% (raw ${fmt(E.rawRate(S))}/s)` : `none below ${fmt(E.GRAVITY_AT)}/s`],
+    ["Data gravity", E.rawRate(S).gt(E.GRAVITY_AT) ? `−${(100 * (1 - E.baseRate(S).div(E.rawRate(S)).toNumber())).toFixed(1)}% (raw ${fmt(E.rawRate(S))}/s)` : `none below ${fmt(E.GRAVITY_AT)}/s`],
     ["Best single INSERT", fmt(S.stats.bestClick)],
     ["Longest combo", `×${S.stats.bestCombo}`],
     ["Fastest re-platform", S.stats.fastestReplat ? fmtDuration(S.stats.fastestReplat / 1000) : "—"],
@@ -1244,7 +1258,7 @@ async function reconcileCloud() {
   try {
     const r = await sync.fetchCloud();
     if (!r.ok) return;
-    if (r.data.save && (r.data.save.everRows ?? r.data.save.allRows) > S.everRows + 1) offerCloud(r.data.save);
+    if (r.data.save && E.big(r.data.save.everRows ?? r.data.save.allRows ?? 0).gt(S.everRows.add(1))) offerCloud(r.data.save);
     else pushCloud({ force: true });
   } catch {
     /* offline; the autosync loop retries */
@@ -1762,7 +1776,7 @@ function feedbackContext() {
     acq: S.acq,
     contact: S.contact,
     bangs: S.bangs,
-    log10Rows: Math.round(Math.log10(S.everRows + 1) * 10) / 10,
+    log10Rows: Math.round(S.everRows.add(1).log10() * 10) / 10,
     playHours: Math.round((S.stats.onlineMs / 3.6e6) * 10) / 10,
   };
 }
@@ -1859,7 +1873,7 @@ function loop() {
   // A snapshot of where players are, every 10 minutes of actual play.
   if (Math.floor(S.stats.onlineMs / 600_000) > Math.floor(before / 600_000)) track("snapshot", S);
   lastLoopAt = now;
-  S.stats.bestRate = Math.max(S.stats.bestRate, E.baseRate(S));
+  S.stats.bestRate = E.big(S.stats.bestRate).max(E.baseRate(S));
   const result = E.checkChallenge(S, now);
   if (result?.failed) {
     audio.sfx("deny");
@@ -1923,7 +1937,7 @@ showPrefs();
 applyOffline();
 render(true);
 // Fresh saves only: someone syncing an old save onto a new device doesn't need the tour.
-if (!prefs.tourDone && S.everRows < 50) setTimeout(() => tour.start(), 600);
+if (!prefs.tourDone && S.everRows.lt(50)) setTimeout(() => tour.start(), 600);
 rotateTicker();
 shownRows = S.rows;
 animateCounter();
@@ -1950,7 +1964,7 @@ addEventListener("storage", (e) => {
   if (e.key !== SAVE_KEY || !e.newValue) return;
   try {
     const other = E.normalize(JSON.parse(e.newValue));
-    if (other.everRows > S.everRows + 1) {
+    if (E.big(other.everRows ?? 0).gt(S.everRows.add(1))) {
       S = other;
       structureKey = "";
       render(true);
