@@ -380,7 +380,7 @@ test("no-INSERT challenges start with a free starter kit the server accepts", ()
   assert.ok(reason === null || /faster than possible/.test(reason), reason);
 });
 
-test("Big Bang milestones keep a layer's purchases and completions, and the server accepts it", () => {
+test("Big Bang milestones make a layer permanent, currency included, and the server accepts it", () => {
   const s = E.newState(T0);
   E.earn(s, 1e30);
   s.bangs = 20;
@@ -393,11 +393,13 @@ test("Big Bang milestones keep a layer's purchases and completions, and the serv
   s.eqSpent = E.big(1);
   s.chalDone = ["legacy", "budget", "hiring", "takeover"];
   assert.ok(E.big(E.acquire(s, T0)).gte(1));
-  // 10 Big Bangs: Architecture and radar kept (free in the new company), completions kept;
-  // Insights themselves reset like always.
-  assert.equal(E.big(s.ins).toNumber(), 0);
+  // 10 Big Bangs: the re-platform layer is permanent. Insights carry over (and only new
+  // ones count as pending), purchases stay, completions stay.
+  assert.equal(E.big(s.ins).toNumber(), 50);
+  assert.equal(E.big(s.insCarry).toNumber(), 50);
+  assert.equal(E.big(E.pendingInsights(s)).toNumber(), 0);
+  assert.equal(E.layerEarned(s, "replat").toNumber(), 0);
   assert.deepEqual(s.radar, { defaults: 1 });
-  assert.deepEqual(s.freeIns.radar, { defaults: 1 });
   assert.ok(s.chalDone.includes("legacy"));
   const reason = E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 3600);
   assert.ok(reason === null || /faster than possible/.test(reason), reason);

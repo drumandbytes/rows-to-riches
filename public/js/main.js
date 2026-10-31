@@ -388,7 +388,9 @@ function renderShop(shop) {
 }
 
 // Tab dot / auto-prestige rule of thumb: the pending gain would at least double what you have.
-const wouldDouble = (l) => E.big(l.pending(S)).gte(E.big(l.have(S)).max(1));
+// Measured against what this company (civilization, universe) earned, so carried-over
+// currency from the Big Bang milestones doesn't stop prestige from paying off.
+const wouldDouble = (l) => E.big(l.pending(S)).gte((l.id === "bang" ? E.big(l.have(S)) : E.layerEarned(S, l.id)).max(1));
 
 /** Each source's share of production (plain numbers that sum to 1), for the scene. */
 function sourceShares(gm) {
@@ -579,10 +581,10 @@ function autoPrestige() {
   if (E.bangMilestone(S, "autobang") && S.settings.autoBang && E.canBigBang(S) && E.gateOpen(S, "bang") && E.pendingAxioms(S) >= 1) {
     doPrestige(LAYER_BY_ID.bang, true);
   }
-  if (E.boardLevel(S, "autoreplat") && E.pendingInsights(S).gte(E.big(3).max(S.ins.mul(S.settings.autoReplatAt - 1)))) {
+  if (E.boardLevel(S, "autoreplat") && E.pendingInsights(S).gte(E.big(3).max(E.layerEarned(S, "replat").mul(S.settings.autoReplatAt - 1)))) {
     doPrestige(LAYER_BY_ID.replat, true);
   }
-  if (E.xenoLevel(S, "hive") && E.gateOpen(S, "acq") && E.pendingEquity(S).gte(S.eq.max(1))) {
+  if (E.xenoLevel(S, "hive") && E.gateOpen(S, "acq") && E.pendingEquity(S).gte(E.layerEarned(S, "acq").max(1))) {
     doPrestige(LAYER_BY_ID.acq);
   }
 }

@@ -269,8 +269,6 @@ export const TUNING = {
   // Completed challenges each prestige needs from the layer below (0 in sims comparing curves).
   gateNeed: 3,
 };
-/** Full value up to `cap`, then cap × (x / cap) ** power: strongly diminished past it. */
-export const softcap = (x, cap, power) => (x <= cap ? x : cap * (x / cap) ** power);
 const bigUnsoftcap = (y, cap, power) => (big(y).lte(cap) ? big(y) : big(cap).mul(big(y).div(cap).pow(1 / power)));
 
 export const BOARD = [
@@ -506,7 +504,8 @@ const COUNT_ACH = [
   ["replat", "Re-platform {n} times.", [[1, "Rewrite It"], [5, "Rewrite It Again"], [25, "Serial Re-platformer"], [100, "Framework of the Week"]]],
   ["acq", "Get acquired {n} times.", [[1, "Acqui-hired"], [3, "Serial Founder"], [10, "Holding Company"], [25, "Conglomerate"]]],
   ["contact", "Make First Contact {n} times.", [[1, "We Are Not Alone"], [3, "Frequent Flyer"], [10, "Galactic Liaison"]]],
-  ["bangs", "Start {n} new universes.", [[1, "Let There Be Rows"], [3, "Cosmic Recurrence"], [10, "Universe Factory"]]],
+  ["bangs", "Start {n} new universes.", [[1, "Let There Be Rows"], [3, "Cosmic Recurrence"], [10, "Universe Factory"], [50, "Multiverse Operator"], [100, "Big Bang as a Service"], [250, "Cron Job for Creation"]]],
+  ["axioms", "Hold {n} Axioms.", [[10, "Self-Evident"], [100, "Foundations of Mathematics"], [1000, "Gödel Was Right"], [10000, "Axiom of Choice Paralysis"]]],
 ];
 for (const [key, desc, list] of COUNT_ACH) {
   for (const [n, name] of list) {
@@ -528,6 +527,9 @@ const STAT_ACH = [
   ["no_hands", "Look Ma, No Hands", "Reach 1e9 rows in a run without clicking INSERT.", (s) => s.runRows.gte(1e9) && s.stats.runClicks === 0],
   ["online_24h", "Touch Grass", "Play for 24 hours in total.", (s) => s.stats.onlineMs >= 24 * 3600e3],
   ["rate_1e30", "Firehose", "Reach 1e30 rows/s.", (s) => s.stats.bestRate.gte(1e30)],
+  ["rate_1e100", "Googol per Second", "Reach 1e100 rows/s.", (s) => s.stats.bestRate.gte(1e100)],
+  ["rate_1e1000", "Throughput Unbound", "Reach 1e1,000 rows/s.", (s) => s.stats.bestRate.gte("1e1000")],
+  ["rate_1e1e6", "Bandwidth Is a Social Construct", "Reach 1e1,000,000 rows/s.", (s) => s.stats.bestRate.gte("1e1000000")],
   ["rescue_1", "Backup Hero", "Restore a table the intern dropped.", (s) => s.stats.rescues >= 1],
   ["rescue_10", "Disaster Recovery Plan", "Restore 10 dropped tables. Maybe revoke the intern's access.", (s) => s.stats.rescues >= 10],
   ["phish_5", "Security Champion", "Pass 5 phishing tests by not clicking.", (s) => s.stats.phishPassed >= 5],
@@ -574,7 +576,7 @@ for (const [id, name, desc, derived] of SECRETS) {
 export const ACH_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
 
 // Big (Decimal) amounts; saves store them as strings.
-const COUNTERS = ["rows", "runRows", "coRows", "civRows", "allRows", "everRows", "ins", "insSpent", "eq", "eqSpent", "eqFree", "xeno", "xenoSpent", "insCarry", "eqCarry", "xenoFree"];
+const COUNTERS = ["rows", "runRows", "coRows", "civRows", "allRows", "everRows", "ins", "insSpent", "eq", "eqSpent", "eqFree", "xeno", "xenoSpent", "insCarry", "eqCarry", "xenoCarry", "xenoFree"];
 const BIG_STATS = ["bestRate", "bestClick"];
 const INT_COUNTERS = ["cols", "clicks", "incidents", "replat", "acq", "contact", "bangs", "axioms", "completions"];
 
@@ -594,7 +596,7 @@ export function newState(now = Date.now()) {
     inbox: [],
     company: "", secrets: [],
     // Carried over for free by retention rewards; the server subtracts these from "spent".
-    kept: { upg: [], cols: 0, prod: [] }, insCarry: ZERO, eqCarry: ZERO, xenoFree: ZERO,
+    kept: { upg: [], cols: 0, prod: [] }, insCarry: ZERO, eqCarry: ZERO, xenoCarry: ZERO, xenoFree: ZERO,
     stats: { upgBought: 0, colsBought: 0, sold: 0, bestSell: 0, momentumSecs: 0, rescues: 0, phishPassed: 0, okrs: 0, quarters: 0, requests: 0, meetings: 0, maxMomentum: 0, bestRate: ZERO, bestClick: ZERO, bestCombo: 0, fastestReplat: 0, fastestAcq: 0, longestAway: 0, onlineMs: 0, runClicks: 0, companyStartedAt: now, firstCompletionMs: 0 },
     ach: [], clicks: 0, incidents: 0, replat: 0, acq: 0, contact: 0, bangs: 0, completions: 0,
     // playthroughStartedAt: since the last Catalog Everything (or the start); firstCompletionMs
@@ -664,8 +666,10 @@ export function normalize(raw, now = Date.now()) {
     cols: s.chalDone.includes("keepcols") ? Math.min(Math.floor(num(k.cols)), s.cols) : 0,
     prod: s.chalDone.includes("keepsrc") ? PRODUCERS.map((_, i) => Math.min(Math.floor(num(k.prod?.[i])), s.prod[i])) : [],
   };
-  if (!s.chalDone.includes("keepins")) s.insCarry = ZERO;
-  if (!s.chalDone.includes("keepeq")) s.eqCarry = ZERO;
+  // Carries exist only with the reward or Big Bang milestone that creates them.
+  if (!s.chalDone.includes("keepins") && s.bangs < 10) s.insCarry = ZERO;
+  if (!s.chalDone.includes("keepeq") && s.bangs < 20) s.eqCarry = ZERO;
+  if (s.bangs < 50) s.xenoCarry = ZERO;
   s.buffs = Array.isArray(s.buffs) ? s.buffs.filter((b) => b && b.until > now && Number.isFinite(b.mult)) : [];
   for (const k of ["startedAt", "runStartedAt", "lastTick"]) s[k] = Number.isFinite(s[k]) ? s[k] : now;
   s.settings.autoReplatAt = Math.max(1.1, Number(s.settings.autoReplatAt) || 2);
@@ -1004,15 +1008,15 @@ export function buyLevel(s, shop, id) {
   return true;
 }
 
-// Big Bang milestones, by Big Bangs done. 10/20/50 make a layer's purchases and challenge
-// completions permanent. Its currency still resets: it's the fuel each prestige refills,
-// and a carried-over pile would make "prestige when it doubles" never fire again. Past 50
-// the milestones are about climbing faster.
+// Big Bang milestones, by Big Bangs done. 10/20/50 make a whole layer permanent: its
+// purchases, challenge completions and currency never reset again. The currency becomes a
+// carry, and "would it double" (layerEarned) counts only what was earned since, so prestige
+// keeps paying off. Past 50 the milestones are about climbing faster.
 export const BANG_MILESTONES = [
   { at: 1, id: "xenobot", text: "Xenotech buys itself, cheapest first (toggle in Settings → Game)." },
-  { at: 10, id: "keepreplat", text: "Architecture, the Tech Radar and re-platform challenge completions never reset again." },
-  { at: 20, id: "keepacq", text: "The Board and acquisition challenge completions never reset again." },
-  { at: 50, id: "keepcontact", text: "Xenotech and First Contact challenge completions never reset again. Catalog Everything unlocks." },
+  { at: 10, id: "keepreplat", text: "The re-platform layer is permanent: Insights, Architecture, the Tech Radar and re-platform challenges never reset again." },
+  { at: 20, id: "keepacq", text: "The acquisition layer is permanent: Equity, the Board and acquisition challenges never reset again." },
+  { at: 50, id: "keepcontact", text: "The First Contact layer is permanent: Xenobytes, Xenotech and their challenges never reset again. Catalog Everything unlocks." },
   { at: 75, id: "axioms2", text: "Axioms per Big Bang ×2." },
   { at: 100, id: "autobang", text: "Big Bangs happen by themselves once the universe has run its course (toggle in Settings → Game)." },
   { at: 150, id: "speedsquared", text: "Challenge speed bonuses count twice." },
@@ -1070,7 +1074,13 @@ export const nextEquityAt = (s) => bigUnsoftcap(equityFor(s).add(1), TUNING.equi
 
 const xenoMult = (s) => axiomBoost(s).mul(won(s, "translation") ? 3 : 1);
 const xenoFor = (s) => s.allRows.div(XENO_DIVISOR).pow(0.2).mul(xenoMult(s)).floor();
-export const pendingXeno = (s) => (rndComplete(s) ? bigMax(0, xenoFor(s).sub(s.xeno)) : ZERO);
+export const pendingXeno = (s) => (rndComplete(s) ? bigMax(0, xenoFor(s).add(s.xenoCarry).sub(s.xeno)) : ZERO);
+/** Currency earned since the carry was set (the whole balance before any milestone): what
+ *  "would this prestige at least double it" compares against. */
+export const layerEarned = (s, layer) => {
+  const [have, carry] = { replat: ["ins", "insCarry"], acq: ["eq", "eqCarry"], contact: ["xeno", "xenoCarry"] }[layer] ?? [];
+  return have ? s[have].sub(s[carry]) : ZERO;
+};
 export const nextXenoAt = (s) => xenoFor(s).add(1).div(xenoMult(s)).pow(5).mul(XENO_DIVISOR);
 
 // ---- the end: Catalog Everything -------------------------------------------------
@@ -1126,6 +1136,11 @@ function resetRun(s, now) {
 
 function resetCompany(s, now, { keepArch = false, keepRadar = false } = {}) {
   s.coRows = ZERO;
+  // Permanent re-platform layer (10 Big Bangs): Insights carry over, purchases stay.
+  if (permanent(s, "replat")) {
+    s.insCarry = s.ins;
+    return resetRun(s, now);
+  }
   s.insCarry = won(s, "keepins") ? s.ins.mul(0.1).floor() : ZERO;
   s.ins = s.insCarry;
   s.insSpent = ZERO;
@@ -1142,6 +1157,11 @@ function resetCompany(s, now, { keepArch = false, keepRadar = false } = {}) {
 
 function resetCivilization(s, now, keepBoard = false) {
   s.civRows = ZERO;
+  // Permanent acquisition layer (20 Big Bangs): Equity carries over, the Board stays.
+  if (permanent(s, "acq")) {
+    s.eqCarry = s.eq;
+    return resetCompany(s, now, { keepArch: true, keepRadar: true });
+  }
   s.eqCarry = won(s, "keepeq") ? s.eq.mul(0.1).floor() : ZERO;
   s.eq = s.eqCarry;
   s.eqSpent = ZERO;
@@ -1226,10 +1246,15 @@ export function bigBang(s, now = Date.now()) {
   s.bangs += 1;
   s.finale = false;
   s.allRows = ZERO;
-  s.xeno = ZERO;
-  s.xenoSpent = ZERO;
-  if (!keepXeno) s.xeno_tech = {};
-  s.xenoFree = keepXeno ? spentOnXeno(s) : ZERO;
+  // Permanent First Contact layer (50 Big Bangs): Xenobytes carry over, Xenotech stays.
+  if (permanent(s, "contact")) s.xenoCarry = s.xeno;
+  else {
+    s.xeno = ZERO;
+    s.xenoSpent = ZERO;
+    s.xenoCarry = ZERO;
+    if (!keepXeno) s.xeno_tech = {};
+    s.xenoFree = keepXeno ? spentOnXeno(s) : ZERO;
+  }
   if (!keepBoard) s.board = {};
   resetCivilization(s, now, keepBoard);
   s.settings.env = undefined;
@@ -1359,7 +1384,7 @@ export function implausible(prev, next, elapsedSecs) {
   if (over(spentOnInsights(next), next.insSpent) || over(next.insSpent, next.ins)) return "insight spending does not add up";
   if (over(next.eq, equityFor(next).add(next.eqCarry))) return "too much equity";
   if (over(spentOnEquity(next).sub(next.eqFree), next.eqSpent) || over(next.eqSpent, next.eq)) return "equity spending does not add up";
-  if (over(next.xeno, xenoFor(next))) return "too many xenobytes";
+  if (over(next.xeno, xenoFor(next).add(next.xenoCarry))) return "too many xenobytes";
   if (over(spentOnXeno(next).sub(next.xenoFree), next.xenoSpent) || over(next.xenoSpent, next.xeno)) return "xenobyte spending does not add up";
   // Per Big Bang at most what the universe's rows allow, ×4 from the Axiom milestones.
   if (next.axioms > next.bangs * axiomsFor(next.everRows) * 4 + 1) return "too many axioms";

@@ -100,8 +100,8 @@ function probeEra(layer) {
 
 function maybeStartChallenge() {
   const blocked = [
-    ["acq", E.pendingEquity(s).gte(E.big(s.eq).max(1))],
-    ["contact", E.pendingXeno(s).gte(E.big(s.xeno).max(1))],
+    ["acq", E.pendingEquity(s).gte(E.layerEarned(s, "acq").max(1))],
+    ["contact", E.pendingXeno(s).gte(E.layerEarned(s, "contact").max(1))],
     ["bang", E.canBigBang(s)],
   ].find(([layer, ready]) => ready && !E.gateOpen(s, layer));
   if (process.env.PROBE && blocked && !probedEras.has(blocked[0])) {
@@ -151,13 +151,13 @@ while (now < hours * 3.6e6) {
   } else maybeStartChallenge();
   if (s.chal) continue;
   const pend = E.pendingInsights(s);
-  if (pend.gte(E.big(3).max(s.ins.mul(s.settings.autoReplatAt - 1)))) {
+  if (pend.gte(E.big(3).max(E.layerEarned(s, "replat").mul(s.settings.autoReplatAt - 1)))) {
     E.replatform(s, now);
     spendInsights();
     if (s.replat <= 2 || (process.env.VERBOSE && s.replat % 10 === 0)) log(`re-platform #${s.replat}: +${fmt(pend)} → ${fmt(s.ins)} 💡  radar=${JSON.stringify(s.radar)}`);
   }
   const peq = E.pendingEquity(s);
-  if (peq.gte(s.eq.max(1)) && E.gateOpen(s, "acq")) {
+  if (peq.gte(E.layerEarned(s, "acq").max(1)) && E.gateOpen(s, "acq")) {
     E.acquire(s, now);
     gaveUp.clear();
     spendEquity();
@@ -166,7 +166,7 @@ while (now < hours * 3.6e6) {
     log(`ACQUISITION #${s.acq}: +${fmt(peq)} → ${fmt(s.eq)} 📈  board=${JSON.stringify(s.board)}`);
   }
   const px = E.pendingXeno(s);
-  if (px.gte(s.xeno.max(1)) && E.gateOpen(s, "contact")) {
+  if (px.gte(E.layerEarned(s, "contact").max(1)) && E.gateOpen(s, "contact")) {
     E.firstContact(s, now);
     gaveUp.clear();
     spendXeno();

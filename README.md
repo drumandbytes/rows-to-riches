@@ -11,6 +11,7 @@ The story starts reasonable and gets steadily sillier: a CSV on localhost, then 
 | System | What it does |
 | --- | --- |
 | **Walkthrough** | A 9-step spotlight tour on a fresh save (some steps wait for you to do the thing); replay it from Settings → Help. |
+| **Numbers** | No ceiling: rows, rates and currencies use break_infinity.js Decimals (up to 1e9e15), and all ten notations format them, e.g. `3.20e9,500` or `e1.50e12`. |
 | **INSERT** | The click. Fast clicking builds a combo (up to +100%). Upgrades turn it from +1 row into a share of your rows/s, and the button's SQL grows up with them. |
 | **Data Sources** | 26 sources, from Spreadsheet Intern to Everything Is Data. Each one stands on the pipeline stage and sends packets to the storage sink. Cards show each source's share of output; sell mode sells bought units back for half. |
 | **Upgrades** | 9 ×2 upgrades per source, 25 synergies (each source boosts the next), plus click and global upgrades: about 280 in total. |
