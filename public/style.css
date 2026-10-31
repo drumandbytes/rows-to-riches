@@ -257,6 +257,7 @@ a { color: var(--accent); }
 
 .footprint { font: 12px var(--mono); color: var(--muted); }
 .footprint b { color: var(--fg); }
+.footprint .fp-flavor { margin-top: 4px; font-size: 11px; opacity: 0.75; }
 .footprint .bar { height: 8px; background: rgba(255, 255, 255, 0.07); border-radius: 4px; overflow: hidden; margin-top: 5px; }
 .footprint .bar i {
   display: block;

@@ -350,23 +350,45 @@ const axiomsFor = (allRows) => Math.max(1, Math.floor(Math.log10(Math.max(1, all
 // Environments: cosmetic eras. `at` is universe rows; `needs` gates the late, absurd ones
 // on actual progress so the scenery never runs ahead of the story.
 export const ENVIRONMENTS = [
+  // Thresholds follow playtime, not fixed 1000× steps: rows explode right before the first
+  // acquisition (about 1e12 → 1e23 in 15 minutes of optimal play), then crawl for a day.
+  // tools/sim.js prints when each one is reached. Ids are stored in saves (env_ achievements):
+  // never rename one, only add.
   { at: 0, id: "localhost", name: "localhost", hue: 140, scene: "room", desc: "A laptop, a CSV, a dream." },
   { at: 1e5, id: "dev", name: "dev", hue: 185, scene: "office", desc: "There is now a second laptop." },
-  { at: 1e8, id: "staging", name: "staging", hue: 38, scene: "office", desc: "Like prod, but nobody looks at it." },
-  { at: 1e11, id: "prod", name: "prod", hue: 4, scene: "servers", desc: "Careful. People are watching." },
-  { at: 1e14, id: "multiregion", name: "multi-region", hue: 210, scene: "servers", desc: "Your data never sleeps, in three timezones." },
-  { at: 1e17, id: "quantum", name: "quantum", hue: 255, scene: "quantum", desc: "Your data is now both there and not there. Auditors are confused." },
-  { at: 1e20, id: "planetary", name: "planetary", hue: 165, scene: "planet", desc: "Earth is one big partition key." },
-  { at: 1e23, id: "orbital", name: "orbital", hue: 45, scene: "space", desc: "Low Earth orbit is mostly your racks now." },
-  { at: 1e26, id: "interstellar", name: "interstellar", hue: 220, scene: "space", desc: "The nearest star has been asked to sign a DPA." },
+  { at: 1e7, id: "staging", name: "staging", hue: 38, scene: "office", desc: "Like prod, but nobody looks at it." },
+  { at: 1e9, id: "prod", name: "prod", hue: 4, scene: "servers", desc: "Careful. People are watching." },
+  { at: 1e11, id: "hybrid", name: "hybrid cloud", hue: 280, scene: "servers", desc: "Half on-prem, half in the cloud, all of it in a spreadsheet." },
+  { at: 1e13, id: "multiregion", name: "multi-region", hue: 210, scene: "servers", desc: "Your data never sleeps, in three timezones." },
+  { at: 1e24, id: "edge", name: "edge", hue: 22, scene: "servers", desc: "Your data now lives in vending machines and smart fridges." },
+  { at: 1e25, id: "quantum", name: "quantum", hue: 255, scene: "quantum", desc: "Your data is now both there and not there. Auditors are confused." },
+  { at: 1e26, id: "lunar", name: "lunar", hue: 200, scene: "space", desc: "The Moon: excellent cooling, terrible latency." },
+  { at: 1e28, id: "planetary", name: "planetary", hue: 165, scene: "planet", desc: "Earth is one big partition key." },
+  { at: 1e30, id: "orbital", name: "orbital", hue: 45, scene: "space", desc: "Low Earth orbit is mostly your racks now." },
+  { at: 1e33, id: "dyson", name: "dyson swarm", hue: 30, scene: "space", desc: "The Sun is now a power supply with a support contract." },
+  { at: 1e36, id: "interstellar", name: "interstellar", hue: 220, scene: "space", desc: "The nearest star has been asked to sign a DPA." },
   { at: 0, needs: (s) => s.contact > 0, id: "contact", name: "first contact", hue: 110, scene: "alien", desc: "They come in peace. They want your schema." },
-  { at: 1e35, needs: (s) => s.contact > 0, id: "multiverse", name: "multiverse", hue: 300, scene: "alien", desc: "Every reality has a staging environment. Yours is prod." },
+  { at: 1e43, needs: (s) => s.contact > 0, id: "galactic", name: "galactic", hue: 270, scene: "alien", desc: "The galaxy runs on your schema. Andromeda wants a migration plan." },
+  { at: 1e48, needs: (s) => s.contact > 0, id: "multiverse", name: "multiverse", hue: 300, scene: "alien", desc: "Every reality has a staging environment. Yours is prod." },
   { at: 0, needs: (s) => s.prod[FINAL_PRODUCER] > 0, id: "everything", name: "everything", hue: 330, scene: "everything", desc: "Everything is data now." },
 ];
+const reachedEnv = (s, e) => s.allRows >= e.at && (!e.needs || e.needs(s));
 export function environmentFor(s) {
   let env = ENVIRONMENTS[0];
-  for (const e of ENVIRONMENTS) if (s.allRows >= e.at && (!e.needs || e.needs(s))) env = e;
+  for (const e of ENVIRONMENTS) if (reachedEnv(s, e)) env = e;
   return env;
+}
+
+/** The next environment on the ladder and how far along it you are (log scale), or null at
+ *  the top. `rowsLeft` is null when rows alone won't get you there (it needs a prestige). */
+export function nextEnvironment(s) {
+  const cur = environmentFor(s);
+  const next = ENVIRONMENTS.slice(ENVIRONMENTS.indexOf(cur) + 1).find((e) => !reachedEnv(s, e));
+  if (!next) return null;
+  if (next.needs && !next.needs(s)) return { env: next, rowsLeft: null, progress: 0 };
+  const from = Math.max(1, cur.at);
+  const progress = Math.min(1, Math.max(0, Math.log10(Math.max(1, s.allRows) / from) / Math.log10(next.at / from)));
+  return { env: next, rowsLeft: Math.max(0, next.at - s.allRows), progress };
 }
 
 // Storage footprint: universe rows expressed in the hierarchy rows → tables → … → everything.
@@ -428,7 +450,7 @@ for (const [n, name] of [[1, "Challenge Accepted"], [5, "Overachiever"], [13, "D
   ACHIEVEMENTS.push({ id: `chal_${n}`, name, desc: `Complete ${n} challenges.`, test: (s) => s.chalWins >= n });
 }
 for (const e of ENVIRONMENTS.slice(1)) {
-  ACHIEVEMENTS.push({ id: `env_${e.id}`, name: `Welcome to ${e.name}`, desc: `Reach the ${e.name} environment.`, test: (s) => environmentFor(s).id === e.id });
+  ACHIEVEMENTS.push({ id: `env_${e.id}`, name: `Welcome to ${e.name}`, desc: `Reach the ${e.name} environment.`, test: (s) => reachedEnv(s, e) });
 }
 const STAT_ACH = [
   ["combo_20", "Flow State", "Hit a ×20 INSERT combo.", (s) => s.stats.bestCombo >= 20],

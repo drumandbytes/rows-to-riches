@@ -707,7 +707,7 @@ function render(force = false) {
   $("spark-wrap").hidden = !(S.prod[2] > 0 || S.arch.length > 0);
   document.title = `${fmt(S.rows)} rows — Rows to Riches`;
   renderBuffs(now);
-  renderFootprint(fp);
+  renderFootprint(fp, r);
   renderChallengeBanner();
   active.render();
   const m = S.momentum * E.momentumCap(S);
@@ -784,12 +784,24 @@ function footprint() {
   return { idx, progress };
 }
 
-function renderFootprint({ idx, progress }) {
+// The bar tracks the next environment (its name stays a surprise); the storage footprint
+// is flavour underneath. The ETA uses the current rate, so it shrinks as you grow.
+function renderFootprint({ idx }, rate) {
   const [name, size] = E.STORAGE_UNITS[idx];
-  const next = E.STORAGE_UNITS[idx + 1];
   const amount = S.allRows / size;
   const plural = amount >= 2 ? (name.endsWith("y") ? name.slice(0, -1) + "ies" : name + "s") : name;
-  const html = `storage footprint: <b>${fmt(amount)} ${plural}</b>${next ? ` → next: ${next[0]}` : ""}<div class="bar"><i style="width:${(progress * 100).toFixed(1)}%"></i></div>`;
+  const next = E.nextEnvironment(S);
+  let head;
+  let progress = 1;
+  if (!next) head = `environment: <b>${esc(E.environmentFor(S).name)}</b> · nowhere left to go`;
+  else if (next.rowsLeft === null) head = `next environment: <b>???</b> · rows alone won't get you there`;
+  else {
+    progress = next.progress;
+    const eta = rate > 0 ? ` · ~${fmtDuration(next.rowsLeft / rate)} at this rate` : "";
+    // Rows left rather than a percentage: the bar is log-scale, so "68%" can still mean hours.
+    head = `next environment: <b>???</b> · ${fmt(next.rowsLeft)} rows to go${eta}`;
+  }
+  const html = `${head}<div class="bar"><i style="width:${(progress * 100).toFixed(1)}%"></i></div><div class="fp-flavor">storage footprint: ${fmt(amount)} ${plural}</div>`;
   if ($("footprint").dataset.html !== html) {
     $("footprint").dataset.html = html;
     $("footprint").innerHTML = html;
