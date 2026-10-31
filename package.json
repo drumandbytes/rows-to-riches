@@ -8,8 +8,7 @@
     "test": "node --test && node tools/music-audit.js",
     "db:migrate:local": "wrangler d1 migrations apply rows-to-riches --local",
     "db:migrate:remote": "wrangler d1 migrations apply rows-to-riches --remote",
-    "deploy": "wrangler deploy",
-    "predeploy": "node tools/bump-version.js"
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "wrangler": "^4.40.0"
