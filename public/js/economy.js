@@ -783,19 +783,21 @@ export function alienTypeFor(s, n) {
 export const insightBonus = (s) => bigSoftcap(s.ins.pow(TUNING.insightBonusPower), TUNING.insightSoftcap, TUNING.insightSoftPower).mul(insightPct(s));
 export const insightPct = (s) => (rule(s).noInsights ? 0 : (archOn(s, "semantic") ? 0.04 : 0.03) * (won(s, "monorepo") ? 2 : 1));
 
-export function producerMultiplier(s, i) {
+/** Every source's own multiplier (×2 tiers, synergies, rewards) in one pass over the upgrades. */
+export function producerMultipliers(s) {
   const step = archOn(s, "kappa") ? 2.25 : 2;
-  let m = 1;
+  const syn = won(s, "zerotrust") ? 0.03 : 0.01;
+  const m = PRODUCERS.map(() => 1);
   for (const id of s.upg) {
     const u = UPGRADE_BY_ID[id];
-    if (u.target !== i) continue;
-    if (u.kind === "producer") m *= step;
-    else if (u.kind === "synergy") m *= 1 + (won(s, "zerotrust") ? 0.03 : 0.01) * s.prod[u.from];
+    if (u.kind === "producer") m[u.target] *= step;
+    else if (u.kind === "synergy") m[u.target] *= 1 + syn * s.prod[u.from];
   }
-  if (won(s, "busfactor") && i >= BASE_PRODUCERS && i < BASE_PRODUCERS + RND_PRODUCERS) m *= 10;
-  if (won(s, "heatdeath") && i >= BASE_PRODUCERS + RND_PRODUCERS) m *= 1000;
+  if (won(s, "busfactor")) for (let i = BASE_PRODUCERS; i < BASE_PRODUCERS + RND_PRODUCERS; i++) m[i] *= 10;
+  if (won(s, "heatdeath")) for (let i = BASE_PRODUCERS + RND_PRODUCERS; i < PRODUCERS.length; i++) m[i] *= 1000;
   return m;
 }
+export const producerMultiplier = (s, i) => producerMultipliers(s)[i];
 
 export const equityProdMult = (s) => bigSoftcap(s.eq.add(1).pow(TUNING.equityProdPower), TUNING.equityMultCap, TUNING.multSoftPower);
 export const xenoProdMult = (s) => bigSoftcap(s.xeno.add(1).pow(0.25), TUNING.xenoMultCap, TUNING.multSoftPower);
@@ -831,7 +833,7 @@ export function globalMultiplier(s) {
 }
 
 /** Rows/s for one producer type, before temporary buffs. */
-export const producerRate = (s, i, gm = globalMultiplier(s)) => big(gm).mul(PRODUCERS[i].rate * s.prod[i] * producerMultiplier(s, i));
+export const producerRate = (s, i, gm = globalMultiplier(s), pm = producerMultipliers(s)) => big(gm).mul(PRODUCERS[i].rate * s.prod[i] * pm[i]);
 
 /** Rows/s before temporary buffs. */
 // Data Gravity: past GRAVITY_AT rows/s, production counts with diminishing returns (a
@@ -844,9 +846,11 @@ export const gravity = (r) => bigSoftcap(r, GRAVITY_AT, GRAVITY_POWER);
 /** Production before softcap, for display ("raw" vs effective). */
 export function rawRate(s) {
   const gm = globalMultiplier(s);
-  let r = ZERO;
-  for (let i = 0; i < PRODUCERS.length; i++) if (s.prod[i]) r = r.add(producerRate(s, i, gm));
-  return r;
+  const pm = producerMultipliers(s);
+  // Sum the plain-number parts first; one Decimal multiply at the end.
+  let r = 0;
+  for (let i = 0; i < PRODUCERS.length; i++) if (s.prod[i]) r += PRODUCERS[i].rate * s.prod[i] * pm[i];
+  return big(gm).mul(r);
 }
 
 export const baseRate = (s) => bigMin(gravity(rawRate(s)), MAX_ROWS);
