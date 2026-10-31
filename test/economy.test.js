@@ -379,3 +379,51 @@ test("no-INSERT challenges start with a free starter kit the server accepts", ()
   const reason = E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 3600);
   assert.ok(reason === null || /faster than possible/.test(reason), reason);
 });
+
+test("Big Bang milestones keep a layer's purchases and completions, and the server accepts it", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e30);
+  s.bangs = 20;
+  s.ins = 50;
+  s.insCarry = 0;
+  s.radar = { defaults: 1 };
+  s.insSpent = 2;
+  s.eq = 7;
+  s.board = { synergy: 1 };
+  s.eqSpent = 1;
+  s.chalDone = ["legacy", "budget", "hiring", "takeover"];
+  assert.ok(E.acquire(s, T0) >= 1);
+  // 10 Big Bangs: Architecture and radar kept (free in the new company), completions kept;
+  // Insights themselves reset like always.
+  assert.equal(s.ins, 0);
+  assert.deepEqual(s.radar, { defaults: 1 });
+  assert.deepEqual(s.freeIns.radar, { defaults: 1 });
+  assert.ok(s.chalDone.includes("legacy"));
+  const reason = E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 3600);
+  assert.ok(reason === null || /faster than possible/.test(reason), reason);
+});
+
+test("Catalog Everything wipes the playthrough for a stronger New Game+", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e40);
+  s.bangs = 49;
+  assert.ok(!E.canCatalog(s));
+  s.bangs = 50;
+  s.axioms = 120;
+  s.ach = ["rows_3"];
+  s.company = "Acme";
+  assert.equal(E.markCompletion(s, T0 + 3600e3), 3600e3);
+  assert.equal(s.stats.firstCompletionMs, 3600e3);
+  assert.equal(E.markCompletion(s, T0 + 7200e3), 0); // once per playthrough
+  const before = E.globalMultiplier({ ...E.newState(T0), ach: ["rows_3"] });
+  assert.ok(E.catalogEverything(s, T0 + 7200e3));
+  assert.equal(s.completions, 1);
+  assert.equal(s.bangs, 0);
+  assert.equal(s.axioms, 0);
+  assert.equal(s.rows, 0);
+  assert.deepEqual(s.ach, ["rows_3"]);
+  assert.equal(s.company, "Acme");
+  assert.equal(s.stats.firstCompletionMs, 3600e3);
+  assert.equal(E.globalMultiplier(s) / before, E.NG_PROD);
+  assert.ok(E.ACH_BY_ID.catalog_1.test(s));
+});

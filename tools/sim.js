@@ -183,6 +183,7 @@ while (now < hours * 3.6e6) {
   // Bang an hour after the finale, to let the axiom count grow a little.
   if (s.loggedFinale && now - s.loggedFinale > 3.6e6) {
     const ax = E.bigBang(s, now);
+    gaveUp.clear();
     s.loggedFinale = 0;
     spendInsights();
     milestones.bang.push(now / 3.6e6);
