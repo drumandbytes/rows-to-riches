@@ -15,18 +15,18 @@ test("every producer has a full set of upgrade names", () => {
 
 test("bulk producer cost equals the sum of single purchases", () => {
   const s = E.newState(T0);
-  let sum = 0;
+  let sum = E.big(0);
   for (let k = 0; k < 10; k++) {
-    sum += E.producerCost(s, 2, 1);
+    sum = sum.add(E.producerCost(s, 2, 1));
     s.prod[2]++;
   }
   s.prod[2] = 0;
-  assert.ok(Math.abs(E.producerCost(s, 2, 10) - sum) / sum < 1e-9);
+  assert.ok(E.producerCost(s, 2, 10).sub(sum).abs().div(sum).lt(1e-9));
 });
 
 test("maxAffordable never overspends", () => {
   const s = E.newState(T0);
-  s.rows = 123456;
+  s.rows = E.big(123456);
   const n = E.maxAffordable(s, 0);
   assert.ok(E.producerCost(s, 0, n) <= s.rows);
   assert.ok(E.producerCost(s, 0, n + 1) > s.rows);
@@ -47,8 +47,8 @@ test("replatform grants insights and keeps architecture", () => {
   s.arch = ["medallion"];
   s.radar = { golden: 2 };
   const gain = E.replatform(s, T0);
-  assert.equal(gain, 100);
-  assert.equal(s.rows, 0);
+  assert.equal(E.big(gain).toNumber(), 100);
+  assert.equal(E.big(s.rows).toNumber(), 0);
   assert.deepEqual(s.prod.slice(0, 3), [20, 10, 0]);
   assert.deepEqual(s.arch, ["medallion"]);
 });
@@ -56,39 +56,39 @@ test("replatform grants insights and keeps architecture", () => {
 test("each layer resets the ones below it and keeps its own currency", () => {
   const s = E.newState(T0);
   E.earn(s, 1e40); // past the Xenobyte threshold (1e36)
-  s.ins = 5;
+  s.ins = E.big(5);
   s.arch = ["medallion"];
-  assert.equal(E.acquire(s, T0), 0); // gated: needs 3 completed re-platform challenges
+  assert.equal(E.big(E.acquire(s, T0)).toNumber(), 0); // gated: needs 3 completed re-platform challenges
   s.chalDone = ["legacy", "budget", "hiring"];
-  assert.ok(E.acquire(s, T0) >= 1);
-  assert.equal(s.ins, 0);
+  assert.ok(E.big(E.acquire(s, T0)).gte(1));
+  assert.equal(E.big(s.ins).toNumber(), 0);
   assert.deepEqual(s.arch, []);
-  assert.equal(s.coRows, 0);
+  assert.equal(E.big(s.coRows).toNumber(), 0);
   assert.ok(s.civRows > 0);
   const eq = s.eq;
-  assert.equal(E.firstContact(s, T0), 0); // needs the complete R&D Lab
+  assert.equal(E.big(E.firstContact(s, T0)).toNumber(), 0); // needs the complete R&D Lab
   s.board.rnd = E.RND_PRODUCERS;
-  assert.equal(E.firstContact(s, T0), 0); // and 3 completed acquisition challenges
+  assert.equal(E.big(E.firstContact(s, T0)).toNumber(), 0); // and 3 completed acquisition challenges
   s.chalDone = ["takeover", "lockin", "zerotrust"];
-  assert.ok(E.firstContact(s, T0) >= 1);
-  assert.equal(s.eq, 0);
+  assert.ok(E.big(E.firstContact(s, T0)).gte(1));
+  assert.equal(E.big(s.eq).toNumber(), 0);
   assert.ok(eq > 0 && s.xeno >= 1 && s.contact === 1);
   s.finale = true;
   s.chalDone = ["translation", "darkforest", "heatdeath"];
   assert.ok(E.bigBang(s, T0) >= 1);
-  assert.equal(s.allRows, 0);
-  assert.equal(s.xeno, 0);
+  assert.equal(E.big(s.allRows).toNumber(), 0);
+  assert.equal(E.big(s.xeno).toNumber(), 0);
   assert.ok(s.everRows >= 1e34);
 });
 
 test("levelled shops charge growing prices", () => {
   const s = E.newState(T0);
-  s.ins = 9;
+  s.ins = E.big(9);
   assert.ok(E.buyLevel(s, "radar", "defaults")); // 2
   assert.ok(E.buyLevel(s, "radar", "defaults")); // 6
   assert.ok(!E.buyLevel(s, "radar", "defaults")); // 18 > 1 left
-  assert.equal(s.insSpent, 8);
-  assert.equal(E.spentOnInsights(s), 8);
+  assert.equal(E.big(s.insSpent).toNumber(), 8);
+  assert.equal(E.big(E.spentOnInsights(s)).toNumber(), 8);
 });
 
 test("R&D and contact gate the late sources", () => {
@@ -125,7 +125,7 @@ function playHonestly(seconds) {
 
 test("an honest save passes the plausibility check", () => {
   const { s } = playHonestly(1800);
-  assert.ok(s.allRows > 1e5, `only ${s.allRows}`);
+  assert.ok(s.allRows.gt(1e5), `only ${s.allRows}`);
   assert.equal(E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 1800), null);
 });
 
@@ -137,7 +137,7 @@ test("an incremental honest upload passes", () => {
 
 test("edited saves are rejected", () => {
   const { s } = playHonestly(600);
-  const rich = { ...s, rows: 1e30, runRows: 2e30, coRows: 2e30, civRows: 2e30, allRows: 2e30, everRows: 2e30 };
+  const rich = { ...s, rows: E.big(1e30), runRows: E.big(2e30), coRows: E.big(2e30), civRows: E.big(2e30), allRows: E.big(2e30), everRows: E.big(2e30) };
   assert.match(E.implausible(s, rich, 60), /faster than possible/);
 
   const overspent = { ...s, prod: s.prod.map((c) => c + 100) };
@@ -155,7 +155,7 @@ test("edited saves are rejected", () => {
 
 test("normalize repairs junk", () => {
   const s = E.normalize({ rows: -5, prod: [3, "x"], upg: ["nope", "intern_0"], arch: ["agi", "agi"], board: { rnd: 99 }, freeIns: { arch: ["agi"] } }, T0);
-  assert.equal(s.rows, 0);
+  assert.equal(E.big(s.rows).toNumber(), 0);
   assert.equal(s.prod[0], 3);
   assert.equal(s.prod[1], 0);
   assert.deepEqual(s.upg, ["intern_0"]);
@@ -168,9 +168,9 @@ test("normalize repairs junk", () => {
 test("challenges restrict the run, then reward until the layer above resets", () => {
   const s = E.newState(T0);
   E.earn(s, 2e9); // enough company rows for 25 Insights (Hiring Freeze's requirement)
-  s.ins = 25;
+  s.ins = E.big(25);
   s.radar = { golden: 1 };
-  s.insSpent = 3;
+  s.insSpent = E.big(3);
   assert.ok(E.startChallenge(s, "hiring", T0));
   assert.equal(s.prod[0], 0); // Interns are off-limits in Hiring Freeze
   assert.ok(!E.producerUnlocked(s, 2) && E.producerUnlocked(s, 3));
@@ -181,8 +181,8 @@ test("challenges restrict the run, then reward until the layer above resets", ()
   assert.equal(E.checkChallenge(s, T0 + 60e3).challenge.id, "hiring");
   assert.equal(s.chal, null);
   assert.ok(E.producerUnlocked(s, 0));
-  const insightBonus = 1 + E.insightBonus(s);
-  assert.ok(Math.abs(E.globalMultiplier(s) / before - 5 * insightBonus * E.speedBonus(s, "hiring")) < 1e-9);
+  const insightBonus = E.insightBonus(s).add(1);
+  assert.ok(Math.abs(E.globalMultiplier(s).div(before).toNumber() - 5 * insightBonus.toNumber() * E.speedBonus(s, "hiring")) < 1e-9);
   // A re-platform keeps the reward; an acquisition drops it.
   E.earn(s, 1e30);
   E.replatform(s, T0);
@@ -194,13 +194,13 @@ test("challenges restrict the run, then reward until the layer above resets", ()
 
 test("challenge rules block the restricted actions", () => {
   const s = E.newState(T0);
-  s.ins = 10;
+  s.ins = E.big(10);
   assert.ok(!E.startChallenge(s, "friday", T0)); // needs 10 resolved incidents first
   s.incidents = 10;
   s.replat = 2;
   assert.ok(E.startChallenge(s, "friday", T0));
   E.earn(s, 1e6);
-  assert.equal(E.clickValue(s), 0);
+  assert.equal(E.big(E.clickValue(s)).toNumber(), 0);
   assert.ok(!E.buyUpgrade(s, "click_0"));
   E.startChallenge(s, "legacy", T0);
   E.earn(s, 1e6);
@@ -213,12 +213,12 @@ test("retention rewards keep things through prestige, and the server accepts the
   const upg = [...s.upg];
   const cols = s.cols;
   const prod = [...s.prod];
-  s.ins = 0;
-  assert.ok(E.replatform(s, T0 + 1800e3) >= 1);
+  s.ins = E.big(0);
+  assert.ok(E.big(E.replatform(s, T0 + 1800e3)).gte(1));
   assert.deepEqual(s.upg, upg);
   assert.equal(s.cols, cols);
   prod.forEach((c, i) => assert.ok(s.prod[i] >= Math.floor(c * 0.1)));
-  assert.equal(s.runRows, 0);
+  assert.equal(E.big(s.runRows).toNumber(), 0);
   // Owning all that with zero rows this run is fine: it was carried over, not bought.
   assert.equal(E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 1800), null);
   // Without the reward the same save would be "spent more than earned".
@@ -229,27 +229,27 @@ test("retention rewards keep things through prestige, and the server accepts the
 test("Knowledge Transfer carries Insights into the next company", () => {
   const s = E.newState(T0);
   E.earn(s, 1e30);
-  s.ins = 1000;
+  s.ins = E.big(1000);
   s.chalDone = ["keepins", "legacy", "budget", "hiring"];
   E.acquire(s, T0);
-  assert.equal(s.ins, 100);
-  assert.equal(E.pendingInsights(s), 0);
+  assert.equal(E.big(s.ins).toNumber(), 100);
+  assert.equal(E.big(E.pendingInsights(s)).toNumber(), 0);
   E.earn(s, 1e11); // cbrt(1e11 / 1e5) = 100 more
-  assert.equal(E.pendingInsights(s), 100);
+  assert.equal(E.big(E.pendingInsights(s)).toNumber(), 100);
 });
 
 test("Big Bang tier rewards survive the Big Bang", () => {
   const s = E.newState(T0);
   E.earn(s, 1e40);
   s.finale = true;
-  s.xeno = 100;
+  s.xeno = E.big(100);
   s.xeno_tech = { warp: 2 };
-  s.xenoSpent = 9;
+  s.xenoSpent = E.big(9);
   s.chalDone = ["keepxeno", "hiring", "translation", "darkforest", "heatdeath"];
   E.bigBang(s, T0);
   assert.deepEqual(s.xeno_tech, { warp: 2 });
   assert.deepEqual(s.chalDone, ["keepxeno"]);
-  assert.equal(s.xenoFree, 9);
+  assert.equal(E.big(s.xenoFree).toNumber(), 9);
   // The kept Xenotech is free; only the time check (rows conjured instantly here) may complain.
   const reason = E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 3600);
   assert.ok(reason === null || /faster than possible/.test(reason), reason);
@@ -279,10 +279,10 @@ test("selling refunds half, never free units, and keeps the save plausible", () 
   const s = E.newState(T0);
   s.kept.prod = [10]; // 10 free Spreadsheet Interns from a retention reward
   s.prod[0] = 10;
-  for (const k of ["rows", "runRows", "coRows", "civRows", "allRows", "everRows"]) s[k] = 1e6;
+  for (const k of ["rows", "runRows", "coRows", "civRows", "allRows", "everRows"]) s[k] = E.big(1e6);
   assert.ok(E.buyProducer(s, 0, 20));
   const paidForLast5 = E.producerCost({ ...s, prod: s.prod.map((c, k) => (k ? c : 25)) }, 0, 5);
-  assert.equal(E.sellValue(s, 0, 5), paidForLast5 / 2);
+  assert.ok(E.sellValue(s, 0, 5).sub(paidForLast5.div(2)).abs().lt(1e-6));
   assert.equal(E.sellable(s, 0), 20);
   assert.ok(E.sellProducer(s, 0, 1000)); // clamps to the 20 bought
   assert.equal(s.prod[0], 10);
@@ -294,12 +294,12 @@ test("selling refunds half, never free units, and keeps the save plausible", () 
 test("a challenge switches off prestige upgrades from its tier upwards, not rewards", () => {
   const s = E.newState(T0);
   E.earn(s, 1e9);
-  s.ins = 200;
+  s.ins = E.big(200);
   s.radar = { defaults: 3 };
   s.arch = ["medallion"];
   s.board = { synergy: 2 };
-  s.eq = 10;
-  s.eqSpent = 10;
+  s.eq = E.big(10);
+  s.eqSpent = E.big(10);
   s.chalDone = ["hiring"];
   s.chalEver = ["hiring"];
   s.replat = 3;
@@ -326,9 +326,9 @@ test("Institutional Memory keeps re-platform completions through acquisitions", 
   E.earn(s, 1e30);
   s.chalDone = ["legacy", "budget", "hiring"];
   s.board = { memory: 1 };
-  s.eq = 3;
-  s.eqSpent = 3;
-  assert.ok(E.acquire(s, T0) >= 1);
+  s.eq = E.big(3);
+  s.eqSpent = E.big(3);
+  assert.ok(E.big(E.acquire(s, T0)).gte(1));
   assert.deepEqual(s.chalDone, ["legacy", "budget", "hiring"]);
   assert.ok(E.gateOpen(s, "acq"));
 });
@@ -338,7 +338,7 @@ test("environments follow the current company, with a Colocation floor", () => {
   E.earn(s, 1e30);
   assert.equal(E.environmentFor(s).id, "orbital");
   s.chalDone = ["legacy", "budget", "hiring"];
-  assert.ok(E.acquire(s, T0) >= 1);
+  assert.ok(E.big(E.acquire(s, T0)).gte(1));
   assert.equal(E.environmentFor(s).id, "localhost");
   s.board.colo = 2;
   assert.equal(E.environmentFor(s).id, "staging");
@@ -347,7 +347,7 @@ test("environments follow the current company, with a Colocation floor", () => {
 test("challenges fail past the time limit and record best times for a speed bonus", () => {
   const s = E.newState(T0);
   E.earn(s, 2e9);
-  s.ins = 25;
+  s.ins = E.big(25);
   assert.ok(E.startChallenge(s, "hiring", T0));
   assert.equal(E.checkChallenge(s, T0 + E.CHALLENGE_LIMIT_MS - 1), null);
   assert.ok(E.checkChallenge(s, T0 + E.CHALLENGE_LIMIT_MS + 1).failed);
@@ -370,7 +370,7 @@ test("challenges fail past the time limit and record best times for a speed bonu
 test("no-INSERT challenges start with a free starter kit the server accepts", () => {
   const s = E.newState(T0);
   E.earn(s, 1e8); // 10 Insights' worth of company rows
-  s.ins = 10;
+  s.ins = E.big(10);
   s.incidents = 10;
   s.replat = 2;
   assert.ok(E.startChallenge(s, "friday", T0));
@@ -384,18 +384,18 @@ test("Big Bang milestones keep a layer's purchases and completions, and the serv
   const s = E.newState(T0);
   E.earn(s, 1e30);
   s.bangs = 20;
-  s.ins = 50;
-  s.insCarry = 0;
+  s.ins = E.big(50);
+  s.insCarry = E.big(0);
   s.radar = { defaults: 1 };
-  s.insSpent = 2;
-  s.eq = 7;
+  s.insSpent = E.big(2);
+  s.eq = E.big(7);
   s.board = { synergy: 1 };
-  s.eqSpent = 1;
+  s.eqSpent = E.big(1);
   s.chalDone = ["legacy", "budget", "hiring", "takeover"];
-  assert.ok(E.acquire(s, T0) >= 1);
+  assert.ok(E.big(E.acquire(s, T0)).gte(1));
   // 10 Big Bangs: Architecture and radar kept (free in the new company), completions kept;
   // Insights themselves reset like always.
-  assert.equal(s.ins, 0);
+  assert.equal(E.big(s.ins).toNumber(), 0);
   assert.deepEqual(s.radar, { defaults: 1 });
   assert.deepEqual(s.freeIns.radar, { defaults: 1 });
   assert.ok(s.chalDone.includes("legacy"));
@@ -420,7 +420,7 @@ test("Catalog Everything wipes the playthrough for a stronger New Game+", () => 
   assert.equal(s.completions, 1);
   assert.equal(s.bangs, 0);
   assert.equal(s.axioms, 0);
-  assert.equal(s.rows, 0);
+  assert.equal(E.big(s.rows).toNumber(), 0);
   assert.deepEqual(s.ach, ["rows_3"]);
   assert.equal(s.company, "Acme");
   assert.equal(s.stats.firstCompletionMs, 3600e3);
