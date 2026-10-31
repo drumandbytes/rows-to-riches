@@ -58,6 +58,8 @@ test("each layer resets the ones below it and keeps its own currency", () => {
   E.earn(s, 1e40); // past the Xenobyte threshold (1e36)
   s.ins = 5;
   s.arch = ["medallion"];
+  assert.equal(E.acquire(s, T0), 0); // gated: needs 3 completed re-platform challenges
+  s.chalDone = ["legacy", "budget", "hiring"];
   assert.ok(E.acquire(s, T0) >= 1);
   assert.equal(s.ins, 0);
   assert.deepEqual(s.arch, []);
@@ -66,10 +68,13 @@ test("each layer resets the ones below it and keeps its own currency", () => {
   const eq = s.eq;
   assert.equal(E.firstContact(s, T0), 0); // needs the complete R&D Lab
   s.board.rnd = E.RND_PRODUCERS;
+  assert.equal(E.firstContact(s, T0), 0); // and 3 completed acquisition challenges
+  s.chalDone = ["takeover", "lockin", "zerotrust"];
   assert.ok(E.firstContact(s, T0) >= 1);
   assert.equal(s.eq, 0);
   assert.ok(eq > 0 && s.xeno >= 1 && s.contact === 1);
   s.finale = true;
+  s.chalDone = ["translation", "darkforest", "heatdeath"];
   assert.ok(E.bigBang(s, T0) >= 1);
   assert.equal(s.allRows, 0);
   assert.equal(s.xeno, 0);
@@ -170,16 +175,19 @@ test("challenges restrict the run, then reward until the layer above resets", ()
   assert.equal(s.prod[0], 0); // Interns are off-limits in Hiring Freeze
   assert.ok(!E.producerUnlocked(s, 2) && E.producerUnlocked(s, 3));
   assert.ok(s.prod.every((c, i) => !c || E.producerUnlocked(s, i))); // nothing the server would call "not unlocked"
+  // Re-platform challenges are played without the Insight bonus.
   const before = E.globalMultiplier(s);
   E.earn(s, 1e10);
-  assert.equal(E.checkChallenge(s).id, "hiring");
+  assert.equal(E.checkChallenge(s, T0 + 60e3).challenge.id, "hiring");
   assert.equal(s.chal, null);
   assert.ok(E.producerUnlocked(s, 0));
-  assert.ok(Math.abs(E.globalMultiplier(s) / before - 5) < 1e-9);
+  const insightBonus = 1 + s.ins * E.insightPct(s);
+  assert.ok(Math.abs(E.globalMultiplier(s) / before - 5 * insightBonus * E.speedBonus(s, "hiring")) < 1e-9);
   // A re-platform keeps the reward; an acquisition drops it.
   E.earn(s, 1e30);
   E.replatform(s, T0);
   assert.ok(E.won(s, "hiring"));
+  s.chalDone.push("legacy", "budget");
   E.acquire(s, T0);
   assert.ok(!E.won(s, "hiring"));
 });
@@ -222,7 +230,7 @@ test("Knowledge Transfer carries Insights into the next company", () => {
   const s = E.newState(T0);
   E.earn(s, 1e30);
   s.ins = 1000;
-  s.chalDone = ["keepins"];
+  s.chalDone = ["keepins", "legacy", "budget", "hiring"];
   E.acquire(s, T0);
   assert.equal(s.ins, 100);
   assert.equal(E.pendingInsights(s), 0);
@@ -237,7 +245,7 @@ test("Big Bang tier rewards survive the Big Bang", () => {
   s.xeno = 100;
   s.xeno_tech = { warp: 2 };
   s.xenoSpent = 9;
-  s.chalDone = ["keepxeno", "hiring"];
+  s.chalDone = ["keepxeno", "hiring", "translation", "darkforest", "heatdeath"];
   E.bigBang(s, T0);
   assert.deepEqual(s.xeno_tech, { warp: 2 });
   assert.deepEqual(s.chalDone, ["keepxeno"]);
@@ -281,4 +289,80 @@ test("selling refunds half, never free units, and keeps the save plausible", () 
   assert.equal(E.sellProducer(s, 0, 1), false);
   assert.equal(s.stats.sold, 20);
   assert.equal(E.implausible(null, s, 3600), null);
+});
+
+test("a layer's challenges switch off that layer's upgrades and same-layer rewards", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e9);
+  s.ins = 200;
+  s.radar = { defaults: 3 };
+  s.arch = ["medallion"];
+  s.chalDone = ["hiring"];
+  s.replat = 3;
+  const outside = E.globalMultiplier(s);
+  assert.ok(E.startChallenge(s, "budget", T0));
+  assert.equal(E.radarLevel(s, "defaults"), 0);
+  assert.ok(!E.won(s, "hiring"));
+  assert.ok(E.globalMultiplier(s) < outside / 5);
+  // Spending is still accounted against what's owned, so the server check is unaffected.
+  assert.equal(s.radar.defaults, 3);
+});
+
+test("Institutional Memory keeps re-platform completions through acquisitions", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e30);
+  s.chalDone = ["legacy", "budget", "hiring"];
+  s.board = { memory: 1 };
+  s.eq = 3;
+  s.eqSpent = 3;
+  assert.ok(E.acquire(s, T0) >= 1);
+  assert.deepEqual(s.chalDone, ["legacy", "budget", "hiring"]);
+  assert.ok(E.gateOpen(s, "acq"));
+});
+
+test("environments follow the current company, with a Colocation floor", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e30);
+  assert.equal(E.environmentFor(s).id, "orbital");
+  s.chalDone = ["legacy", "budget", "hiring"];
+  assert.ok(E.acquire(s, T0) >= 1);
+  assert.equal(E.environmentFor(s).id, "localhost");
+  s.board.colo = 2;
+  assert.equal(E.environmentFor(s).id, "staging");
+});
+
+test("challenges fail past the time limit and record best times for a speed bonus", () => {
+  const s = E.newState(T0);
+  E.earn(s, 2e9);
+  s.ins = 25;
+  assert.ok(E.startChallenge(s, "hiring", T0));
+  assert.equal(E.checkChallenge(s, T0 + E.CHALLENGE_LIMIT_MS - 1), null);
+  assert.ok(E.checkChallenge(s, T0 + E.CHALLENGE_LIMIT_MS + 1).failed);
+  assert.equal(s.chal, null);
+  assert.ok(!s.chalDone.includes("hiring"));
+  // Half the limit: ×1.5 on top of the reward.
+  assert.ok(E.startChallenge(s, "hiring", T0));
+  E.earn(s, 1e10);
+  const r = E.checkChallenge(s, T0 + E.CHALLENGE_LIMIT_MS / 2);
+  assert.ok(r.record);
+  assert.equal(E.speedBonus(s, "hiring"), 1.5);
+  // Replaying is allowed; a slower run doesn't replace the record.
+  assert.ok(E.startChallenge(s, "hiring", T0));
+  E.earn(s, 1e10);
+  assert.equal(E.checkChallenge(s, T0 + E.CHALLENGE_LIMIT_MS * 0.9).record, false);
+  assert.equal(E.speedBonus(s, "hiring"), 1.5);
+  assert.equal(s.chalWins, 1);
+});
+
+test("no-INSERT challenges start with a free starter kit the server accepts", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e8); // 10 Insights' worth of company rows
+  s.ins = 10;
+  s.incidents = 10;
+  s.replat = 2;
+  assert.ok(E.startChallenge(s, "friday", T0));
+  assert.ok(s.prod[0] >= 10 && s.prod[1] >= 5);
+  // The kit is free: owning it with zero rows this run isn't "spent more than earned".
+  const reason = E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 3600);
+  assert.ok(reason === null || /faster than possible/.test(reason), reason);
 });

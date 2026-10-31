@@ -317,7 +317,7 @@ const RETENTION = { replat: ["keepupg", "keepcols", "keepsrc"], acq: ["keepradar
 
 function onPrestige(layer) {
   const gain = layer.pending(S);
-  if (gain < 1) return;
+  if (gain < 1 || !E.gateOpen(S, layer.id)) return;
   const kept = (RETENTION[layer.id] ?? []).filter((id) => E.won(S, id)).map((id) => `<li>${esc(E.CHALLENGE_BY_ID[id].reward)}</li>`);
   modal(
     `<h2>${layer.icon} ${layer.verb}?</h2><p>${esc(layer.confirm)}</p><p>You gain <b>${fmt(gain)} ${layer.cur}</b>.</p><p class="muted">${esc(layer.keeps)}</p>${kept.length ? `<p>🏆 Challenge rewards in effect:</p><ul class="kept">${kept.join("")}</ul>` : ""}`,
@@ -371,7 +371,7 @@ function renderShop(shop) {
 
 function renderPrestige() {
   // Tab dot: some layer would at least double its currency.
-  const ready = LAYERS.some((l) => l.visible(S) && l.pending(S) >= Math.max(1, l.have(S)));
+  const ready = LAYERS.some((l) => l.visible(S) && E.gateOpen(S, l.id) && l.pending(S) >= Math.max(1, l.have(S)));
   $("ins-dot").hidden = !ready;
   if (tab !== "prestige") return;
   const visible = LAYERS.filter((l) => l.visible(S));
@@ -387,18 +387,24 @@ function renderPrestige() {
     $("prestige-seg").innerHTML = seg;
   }
   if (prestigeTab === "chal") {
-    setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction. Reach the goal and the restriction lifts and the reward switches on. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${S.chalDone.length}</b> active · ${fmt(S.chalWins)} all-time</div></div>`);
+    setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, played without that layer's own upgrades (no Insights, Architecture or Tech Radar in a re-platform challenge, no Board or Equity in an acquisition challenge, and so on). Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${S.chalDone.length}</b> active · ${fmt(S.chalWins)} all-time</div></div>`);
     setHtml("prestige-shops", renderChallenges());
     return;
   }
   const l = LAYER_BY_ID[prestigeTab];
   const gain = l.pending(S);
+  const gate = E.GATE_LAYER[l.id];
+  const open = E.gateOpen(S, l.id);
+  const gateNote = gate
+    ? `<div class="gate ${open ? "ok" : ""}">${open ? "✅" : "🔒"} Needs ${E.GATE_NEED} completed ${esc(LAYER_BY_ID[gate].name)} challenges: <b>${Math.min(E.gateHave(S, l.id), E.GATE_NEED)}/${E.GATE_NEED}</b>${open ? "" : ` (🏁 Challenges tab)`}</div>`
+    : "";
+  const can = gain >= 1 && open;
   const card = `<div class="replat-card">
     <div class="muted">${l.cur}: <b>${fmt(l.have(S))}</b>${l.shops.length ? ` · spendable ${fmt(l.spendable(S))}` : ""}</div>
     <div class="num">+${fmt(gain)} ${l.icon}</div>
     <div class="muted">${esc(l.progress(S))}</div>
-    <div class="muted">${esc(l.effect(S))}</div>
-    <button class="big ${gain >= 1 ? "affordable" : ""}" type="button" data-prestige="${l.id}" ${gain >= 1 ? "" : "disabled"}>${l.verb}</button></div>`;
+    <div class="muted">${esc(l.effect(S))}</div>${gateNote}
+    <button class="big ${can ? "affordable" : ""}" type="button" data-prestige="${l.id}" ${can ? "" : "disabled"}>${l.verb}</button></div>`;
   if ($("prestige-card").dataset.html !== card) {
     $("prestige-card").dataset.html = card;
     $("prestige-card").innerHTML = card;
@@ -422,23 +428,25 @@ function renderChallenges() {
     if (!layer.unlocked(S)) return `<h3>${esc(layer.name)}</h3><p class="muted">🔒 ${esc(layer.hint)}</p>`;
     const items = E.CHALLENGES.filter((c) => c.layer === layer.id)
       .map((c) => {
-        const won = E.won(S, c.id);
+        // Completed, even while a same-layer challenge has its reward switched off.
+        const won = S.chalDone.includes(c.id);
         const active = S.chal === c.id;
         const open = E.challengeUnlocked(S, c);
-        const btn = won
-          ? `<button class="buy" type="button" disabled>✓ Done</button>`
-          : active
-            ? `<button class="buy" type="button" data-abandon="1">Abandon</button>`
+        const best = S.chalBest[c.id];
+        const btn = active
+          ? `<button class="buy" type="button" data-abandon="1">Abandon</button>`
+          : won
+            ? `<button class="buy" type="button" data-challenge="${c.id}" ${S.chal ? "disabled" : ""} title="Replay for a better time">Retry</button>`
             : open
               ? `<button class="buy" type="button" data-challenge="${c.id}" ${S.chal ? "disabled" : ""}>Start</button>`
               : `<button class="buy" type="button" disabled>🔒 Locked</button>`;
         const lock = !open && !won ? `<div class="sub">🔒 ${esc(c.reqText)}</div>` : "";
         return `<li class="item chal ${won ? "owned" : ""} ${active ? "active" : ""} ${!open && !won ? "locked" : ""}"><div class="ico" aria-hidden="true">${won ? "🏆" : open ? "🏁" : "🔒"}</div>
           <div><div class="name">${esc(c.name)} <span class="lv">goal ${fmt(c.goal)} rows</span></div>
-          ${lock}<div class="sub">⛓ ${esc(c.restriction)}</div><div class="sub reward">🎁 ${esc(c.reward)}</div></div>${btn}</li>`;
+          ${lock}<div class="sub">⛓ ${esc(c.restriction)}</div><div class="sub reward">🎁 ${esc(c.reward)}</div>${best ? `<div class="sub">⏱️ Best ${fmtDuration(best / 1000)} · speed bonus ×${E.speedBonus(S, c.id).toFixed(2)}${won ? "" : " (complete it again to switch it on)"}</div>` : ""}</div>${btn}</li>`;
       })
       .join("");
-    return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}.</p><ul class="list">${items}</ul>`;
+    return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}; the faster you finish, the bigger the speed bonus (up to ×2).</p><ul class="list">${items}</ul>`;
   }).join("");
 }
 
@@ -462,7 +470,8 @@ function renderChallengeBanner() {
   el.hidden = !c;
   if (!c) return;
   const pct = Math.min(100, (Math.log10(Math.max(1, S.runRows)) / Math.log10(c.goal)) * 100);
-  setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)}</b><span>${fmt(S.runRows)} / ${fmt(c.goal)}</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
+  const left = Math.max(0, E.CHALLENGE_LIMIT_MS - E.challengeElapsed(S)) / 1000;
+  setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)}</b><span>${fmt(S.runRows)} / ${fmt(c.goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
 }
 
 // ---- inbox -----------------------------------------------------------------------
@@ -511,7 +520,7 @@ function autoPrestige() {
   if (E.boardLevel(S, "autoreplat") && E.pendingInsights(S) >= Math.max(3, S.ins * (S.settings.autoReplatAt - 1))) {
     doPrestige(LAYER_BY_ID.replat, true);
   }
-  if (E.xenoLevel(S, "hive") && E.pendingEquity(S) >= Math.max(1, S.eq)) {
+  if (E.xenoLevel(S, "hive") && E.gateOpen(S, "acq") && E.pendingEquity(S) >= Math.max(1, S.eq)) {
     doPrestige(LAYER_BY_ID.acq);
   }
 }
@@ -528,7 +537,7 @@ function checkFinale() {
 }
 
 // Greedy auto-buyer: unlocked upgrades first, then whichever source pays back fastest.
-const autoBuyerOwned = () => S.arch.includes("terraform") || E.boardLevel(S, "gitops") > 0;
+const autoBuyerOwned = () => E.archOn(S, "terraform") || E.boardLevel(S, "gitops") > 0;
 
 // Upgrades that multiply production come before INSERT boosts in the "production" order.
 const UPG_RANK = { global: 0, producer: 1, synergy: 1, click: 2 };
@@ -613,7 +622,7 @@ function spawnIncident() {
   };
   btn.addEventListener("click", resolve);
   // Self-healing pipelines fix incidents; they don't click suspicious links.
-  if (S.arch.includes("selfheal") && !inc.trap) setTimeout(() => btn.isConnected && resolve(), 3000);
+  if (E.archOn(S, "selfheal") && !inc.trap) setTimeout(() => btn.isConnected && resolve(), 3000);
   $("incident-layer").append(btn);
   audio.sfx("incident");
 }
@@ -655,7 +664,7 @@ function resolveIncident(inc) {
     toast(`🎣 <b>${inc.title}</b>: you clicked it. Production ×${inc.buff.mult} for ${inc.buff.secs}s while you do the training.`);
     audio.sfx("deny");
   } else if (inc.buff) {
-    const secs = inc.buff.secs * (S.arch.includes("slo") ? 2 : 1);
+    const secs = inc.buff.secs * (E.archOn(S, "slo") ? 2 : 1);
     const mult = Math.round(inc.buff.mult * E.incidentMult(S) * 100) / 100;
     S.buffs.push({ kind: inc.buff.kind, mult, until: now + secs * 1000, name: inc.title });
     toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: ×${mult} for ${secs}s.`, "info");
@@ -777,10 +786,10 @@ function renderBuffs(now) {
 function footprint() {
   const units = E.STORAGE_UNITS;
   let idx = 0;
-  for (let i = 0; i < units.length; i++) if (S.allRows >= units[i][1]) idx = i;
+  for (let i = 0; i < units.length; i++) if (E.envRows(S) >= units[i][1]) idx = i;
   const next = units[idx + 1];
   // Log-scale progress so the ring keeps moving between units 1000× apart.
-  const progress = next ? Math.min(1, Math.log10(Math.max(1, S.allRows / units[idx][1])) / Math.log10(next[1] / units[idx][1])) : 1;
+  const progress = next ? Math.min(1, Math.log10(Math.max(1, E.envRows(S) / units[idx][1])) / Math.log10(next[1] / units[idx][1])) : 1;
   return { idx, progress };
 }
 
@@ -788,7 +797,7 @@ function footprint() {
 // is flavour underneath. The ETA uses the current rate, so it shrinks as you grow.
 function renderFootprint({ idx }, rate) {
   const [name, size] = E.STORAGE_UNITS[idx];
-  const amount = S.allRows / size;
+  const amount = E.envRows(S) / size;
   const plural = amount >= 2 ? (name.endsWith("y") ? name.slice(0, -1) + "ies" : name + "s") : name;
   const next = E.nextEnvironment(S);
   let head;
@@ -1269,7 +1278,7 @@ function modal(html, buttons) {
 let tickerBag = [];
 let tickerEnv = "";
 function rotateTicker() {
-  const envs = E.ENVIRONMENTS.filter((e) => S.allRows >= e.at && (!e.needs || e.needs(S))).map((e) => e.id);
+  const envs = E.ENVIRONMENTS.filter((e) => E.reachedEnv(S, e)).map((e) => e.id);
   const current = envs.at(-1);
   if (!tickerBag.length || tickerEnv !== current) {
     tickerEnv = current;
@@ -1738,11 +1747,17 @@ function loop() {
   if (Math.floor(S.stats.onlineMs / 600_000) > Math.floor(before / 600_000)) track("snapshot", S);
   lastLoopAt = now;
   S.stats.bestRate = Math.max(S.stats.bestRate, E.baseRate(S));
-  const done = E.checkChallenge(S);
-  if (done) {
-    track("challenge", S, { detail: done.id });
+  const result = E.checkChallenge(S, now);
+  if (result?.failed) {
+    audio.sfx("deny");
+    toast(`⏱️ <b>${esc(result.challenge.name)}</b> ran out of time. Try again whenever you're ready.`);
+    structureKey = "";
+  } else if (result) {
+    const c = result.challenge;
+    track("challenge", S, { detail: c.id });
     confetti(60);
-    toast(`🏁 <b>${esc(done.name)} complete!</b> ${esc(done.reward)}`);
+    const time = fmtDuration(result.ms / 1000);
+    toast(`🏁 <b>${esc(c.name)} complete</b> in ${time}${result.record ? " (new best)" : ""}. ${esc(c.reward)} Speed bonus ×${E.speedBonus(S, c.id).toFixed(2)}.`);
     structureKey = "";
   }
   autoPrestige();
