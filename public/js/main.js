@@ -500,7 +500,7 @@ function openMail(id) {
   if (entry) entry.read = true;
   if (S.inbox.length >= 10 && S.inbox.every((x) => x.read)) grantSecret("inboxzero");
   modal(
-    `<div class="mail-head">${KIND_ICON[m.kind]} <b>${esc(m.from)}</b><br><span class="muted">${new Date(entry?.at ?? Date.now()).toLocaleString()}</span></div><h2>${esc(m.subject)}</h2><p class="mail-body">${esc(m.body)}</p>`,
+    `<div class="mail-head">${KIND_ICON[m.kind]} <b>${esc(m.from)}</b><br><span class="muted">${mailTime(new Date(entry?.at ?? Date.now()))}</span></div><h2>${esc(m.subject)}</h2><p class="mail-body">${esc(m.body)}</p>`,
     [["Back to inbox", "", openInbox], ["Close", "primary"]],
   );
 }
@@ -1113,10 +1113,12 @@ function showCode(code, fresh) {
 // ---- cloud -------------------------------------------------------------------
 
 // Settings → Game → Clock: "auto" follows the device locale.
-function clockTime(seconds = false) {
+function clockTime(seconds = false, date = new Date()) {
   const hour12 = prefs.clock === "auto" ? undefined : prefs.clock === "12";
-  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", ...(seconds && { second: "2-digit" }), hour12 });
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", ...(seconds && { second: "2-digit" }), hour12 });
 }
+
+const mailTime = (d) => `${d.toLocaleDateString()}, ${clockTime(false, d)}`;
 
 function setSyncStatus(text) {
   const el = $("sync-status");
