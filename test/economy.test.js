@@ -266,3 +266,19 @@ test("momentum boosts production and decays exactly as integrated", () => {
   assert.ok(Math.abs(s.allRows - expected) < 1e-6, `${s.allRows} vs ${expected}`);
   assert.ok(Math.abs(s.momentum - 0.5) < 1e-9);
 });
+
+test("selling refunds half, never free units, and keeps the save plausible", () => {
+  const s = E.newState(T0);
+  s.kept.prod = [10]; // 10 free Spreadsheet Interns from a retention reward
+  s.prod[0] = 10;
+  for (const k of ["rows", "runRows", "coRows", "civRows", "allRows", "everRows"]) s[k] = 1e6;
+  assert.ok(E.buyProducer(s, 0, 20));
+  const paidForLast5 = E.producerCost({ ...s, prod: s.prod.map((c, k) => (k ? c : 25)) }, 0, 5);
+  assert.equal(E.sellValue(s, 0, 5), paidForLast5 / 2);
+  assert.equal(E.sellable(s, 0), 20);
+  assert.ok(E.sellProducer(s, 0, 1000)); // clamps to the 20 bought
+  assert.equal(s.prod[0], 10);
+  assert.equal(E.sellProducer(s, 0, 1), false);
+  assert.equal(s.stats.sold, 20);
+  assert.equal(E.implausible(null, s, 3600), null);
+});

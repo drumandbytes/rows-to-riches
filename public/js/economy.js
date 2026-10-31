@@ -451,6 +451,9 @@ const STAT_ACH = [
   ["meetings_25", "Calendar Tetris", "Sit through 25 meetings.", (s) => s.stats.meetings >= 25],
   ["upgrades_150", "Model Sprawl", "Own 150 upgrades at once.", (s) => s.upg.length >= 150],
   ["catalog_100", "Data Catalog Curator", "Collect 100 Data Catalog entries.", (s) => s.ach.length >= 100],
+  ["sold_1", "Decommissioned", "Sell a Data Source. Somebody's dashboard still depended on it.", (s) => s.stats.sold >= 1],
+  ["sold_1000", "Cost Optimization Initiative", "Sell 1,000 Data Sources in total. Finance sends a cake.", (s) => s.stats.sold >= 1000],
+  ["sell_100", "Restructuring", "Sell 100 of one Data Source at once.", (s) => s.stats.bestSell >= 100],
   ["gravity", "Data Gravity", "Produce so much that data gravity kicks in.", (s) => s.stats.bestRate > GRAVITY_AT],
 ];
 for (const [id, name, desc, test] of STAT_ACH) ACHIEVEMENTS.push({ id, name, desc, test });
@@ -468,6 +471,7 @@ export const SECRETS = [
   ["rageclick", "Rage Click", "Press INSERT 20 times while it's disabled.", null],
   ["inboxzero", "Inbox Zero", "Read every email (at least 10 of them).", null],
   ["readdocs", "Read the Docs", "Open every Help section. Nobody does this.", null],
+  ["answer", "The Answer", "Sell your way down to exactly 42 of something.", null],
   ["phished", "Gone Phishing", "Click a phishing test. IT has scheduled your training.", null],
 ];
 for (const [id, name, desc, derived] of SECRETS) {
@@ -495,7 +499,7 @@ export function newState(now = Date.now()) {
     company: "", secrets: [],
     // Carried over for free by retention rewards; the server subtracts these from "spent".
     kept: { upg: [], cols: 0, prod: [] }, insCarry: 0, eqCarry: 0, xenoFree: 0,
-    stats: { upgBought: 0, colsBought: 0, momentumSecs: 0, rescues: 0, phishPassed: 0, okrs: 0, quarters: 0, requests: 0, meetings: 0, maxMomentum: 0, bestRate: 0, bestClick: 0, bestCombo: 0, fastestReplat: 0, fastestAcq: 0, longestAway: 0, onlineMs: 0, runClicks: 0, companyStartedAt: now },
+    stats: { upgBought: 0, colsBought: 0, sold: 0, bestSell: 0, momentumSecs: 0, rescues: 0, phishPassed: 0, okrs: 0, quarters: 0, requests: 0, meetings: 0, maxMomentum: 0, bestRate: 0, bestClick: 0, bestCombo: 0, fastestReplat: 0, fastestAcq: 0, longestAway: 0, onlineMs: 0, runClicks: 0, companyStartedAt: now },
     ach: [], clicks: 0, incidents: 0, replat: 0, acq: 0, contact: 0, bangs: 0,
     startedAt: now, runStartedAt: now, lastTick: now,
     buffs: [],
@@ -795,6 +799,29 @@ export function buyProducer(s, i, n) {
   if (c > s.rows) return false;
   s.rows -= c;
   s.prod[i] += n;
+  return true;
+}
+
+// Selling: half the price of the units sold back. Free units (Golden Images, retention
+// rewards) can't be sold, so a refund never exceeds what the run actually spent; that keeps
+// implausible()'s "spent more than earned" and "bank exceeds run total" checks valid.
+export const SELL_REFUND = 0.5;
+const freeUnits = (s, i) => Math.max(starterProducers(s)[i], s.kept.prod[i] ?? 0);
+export const sellable = (s, i) => Math.max(0, s.prod[i] - freeUnits(s, i));
+/** Rows back for selling the last n units of producer i. */
+export function sellValue(s, i, n = 1) {
+  n = Math.min(n, sellable(s, i));
+  if (n <= 0) return 0;
+  return SELL_REFUND * producerCost({ ...s, prod: s.prod.map((c, k) => (k === i ? c - n : c)) }, i, n);
+}
+
+export function sellProducer(s, i, n) {
+  n = Math.min(n, sellable(s, i));
+  if (n <= 0) return false;
+  s.rows += sellValue(s, i, n);
+  s.prod[i] -= n;
+  s.stats.sold += n;
+  s.stats.bestSell = Math.max(s.stats.bestSell, n);
   return true;
 }
 

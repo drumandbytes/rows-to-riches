@@ -374,6 +374,11 @@ const SFX = {
   upgrade(k) {
     [...k.tones, k.tones[0] + 12].forEach((m, i) => blip(m + 12, i * 0.05, { type: "sine", peak: 0.06, decay: 0.2 }));
   },
+  // Buy played downwards.
+  sell(k) {
+    blip(k.tones[2] + 12, 0, { peak: 0.06, decay: 0.12 });
+    blip(k.tones[0] + 12, 0.06, { peak: 0.05, decay: 0.18 });
+  },
   deny(k) {
     blip(k.root - 12, 0, { type: "square", peak: 0.04, decay: 0.08, cutoff: 700 });
   },
