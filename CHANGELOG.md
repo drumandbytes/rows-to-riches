@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.4.0...v0.4.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* clickable PR links in the What's new card ([#32](https://github.com/drumandbytes/rows-to-riches/issues/32)) ([b3779b9](https://github.com/drumandbytes/rows-to-riches/commit/b3779b9b6f7d5d323708571bb7f92a6d517b305d))
+
 ## [0.4.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.3.0...v0.4.0) (2026-11-01)
 
 
