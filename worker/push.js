@@ -3,8 +3,7 @@
 // The only secret is VAPID_PRIVATE_JWK (made by tools/vapid.js); the public key is the
 // x/y half of the same JWK.
 
-const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const unb64url = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+import { b64url, unb64url } from "../public/js/b64.js";
 
 // Browsers' push services. Anything else is refused, so the cron never fetches a URL a
 // stranger made up.
@@ -22,7 +21,7 @@ export function validEndpoint(endpoint) {
 
 /** Uncompressed P-256 point (0x04 || x || y), base64url: the browser's applicationServerKey. */
 export function publicKey(jwk) {
-  return b64url([4, ...unb64url(jwk.x), ...unb64url(jwk.y)]);
+  return b64url(new Uint8Array([4, ...unb64url(jwk.x), ...unb64url(jwk.y)]));
 }
 
 export async function vapidJwt(jwk, endpoint, subject, now = Date.now()) {

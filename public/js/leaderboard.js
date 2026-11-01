@@ -3,6 +3,7 @@
 // sealed save goes up as a checkpoint at each milestone and every 15 minutes.
 
 import { randomName } from "./names.js";
+import { unb64url } from "./b64.js";
 import { Decimal } from "./big.js";
 
 const CHECKPOINT_MS = 15 * 60e3;
@@ -24,7 +25,7 @@ export function createLeaderboard({ state, encodeSave, fmt, fmtDuration, esc, to
   // The ticket's payload is readable (only its signature is secret): late = issued mid-game.
   const ticketInfo = (t) => {
     try {
-      return JSON.parse(atob(t.split(".")[0].replace(/-/g, "+").replace(/_/g, "/")));
+      return JSON.parse(new TextDecoder().decode(unb64url(t.split(".")[0])));
     } catch {
       return {};
     }

@@ -4,6 +4,8 @@
 // seal doesn't match still loads, it's just marked `modified` and can't be ranked. The
 // leaderboard's server-signed checkpoints are what actually hold.
 
+import { b64url, unb64url } from "./b64.js";
+
 const PREFIX = "r2r1.";
 const PEPPER = "rows-to-riches:the DBA has concerns";
 
@@ -23,13 +25,8 @@ function cyrb53(str, seed = 0) {
 
 const seal = (body) => cyrb53(PEPPER + body, body.length).toString(36);
 
-const toB64 = (text) => {
-  const bytes = new TextEncoder().encode(text);
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
-const fromB64 = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)));
+const toB64 = (text) => b64url(new TextEncoder().encode(text));
+const fromB64 = (b64) => new TextDecoder().decode(unb64url(b64));
 
 export function encodeSave(state) {
   const body = toB64(JSON.stringify(state));

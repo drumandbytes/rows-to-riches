@@ -86,7 +86,7 @@ Notifications and leaderboards stay hidden until their keys exist. To try them l
 
 ```bash
 echo "VAPID_PRIVATE_JWK=$(node tools/vapid.js)" >> .dev.vars
-echo "LEADERBOARD_KEY=$(node tools/lb-key.js)" >> .dev.vars
+echo "LEADERBOARD_KEY=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n')" >> .dev.vars
 ```
 
 ### Tools

@@ -6,11 +6,12 @@
 // - Saves that break the game's rules (implausible) are refused, since an honest save can't.
 //   Runs faster than the simulator are listed anyway and flagged for a human look: the sim
 //   isn't optimal, so speed alone is a hint, not proof.
-// Secret: LEADERBOARD_KEY (tools/lb-key.js). Without it the endpoints 404 and the UI hides.
+// Secret: LEADERBOARD_KEY (32 random bytes, base64url: docs/maintaining.md). Without it the endpoints 404 and the UI hides.
 
 import { decodeSave } from "../public/js/seal.js";
 import { normalize, implausible } from "../public/js/economy.js";
 import { validName, ADJECTIVES, MOODS, NOUNS } from "../public/js/names.js";
+import { b64url, unb64url } from "../public/js/b64.js";
 import PACE from "./pace.json" with { type: "json" };
 
 // Flag a run reaching a milestone in under this share of the simulator's time.
@@ -22,8 +23,6 @@ export const BOARDS = {
   catalogs: { col: "catalogs", order: "DESC", where: "catalogs > 0" },
 };
 
-const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const unb64url = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
 const enc = new TextEncoder();
 
 const hmacKey = (env) => crypto.subtle.importKey("raw", unb64url(env.LEADERBOARD_KEY), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);

@@ -5,8 +5,7 @@ Copy-paste material for game portals. Regenerate the screenshots with
 points and captures them at 1920×1080).
 
 - **Game URL:** https://rowstoriches.drumandbytes.dev/ (embedding is allowed for galaxy.click via `frame-ancestors`; no `?ref=`, since `logRef` only counts top-level page loads, not iframes)
-- **Thumbnail:** `thumbnail.png` (750×435, the pipeline scene in the multiverse); crop or pad to the portal's size.
-- **Screenshots:** `1-staging.png` … `6-stats.png` (1920×1080).
+- **Images:** generated, not committed (except `4-multiverse.png`, which the README shows): `node tools/screenshots.js` writes `thumbnail.png` (750×435, the pipeline scene in the multiverse; crop or pad to the portal's size) and `1-staging.png` … `6-stats.png` (1920×1080).
 
 ## Title
 
