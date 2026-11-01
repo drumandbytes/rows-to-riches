@@ -21,7 +21,8 @@
     { "name": "LOGIN_LIMITER", "namespace_id": "2001", "simple": { "limit": 5, "period": 60 } },
     { "name": "EVENT_LIMITER", "namespace_id": "2002", "simple": { "limit": 30, "period": 60 } },
     { "name": "FEEDBACK_LIMITER", "namespace_id": "2003", "simple": { "limit": 3, "period": 60 } },
-    { "name": "PUSH_LIMITER", "namespace_id": "2004", "simple": { "limit": 20, "period": 60 } }
+    { "name": "PUSH_LIMITER", "namespace_id": "2004", "simple": { "limit": 20, "period": 60 } },
+    { "name": "LB_LIMITER", "namespace_id": "2005", "simple": { "limit": 20, "period": 60 } }
   ],
   // Sends due "offline cap is full" pushes (worker/index.js sendDuePushes).
   "triggers": { "crons": ["*/5 * * * *"] },

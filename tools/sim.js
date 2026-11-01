@@ -136,8 +136,15 @@ function stepChallenge() {
 // SUMMARY=1: one line at the end with the milestones that matter for pacing.
 const milestones = { acq: [], contact: [], finale: [], bang: [] };
 let nextPrint = 0;
+// TRACE=1 records when each milestone is first reached (for tools/pace.js).
+const trace = process.env.TRACE ? { rows: {}, acq: {}, contact: {}, bangs: {} } : null;
+const firstAt = (map, k) => map[k] ?? (map[k] = Math.round((now / 3.6e6) * 100) / 100);
 while (now < hours * 3.6e6) {
   now += DT * 1000;
+  if (trace) {
+    for (let e = Math.floor(s.everRows.add(1).log10()); e >= 0 && trace.rows[e] === undefined; e--) firstAt(trace.rows, e);
+    for (const k of ["acq", "contact", "bangs"]) for (let n = s[k]; n > 0 && trace[k][n] === undefined; n--) firstAt(trace[k], n);
+  }
   E.tick(s, now);
   E.earn(s, E.clickValue(s, now).mul(cps * DT));
   buyStuff();
@@ -199,6 +206,7 @@ while (now < hours * 3.6e6) {
 
 // DUMP=file writes the final state as a save (e.g. for screenshots); timestamps start at 0.
 if (process.env.DUMP) (await import("node:fs")).writeFileSync(process.env.DUMP, JSON.stringify(s));
+if (trace) (await import("node:fs")).writeFileSync(process.env.TRACE, JSON.stringify(trace));
 
 if (process.env.SUMMARY) {
   const h = (x) => (x === undefined ? "—" : `${x.toFixed(1)}h`);

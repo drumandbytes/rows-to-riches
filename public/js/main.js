@@ -11,6 +11,7 @@ import { createActive } from "./active.js";
 import { track, allowed as statsAllowed, browserOptOut } from "./analytics.js";
 import { createTour } from "./tour.js";
 import { encodeSave, decodeSave } from "./seal.js";
+import { createLeaderboard } from "./leaderboard.js";
 import { pushAvailable, initPush, enablePush, disablePush, schedulePush } from "./push.js";
 
 const SAVE_KEY = "r2r.save";
@@ -49,6 +50,9 @@ const active = createActive({
   changed: () => afterPurchase(),
   track: (event, extra) => track(event, S, extra),
 });
+
+// Leaderboards (leaderboard.js); hidden unless the server has them set up.
+const lb = createLeaderboard({ state: () => S, encodeSave, fmt, fmtDuration, esc, toast, $ });
 
 const queryLog = createQueryLog($("querylog"));
 const spark = createSparkline($("spark"));
@@ -1490,7 +1494,10 @@ function selectTab(name) {
   tab = name;
   for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
   for (const p of document.querySelectorAll(".pane")) p.hidden = p.id !== `pane-${name}`;
-  if (name === "stats") buildAch();
+  if (name === "stats") {
+    buildAch();
+    lb.render(true);
+  }
   render(true);
 }
 
@@ -1931,6 +1938,7 @@ function importSave() {
 function loop() {
   const now = Date.now();
   E.tick(S, now);
+  lb.tick(S);
   const fresh = E.checkAchievements(S);
   if (fresh.length) {
     audio.sfx("achievement");
@@ -1995,6 +2003,18 @@ const tour = createTour(
     { title: "Schema", text: "Columns multiply <i>everything</i>. They're expensive, and worth it.", target: () => tabButton("schema") },
     { title: "Prestige", text: "Growth eventually slows. Then you re-platform: start over with Insights that make everything faster. There are four layers of this, and it gets weird.", target: () => tabButton("prestige") },
     { title: "Inbox and incidents", text: "Vendors email you here. Alerts also pop up on screen: click them for bonuses. Except phishing tests. Never click those.", target: () => $("inbox-btn") },
+    {
+      // Getters: whether the server has leaderboards is only known once lb.init() answers.
+      get title() {
+        return lb.available ? "Leaderboards" : "Stats";
+      },
+      get text() {
+        return lb.available
+          ? `Want to compare? Join the leaderboards: fastest Catalog Everything, most rows, Big Bangs and Catalogs. You'd show up under a generated name, nothing else.<br><label class="toggle"><input type="checkbox" id="tour-lb" ${S.lb.optIn ? "checked" : ""}/> Join the leaderboards</label><span class="muted">Change your mind any time under Stats.</span>`
+          : "Your stats and the Data Catalog live here. Every catalog entry is +1% production.";
+      },
+      target: () => tabButton("stats"),
+    },
     { title: "That's it", text: "Name your company, change number formats, music and motion under Settings. Help explains every system in detail. Good luck out there.", target: () => tabButton("settings") },
   ],
   { onEnd: () => setPref("tourDone", true) },
@@ -2013,6 +2033,10 @@ render(true);
 // Fresh saves only: someone syncing an old save onto a new device doesn't need the tour.
 if (!prefs.tourDone && S.everRows.lt(50)) setTimeout(() => tour.start(), 600);
 checkWhatsNew();
+lb.init();
+document.addEventListener("change", (e) => {
+  if (e.target.id === "tour-lb") lb.setOptIn(e.target.checked);
+});
 rotateTicker();
 shownRows = S.rows;
 animateCounter();

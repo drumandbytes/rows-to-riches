@@ -125,6 +125,16 @@
         <div class="pane" id="pane-stats" role="tabpanel" hidden>
           <div class="pane-head"><h2><span class="cm">In [1]:</span> Stats</h2></div>
           <dl class="stats" id="stats"></dl>
+          <section id="lb" hidden>
+            <h3>Leaderboards</h3>
+            <label class="toggle"><input type="checkbox" id="lb-join" /> Join the leaderboards</label>
+            <p class="muted">Shared: a generated name, plus your fastest Catalog Everything, rows, Big Bangs and Catalogs. Nothing else, and you can remove yourself any time.</p>
+            <p id="lb-name"></p>
+            <div id="lb-notes"></div>
+            <div class="seg" id="lb-boards" role="group" aria-label="Leaderboard"></div>
+            <ol class="lb-list" id="lb-list"></ol>
+            <button type="button" id="lb-remove" hidden>Remove me from the leaderboards</button>
+          </section>
           <h3>Data Catalog <span class="muted" id="ach-count"></span></h3>
           <p class="muted">Each catalog entry gives +1% production.</p>
           <div class="ach" id="ach"></div>
@@ -325,7 +335,7 @@
               <li>Cloud vendors in the Inbox are parodies. Any resemblance to your actual cloud bill is coincidental.</li>
             </ul>
             <h3>Privacy</h3>
-            <p class="muted">No ads and no cookies. Cloud save stores your save and a hash of your account code, nothing else about you; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy (they start off if your browser sends Global Privacy Control or Do Not Track). Feedback you send is stored with the game context shown in the form, plus your email only if you add one. If you turn on notifications, your browser's push address is stored until they're sent. Nothing else leaves your browser unless you sign in.</p>
+            <p class="muted">No ads and no cookies. Cloud save stores your save and a hash of your account code, nothing else about you; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy (they start off if your browser sends Global Privacy Control or Do Not Track). Feedback you send is stored with the game context shown in the form, plus your email only if you add one. If you turn on notifications, your browser's push address is stored until they're sent. If you join the leaderboards, your generated name and board values are stored until you remove yourself. Nothing else leaves your browser unless you sign in.</p>
             <p class="muted">Everything loads from this site, which runs on Cloudflare: no Google Fonts, CDNs, trackers or embeds. The one extra request is Cloudflare's own cookieless page-view counter. Feedback reaches me as a Telegram message.</p>
           </div>
         </div>
