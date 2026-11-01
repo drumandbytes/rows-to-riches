@@ -24,7 +24,8 @@
     { "name": "PUSH_LIMITER", "namespace_id": "2004", "simple": { "limit": 20, "period": 60 } },
     { "name": "LB_LIMITER", "namespace_id": "2005", "simple": { "limit": 20, "period": 60 } }
   ],
-  // Sends due "offline cap is full" pushes (worker/index.js sendDuePushes).
+  // Sends due pushes (sendDuePushes) and, once a day, checks how many leaderboard names are
+  // taken (checkNameSpace).
   "triggers": { "crons": ["*/5 * * * *"] },
   // Anonymous gameplay events (no cookies, no identifiers): see worker/index.js handleEvent.
   "analytics_engine_datasets": [

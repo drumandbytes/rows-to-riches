@@ -1,6 +1,6 @@
 import { implausible, normalize, ACHIEVEMENTS, big } from "../public/js/economy.js";
 import { validEndpoint, publicKey, sendPush } from "./push.js";
-import { handleTicket, handleCheckpoint, handleBoard, handleRemove } from "./leaderboard.js";
+import { handleTicket, handleCheckpoint, handleBoard, handleRemove, checkNameSpace } from "./leaderboard.js";
 
 const SESSION_IDLE_MS = 180 * 86_400_000;
 const MIN_SAVE_INTERVAL_MS = 10_000;
@@ -376,7 +376,8 @@ export default {
       return json({ error: "Server error." }, 500);
     }
   },
-  async scheduled(_controller, env, ctx) {
+  async scheduled(controller, env, ctx) {
     ctx.waitUntil(sendDuePushes(env));
+    ctx.waitUntil(checkNameSpace(env, controller.scheduledTime, (text) => telegram(env, ctx, text)));
   },
 };

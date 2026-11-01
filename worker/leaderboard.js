@@ -10,7 +10,7 @@
 
 import { decodeSave } from "../public/js/seal.js";
 import { normalize, implausible } from "../public/js/economy.js";
-import { validName } from "../public/js/names.js";
+import { validName, ADJECTIVES, MOODS, NOUNS } from "../public/js/names.js";
 import PACE from "./pace.json" with { type: "json" };
 
 // Flag a run reaching a milestone in under this share of the simulator's time.
@@ -122,6 +122,19 @@ export async function handleBoard(url, env) {
     if (row) mine = { name: row.name, value: row.value, rank: await rankOf(row.value), me: true };
   }
   return { status: 200, data: { top, me: mine } };
+}
+
+// Names are unique, so entries can't outgrow the name lists (~1.2M). Past this many, the
+// daily check pings until the lists in public/js/names.js get longer.
+export const NAME_ALERT = 1_000_000;
+export const NAME_SPACE = ADJECTIVES.length * MOODS.length * NOUNS.length;
+
+/** From the cron: once a day (the 09:00 UTC run), count entries and ping when near the limit. */
+export async function checkNameSpace(env, scheduledTime, ping) {
+  const at = new Date(scheduledTime);
+  if (!env.LEADERBOARD_KEY || at.getUTCHours() !== 9 || at.getUTCMinutes() >= 5) return;
+  const { n } = await env.DB.prepare("SELECT COUNT(*) AS n FROM lb_entries").first();
+  if (n >= NAME_ALERT) ping(`📛 <b>Leaderboard names running out</b> · Rows to Riches\n\n${n.toLocaleString("en-US")} of ${NAME_SPACE.toLocaleString("en-US")} names are taken. Add words to public/js/names.js.`);
 }
 
 export async function handleRemove(body, env) {

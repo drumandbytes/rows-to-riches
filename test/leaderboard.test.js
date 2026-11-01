@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { signToken, verifyToken, paceFlag, handleTicket, handleCheckpoint, handleBoard, handleRemove } from "../worker/leaderboard.js";
+import { signToken, verifyToken, paceFlag, handleTicket, handleCheckpoint, handleBoard, handleRemove, checkNameSpace, NAME_ALERT, NAME_SPACE } from "../worker/leaderboard.js";
 import { encodeSave } from "../public/js/seal.js";
 import { newState, big } from "../public/js/economy.js";
 import { validName, randomName } from "../public/js/names.js";
@@ -117,4 +117,16 @@ test("names are unique: a taken one gets 409, the owner keeps theirs", async () 
   assert.equal((await handleCheckpoint({ ticket: b.ticket, save: b.save, name: "Idempotent Grumpy Walrus" }, e, () => {})).status, 409);
   assert.equal((await handleCheckpoint({ ticket: b.ticket, save: b.save, name: "Idempotent Sleepy Walrus" }, e, () => {})).status, 200);
   assert.equal((await handleCheckpoint({ ticket: a.ticket, save: a.save, name: "Idempotent Grumpy Walrus" }, e, () => {})).status, 200);
+});
+
+test("name space: the daily check pings past NAME_ALERT entries, only in the 09:00 UTC run", async () => {
+  assert.ok(NAME_SPACE > NAME_ALERT);
+  const pings = [];
+  const count = (n) => ({ LEADERBOARD_KEY: "x", DB: { prepare: () => ({ first: async () => ({ n }) }) } });
+  await checkNameSpace(count(NAME_ALERT - 1), Date.UTC(2026, 0, 1, 9, 0), (m) => pings.push(m));
+  await checkNameSpace(count(NAME_ALERT), Date.UTC(2026, 0, 1, 10, 0), (m) => pings.push(m));
+  assert.equal(pings.length, 0);
+  await checkNameSpace(count(NAME_ALERT), Date.UTC(2026, 0, 1, 9, 0), (m) => pings.push(m));
+  assert.equal(pings.length, 1);
+  assert.match(pings[0], /1,000,000 of 1,232,000/);
 });
