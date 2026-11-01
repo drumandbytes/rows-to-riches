@@ -26,7 +26,7 @@ The story starts reasonable and gets steadily sillier: a CSV on localhost, then 
 | **Secrets** | A few hidden achievements, plus one you get by clicking it. |
 | **Keyboard** | <kbd>Space</kbd> INSERT · <kbd>1</kbd>–<kbd>6</kbd> tabs · <kbd>B</kbd> buy amount · <kbd>M</kbd> mute · <kbd>F</kbd> full screen |
 | **Corporate life** | 🎯 Quarterly OKRs (15 min of play) graded at a 📣 all-hands with a performance rating; 📅 meetings and 📨 stakeholder requests as two-choice cards. |
-| **Analytics** | Cookieless and identifier-free: anonymous events to Workers Analytics Engine via `/api/t`. Players can opt out under Save → Privacy; GPC and DNT are respected. |
+| **Analytics** | Cookieless and identifier-free: anonymous events to Workers Analytics Engine via `/api/t`. Players can opt out under Save → Privacy. GPC and DNT start it off; only an explicit click on the toggle (`statsGpcOptIn`) turns it on for those browsers. |
 | **Embedding** | `frame-ancestors` allows galaxy.click only. Embedded players get a note that cloud sync needs the main site (iframe storage is partitioned). |
 | **Installable app (PWA)** | Manifest, maskable icons and a network-first service worker (`public/sw.js`): installs on desktop and Android, Add to Home Screen on iOS, and plays offline. **Adding a JS module means adding it to `SHELL` in `sw.js`**, or offline loads miss it. |
 | **Offline progress** | Closed tabs keep earning at the current rate, up to 4h (more with Bigger Disks). |

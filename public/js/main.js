@@ -8,7 +8,7 @@ import { createQueryLog, createSparkline, sparks, banner, confetti } from "./wid
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
-import { track, allowed as statsAllowed } from "./analytics.js";
+import { track, allowed as statsAllowed, browserOptOut } from "./analytics.js";
 import { createTour } from "./tour.js";
 
 const SAVE_KEY = "r2r.save";
@@ -1558,6 +1558,7 @@ document.addEventListener("click", (e) => {
 $("opt-mood").innerHTML = `<option value="auto">Auto: follows the environment</option>` + Object.entries(audio.MOODS).map(([k, m]) => `<option value="${k}">${m.label}</option>`).join("");
 $("opt-stats").addEventListener("change", (e) => {
   setPref("stats", e.target.checked);
+  if (browserOptOut()) setPref("statsGpcOptIn", e.target.checked);
   showPrefs();
 });
 $("opt-mood").addEventListener("change", (e) => {
@@ -1599,8 +1600,8 @@ function showPrefs() {
   $("opt-notation").value = prefs.notation;
   $("opt-quality").value = prefs.quality;
   $("opt-mood").value = prefs.mood;
-  $("opt-stats").checked = prefs.stats && statsAllowed();
-  $("opt-stats").disabled = !!navigator.globalPrivacyControl || navigator.doNotTrack === "1";
+  $("opt-stats").checked = statsAllowed();
+  $("gpc-note").hidden = !browserOptOut();
   $("opt-muted").checked = prefs.muted;
   for (const k of ["master", "sfx", "music"]) {
     const el = $(`opt-${k}`);

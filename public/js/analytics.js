@@ -1,13 +1,15 @@
 // Anonymous gameplay stats. No cookies and no identifiers of any kind: each event is an
 // event name, coarse context (environment, phone or desktop, new or returning) and a few
-// numbers about the save. Off when the player opts out or the browser sends Global
-// Privacy Control / Do Not Track.
+// numbers about the save. Off when the player opts out. A browser sending Global Privacy
+// Control / Do Not Track starts it off, but the player can still turn it on (statsGpcOptIn,
+// set only by that click: the saved `stats: true` default isn't consent).
 
 import { prefs } from "./prefs.js";
 
 const startedAt = Date.now();
 
-export const allowed = () => prefs.stats !== false && !navigator.globalPrivacyControl && navigator.doNotTrack !== "1";
+export const browserOptOut = () => !!navigator.globalPrivacyControl || navigator.doNotTrack === "1";
+export const allowed = () => prefs.stats !== false && (!browserOptOut() || prefs.statsGpcOptIn);
 
 /** `s` is the save; `extra` may carry { detail } (e.g. which challenge). */
 export function track(event, s, extra = {}) {
@@ -22,7 +24,7 @@ export function track(event, s, extra = {}) {
     detail: extra.detail ?? "",
     sessionSecs: Math.round((Date.now() - startedAt) / 1000),
     playHours: Math.round((s.stats.onlineMs / 3.6e6) * 100) / 100,
-    log10Rows: Math.round(Math.log10(s.everRows + 1) * 10) / 10,
+    log10Rows: Math.round(s.everRows.add(1).log10() * 10) / 10,
     replat: s.replat,
     acq: s.acq,
     contact: s.contact,
