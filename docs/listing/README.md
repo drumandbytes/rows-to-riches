@@ -4,7 +4,7 @@ Copy-paste material for game portals. Regenerate the screenshots with
 `CHROMIUM=1 node tools/screenshots.js` after visible changes (it plays the sim to fixed
 points and captures them at 1920×1080).
 
-- **Game URL:** https://rowstoriches.drumandbytes.dev/?ref=galaxy (embedding is allowed for galaxy.click via `frame-ancestors`)
+- **Game URL:** https://rowstoriches.drumandbytes.dev/ (embedding is allowed for galaxy.click via `frame-ancestors`; no `?ref=`, since `logRef` only counts top-level page loads, not iframes)
 - **Thumbnail:** `thumbnail.png` (750×435, the pipeline scene in the multiverse); crop or pad to the portal's size.
 - **Screenshots:** `1-staging.png` … `6-stats.png` (1920×1080).
 
