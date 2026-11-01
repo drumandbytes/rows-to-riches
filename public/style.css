@@ -744,3 +744,10 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); b
 
 .linkish { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; font: inherit; cursor: pointer; }
 .whats-new { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.lb-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; font: 13px var(--mono); }
+.lb-list li { display: grid; grid-template-columns: 3.5em 1fr auto; gap: 8px; padding: 6px 8px; border-radius: 6px; }
+.lb-list li.me { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 700; }
+.lb-list li.lb-gap { display: block; text-align: center; opacity: 0.6; padding: 0; }
+.lb-list li.muted { display: block; }
+.lb-rank { opacity: 0.7; }
+.lb-value { text-align: right; }

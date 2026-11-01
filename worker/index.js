@@ -1,5 +1,6 @@
 import { implausible, normalize, ACHIEVEMENTS, big } from "../public/js/economy.js";
 import { validEndpoint, publicKey, sendPush } from "./push.js";
+import { handleTicket, handleCheckpoint, handleBoard, handleRemove, checkNameSpace } from "./leaderboard.js";
 
 const SESSION_IDLE_MS = 180 * 86_400_000;
 const MIN_SAVE_INTERVAL_MS = 10_000;
@@ -221,17 +222,40 @@ async function handleFeedback(request, env, ctx) {
   await env.DB.prepare("INSERT INTO feedback (created_at, category, message, contact, context, country) VALUES (?, ?, ?, ?, ?, ?)")
     .bind(Date.now(), category, message, contact, JSON.stringify(context), country)
     .run();
-  if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
-    const text = feedbackText(category, message, contact, context, country);
-    ctx.waitUntil(
-      fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", link_preview_options: { is_disabled: true } }),
-      }).catch((err) => console.error("telegram failed:", err instanceof Error ? err.message : err)),
-    );
-  }
+  telegram(env, ctx, feedbackText(category, message, contact, context, country));
   return json({ ok: true });
+}
+
+function telegram(env, ctx, text) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
+  ctx.waitUntil(
+    fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", link_preview_options: { is_disabled: true } }),
+    }).catch((err) => console.error("telegram failed:", err instanceof Error ? err.message : err)),
+  );
+}
+
+// Leaderboards (worker/leaderboard.js). Without LEADERBOARD_KEY they don't exist.
+async function handleLeaderboard(request, env, ctx, pathname) {
+  if (!env.LEADERBOARD_KEY) return json({ error: "Leaderboards aren't set up." }, 404);
+  if (request.method === "GET" && pathname === "/api/lb/board") {
+    const r = await handleBoard(new URL(request.url), env);
+    return json(r.data, r.status);
+  }
+  if (request.method !== "POST") return json({ error: "Not found." }, 404);
+  if (env.LB_LIMITER) {
+    const { success } = await env.LB_LIMITER.limit({ key: request.headers.get("CF-Connecting-IP") ?? "local" });
+    if (!success) return json({ error: "Slow down." }, 429);
+  }
+  const body = await readJson(request);
+  if (pathname === "/api/lb/ticket") return json(await handleTicket(request, body, env));
+  const r =
+    pathname === "/api/lb/checkpoint" ? await handleCheckpoint(body, env, (text) => telegram(env, ctx, text))
+    : pathname === "/api/lb/remove" ? await handleRemove(body, env)
+    : { status: 404, data: { error: "Not found." } };
+  return json(r.data, r.status);
 }
 
 // Web Push (opt-in, Settings → Save): "offline cap is full" and "challenge about to time
@@ -294,6 +318,7 @@ async function route(request, env, ctx) {
     return jwk ? json({ key: publicKey(jwk) }) : json({ error: "Push isn't set up." }, 404);
   }
   if (pathname === "/api/push" && method === "POST") return handlePush(request, env);
+  if (pathname.startsWith("/api/lb/")) return handleLeaderboard(request, env, ctx, pathname);
 
   const user = await authenticate(request, env);
   if (!user) return json({ error: "Not signed in." }, 401);
@@ -351,7 +376,8 @@ export default {
       return json({ error: "Server error." }, 500);
     }
   },
-  async scheduled(_controller, env, ctx) {
+  async scheduled(controller, env, ctx) {
     ctx.waitUntil(sendDuePushes(env));
+    ctx.waitUntil(checkNameSpace(env, controller.scheduledTime, (text) => telegram(env, ctx, text)));
   },
 };
