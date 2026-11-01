@@ -1,7 +1,7 @@
 // Big numbers. Rows, rates, costs, multipliers and prestige currencies grow without limit,
 // far past what a double holds (about 1.8e308); break_infinity's Decimal goes to 1e9e15.
 // Counts and levels (sources owned, Big Bangs, Axioms) stay plain numbers.
-import Decimal from "./vendor/break_infinity.js";
+import Decimal from "./lib/break_infinity.js";
 
 export { Decimal };
 /** A Decimal from a number, numeric string (as saves store them) or Decimal. */

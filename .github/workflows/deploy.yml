@@ -40,3 +40,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+      # Every file must be reachable on the live site: the zone WAF can block paths that
+      # work fine locally (it 403'd /js/vendor/ and broke v0.2.0).
+      - run: node tools/check-live.js
