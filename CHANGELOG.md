@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.2](https://github.com/drumandbytes/rows-to-riches/compare/v0.2.1...v0.2.2) (2026-11-01)
+
+
+### Bug Fixes
+
+* deploy check accepts Cloudflare bot challenges, fails only on blocks ([#25](https://github.com/drumandbytes/rows-to-riches/issues/25)) ([01b356c](https://github.com/drumandbytes/rows-to-riches/commit/01b356c0812f1f691568e3b31f0207a508e60936))
+* let GPC/DNT browsers opt in to stats, and report rows correctly ([#26](https://github.com/drumandbytes/rows-to-riches/issues/26)) ([71ba06c](https://github.com/drumandbytes/rows-to-riches/commit/71ba06cca618e9824d54a9c584f1534d89bc7cc4))
+* offline module list, faster production math, renamed vendor parodies ([#16](https://github.com/drumandbytes/rows-to-riches/issues/16)) ([c4106e5](https://github.com/drumandbytes/rows-to-riches/commit/c4106e5f1953891c73564c298f4d3a64112381f8))
+
 ## [0.2.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.2.0...v0.2.1) (2026-11-01)
 
 
