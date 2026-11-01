@@ -3,3 +3,5 @@ node_modules/
 .dev.vars
 .DS_Store
 public/CHANGELOG.md
+docs/listing/*.png
+!docs/listing/4-multiverse.png

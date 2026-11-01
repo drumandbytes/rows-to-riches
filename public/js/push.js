@@ -2,9 +2,10 @@
 // time out. While hidden, the server holds the schedule for this browser's push endpoint;
 // coming back cancels it.
 
+import { unb64url } from "./b64.js";
+
 export const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 
-const fromB64url = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
 // Kept in memory so the "hidden" request can go out synchronously while the page closes.
 let endpoint = null;
 
@@ -33,7 +34,7 @@ export async function enablePush() {
   if ((await Notification.requestPermission()) !== "granted") return false;
   const { key } = await (await fetch("/api/push/key")).json();
   const reg = await navigator.serviceWorker.ready;
-  const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64url(key) }));
+  const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: unb64url(key) }));
   endpoint = sub.endpoint;
   return true;
 }

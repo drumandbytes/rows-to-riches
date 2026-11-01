@@ -27,7 +27,7 @@ Worker secrets, set with `npx wrangler secret put <NAME>`. Every one is optional
 | --- | --- | --- |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Pings for in-game feedback, flagged leaderboard runs and the name-space alert | A Telegram bot |
 | `VAPID_PRIVATE_JWK` | Push notifications | `node tools/vapid.js \| npx wrangler secret put VAPID_PRIVATE_JWK`. A new key drops every push subscription |
-| `LEADERBOARD_KEY` | Leaderboards | `node tools/lb-key.js \| npx wrangler secret put LEADERBOARD_KEY`. A new key invalidates start tickets: games in progress get a "late" ticket, which counts for every board except fastest |
+| `LEADERBOARD_KEY` | Leaderboards | `openssl rand -base64 32 \| tr '+/' '-_' \| tr -d '=\n' \| npx wrangler secret put LEADERBOARD_KEY` (32 random bytes as base64url). A new key invalidates start tickets: games in progress get a "late" ticket, which counts for every board except fastest |
 
 The tools print keys to stdout, so piping them straight into `wrangler` keeps them off the screen and out of files.
 

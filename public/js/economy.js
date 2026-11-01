@@ -14,7 +14,6 @@
 import { big, bigSafe, bigMax, bigMin, bigSoftcap, Decimal, ZERO } from "./big.js";
 
 export { big, Decimal };
-const SAVE_VERSION = 2;
 const COST_GROWTH = 1.15;
 
 function pluralize(name) {
@@ -262,7 +261,7 @@ const EQUITY_DIVISOR = 1e23;
 export const TUNING = {
   equityPower: 0.23, equityProdPower: 0.25, insightPower: 1 / 3, insightBonusPower: 1, offlineRate: 0.5,
   // Soft caps: full benefit up to the cap, then value ** softPower past it.
-  insightSoftcap: 1000, insightSoftPower: 0.7, equitySoftcap: Infinity, equitySoftPower: 0.5,
+  insightSoftcap: 1000, insightSoftPower: 0.7,
   // Production multipliers from Equity, Xenobytes and Axioms (and Axioms' prestige-gain
   // boost), soft-capped in multiplier space: ×cap at full strength, then ** multSoftPower.
   equityMultCap: 100, xenoMultCap: 100, axiomMultCap: 1e3, axiomBoostCap: 100, multSoftPower: 0.5,
@@ -270,7 +269,6 @@ export const TUNING = {
   gateNeed: 3,
   axiomPower: 0.7,
 };
-const bigUnsoftcap = (y, cap, power) => (big(y).lte(cap) ? big(y) : big(cap).mul(big(y).div(cap).pow(1 / power)));
 
 export const BOARD = [
   { id: "autoreplat", name: "Auto Re-platform", base: 1, growth: 1, max: 1, desc: () => "Re-platforms for you when it would multiply your Insights (threshold in Settings)." },
@@ -569,7 +567,7 @@ ACHIEVEMENTS.push(
 );
 // Secret achievements: name and description stay hidden until earned. Most are triggered by
 // the client (recorded in s.secrets); a couple are derived from the save itself.
-export const SECRETS = [
+const SECRETS = [
   ["bobby", "Little Bobby Tables", "Name your company with a SQL injection.", (s) => /drop\s+table|';|--/i.test(s.company)],
   ["selfname", "Recursion", "Name your company after the game.", (s) => /rows\s*to\s*riches/i.test(s.company)],
   ["konami", "Cheat Code", "↑ ↑ ↓ ↓ ← → ← → B A.", null],
@@ -595,7 +593,6 @@ const INT_COUNTERS = ["cols", "clicks", "incidents", "replat", "acq", "contact",
 
 export function newState(now = Date.now()) {
   return {
-    v: SAVE_VERSION,
     rows: ZERO, runRows: ZERO, coRows: ZERO, civRows: ZERO, allRows: ZERO, everRows: ZERO,
     prod: PRODUCERS.map(() => 0),
     upg: [], cols: 0,
@@ -719,7 +716,6 @@ export function normalize(raw, now = Date.now()) {
     if (BIG_STATS.includes(k)) s.stats[k] = bigSafe(raw.stats?.[k]);
     else if (Number.isFinite(raw.stats?.[k]) && raw.stats[k] >= 0) s.stats[k] = raw.stats[k];
   }
-  s.v = SAVE_VERSION;
   return s;
 }
 
@@ -735,7 +731,7 @@ const offFrom = (s) => {
   const t = parseTier(s.chal);
   return t ? layerIdx(t.layer) : Infinity;
 };
-export const layerOff = (s, layer) => layerIdx(layer) >= offFrom(s);
+const layerOff = (s, layer) => layerIdx(layer) >= offFrom(s);
 export const radarLevel = (s, id) => (layerOff(s, "replat") ? 0 : (s.radar[id] ?? 0));
 export const boardLevel = (s, id) => (layerOff(s, "acq") ? 0 : (s.board[id] ?? 0));
 export const xenoLevel = (s, id) => (layerOff(s, "contact") ? 0 : (s.xeno_tech[id] ?? 0));
@@ -814,11 +810,10 @@ export function producerMultipliers(s) {
   if (won(s, "heatdeath")) for (let i = BASE_PRODUCERS + RND_PRODUCERS; i < PRODUCERS.length; i++) m[i] *= 1000;
   return m;
 }
-export const producerMultiplier = (s, i) => producerMultipliers(s)[i];
 
 export const equityProdMult = (s) => bigSoftcap(s.eq.add(1).pow(TUNING.equityProdPower), TUNING.equityMultCap, TUNING.multSoftPower);
 export const xenoProdMult = (s) => bigSoftcap(s.xeno.add(1).pow(0.25), TUNING.xenoMultCap, TUNING.multSoftPower);
-export const axiomProdMult = (s) => bigSoftcap(big(3).pow(s.axioms), TUNING.axiomMultCap, TUNING.multSoftPower);
+const axiomProdMult = (s) => bigSoftcap(big(3).pow(s.axioms), TUNING.axiomMultCap, TUNING.multSoftPower);
 
 /** Everything multiplying production (a Decimal). */
 export function globalMultiplier(s) {
@@ -857,7 +852,7 @@ export const producerRate = (s, i, gm = globalMultiplier(s), pm = producerMultip
 // power softcap). Rows grow exponentially otherwise, which would race through every
 // later threshold; this keeps the mid and late game long while the opening is untouched.
 export const GRAVITY_AT = 1e15;
-export const GRAVITY_POWER = 0.6;
+const GRAVITY_POWER = 0.6;
 export const gravity = (r) => bigSoftcap(r, GRAVITY_AT, GRAVITY_POWER);
 
 /** Production before softcap, for display ("raw" vs effective). */
@@ -883,7 +878,7 @@ function buffMult(s, kind, now) {
 const MOMENTUM_DECAY = Math.LN2 / 3;
 const MOMENTUM_PER_CLICK = 0.04;
 export const momentumCap = (s) => 0.25 + 0.25 * radarLevel(s, "devex");
-export const momentumMult = (s) => 1 + momentumCap(s) * s.momentum;
+const momentumMult = (s) => 1 + momentumCap(s) * s.momentum;
 export const addMomentum = (s) => (s.momentum = Math.min(1, s.momentum + MOMENTUM_PER_CLICK));
 
 export const rate = (s, now = Date.now()) => baseRate(s).mul(buffMult(s, "prod", now) * momentumMult(s));
@@ -919,8 +914,7 @@ export const offlineCredit = (secs) => Math.min(secs, 60) + Math.max(0, secs - 6
 // The end of the number line. break_infinity's exponent is a double, exact only up to about
 // 9e15; past that, gains stop registering and values tip into Infinity/NaN. So everything is
 // capped at 1e(1e15): reaching it is a (secret) achievement, never a broken save.
-export const MAX_ROWS = Decimal.fromMantissaExponent(1, 1e15); // big("1e1e15") would parse as 10
-export const atMaxRows = (s) => s.everRows.gte(MAX_ROWS);
+const MAX_ROWS = Decimal.fromMantissaExponent(1, 1e15); // big("1e1e15") would parse as 10
 
 export function earn(s, amount) {
   amount = bigMin(amount, MAX_ROWS.sub(s.everRows));
@@ -971,7 +965,7 @@ export function buyProducer(s, i, n) {
 // Selling: half the price of the units sold back. Free units (Golden Images, retention
 // rewards) can't be sold, so a refund never exceeds what the run actually spent; that keeps
 // implausible()'s "spent more than earned" and "bank exceeds run total" checks valid.
-export const SELL_REFUND = 0.5;
+const SELL_REFUND = 0.5;
 const freeUnits = (s, i) => Math.max(starterProducers(s)[i], s.kept.prod[i] ?? 0);
 export const sellable = (s, i) => Math.max(0, s.prod[i] - freeUnits(s, i));
 /** Rows back for selling the last n units of producer i. */
@@ -1056,7 +1050,7 @@ export const BANG_MILESTONES = [
 ];
 const BANG_MILESTONE_BY_ID = Object.fromEntries(BANG_MILESTONES.map((m) => [m.id, m]));
 export const bangMilestone = (s, id) => s.bangs >= BANG_MILESTONE_BY_ID[id].at && !layerOff(s, "bang");
-export const bangMilestonesReached = (s) => BANG_MILESTONES.filter((m) => s.bangs >= m.at).length;
+const bangMilestonesReached = (s) => BANG_MILESTONES.filter((m) => s.bangs >= m.at).length;
 const permanent = (s, layer) => s.bangs >= BANG_MILESTONE_BY_ID[{ replat: "keepreplat", acq: "keepacq", contact: "keepcontact" }[layer]].at;
 
 /** Prestige auto-buyers (Radar Bot, Board Bot, Axiom milestone): cheapest first, per shop. */
@@ -1098,9 +1092,9 @@ export const pendingInsights = (s) => bigMax(0, insightsFor(s).add(s.insCarry).s
 export const nextInsightAt = (s) => insightsFor(s).add(1).div(insightMult(s)).pow(1 / TUNING.insightPower).mul(INSIGHT_DIVISOR);
 
 const equityMult = (s) => big(2).pow(xenoLevel(s, "translator")).mul(won(s, "takeover") ? 3 : 1).mul(axiomBoost(s));
-const equityFor = (s) => bigSoftcap(s.civRows.div(EQUITY_DIVISOR).pow(TUNING.equityPower).mul(equityMult(s)), TUNING.equitySoftcap, TUNING.equitySoftPower).add(1e-9).floor();
+const equityFor = (s) => s.civRows.div(EQUITY_DIVISOR).pow(TUNING.equityPower).mul(equityMult(s)).add(1e-9).floor();
 export const pendingEquity = (s) => bigMax(0, equityFor(s).add(s.eqCarry).sub(s.eq));
-export const nextEquityAt = (s) => bigUnsoftcap(equityFor(s).add(1), TUNING.equitySoftcap, TUNING.equitySoftPower).div(equityMult(s)).pow(1 / TUNING.equityPower).mul(EQUITY_DIVISOR);
+export const nextEquityAt = (s) => equityFor(s).add(1).div(equityMult(s)).pow(1 / TUNING.equityPower).mul(EQUITY_DIVISOR);
 
 const xenoMult = (s) => axiomBoost(s).mul(won(s, "translation") ? 3 : 1);
 const xenoFor = (s) => s.allRows.div(XENO_DIVISOR).pow(0.2).mul(xenoMult(s)).floor();
