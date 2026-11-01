@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.2.2...v0.3.0) (2026-11-01)
+
+
+### Features
+
+* late-game incidents, requests, all-hands lines, mail and ticker ([#19](https://github.com/drumandbytes/rows-to-riches/issues/19)) ([cafd979](https://github.com/drumandbytes/rows-to-riches/commit/cafd97927253b63173381d16ebb47995d074fc54))
+* opt-in Web Push when the offline cap is full or a challenge is about to time out ([#20](https://github.com/drumandbytes/rows-to-riches/issues/20)) ([b4be69c](https://github.com/drumandbytes/rows-to-riches/commit/b4be69ce775e246f439b291b0620d40833a67947))
+* steady late-game scaling; browser smoke test in CI ([#17](https://github.com/drumandbytes/rows-to-riches/issues/17)) ([5b1893b](https://github.com/drumandbytes/rows-to-riches/commit/5b1893b9882bad43d3ece2cf08a41dbca935bac1))
+* What's new card from the changelog after each release ([#18](https://github.com/drumandbytes/rows-to-riches/issues/18)) ([df3ea1b](https://github.com/drumandbytes/rows-to-riches/commit/df3ea1bb8f12b5ed2864562e40ccfb9db6ccabf9))
+
+
+### Bug Fixes
+
+* point embedded players to export/import instead of the hidden account codes ([#22](https://github.com/drumandbytes/rows-to-riches/issues/22)) ([8d7cb2b](https://github.com/drumandbytes/rows-to-riches/commit/8d7cb2b01eaeaf7f5bdfda6d73f74b7b12477ae2))
+
 ## [0.2.2](https://github.com/drumandbytes/rows-to-riches/compare/v0.2.1...v0.2.2) (2026-11-01)
 
 
