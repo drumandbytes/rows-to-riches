@@ -1128,6 +1128,7 @@ export function catalogEverything(s, now = Date.now()) {
     ach: s.ach, secrets: s.secrets, stats: { ...s.stats, companyStartedAt: now }, company: s.company, inbox: s.inbox,
     settings: { ...s.settings, catalogSeen: false, env: undefined, finaleSeen: false },
     everRows: s.everRows, startedAt: s.startedAt, clicks: s.clicks, incidents: s.incidents, completions: s.completions + 1,
+    modified: s.modified,
   };
   for (const k of Object.keys(s)) delete s[k];
   Object.assign(s, newState(now), keep);

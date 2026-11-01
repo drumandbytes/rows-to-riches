@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { encodeSave, decodeSave } from "../public/js/seal.js";
-import { newState, normalize } from "../public/js/economy.js";
+import { newState, normalize, catalogEverything } from "../public/js/economy.js";
 
 test("a sealed save round-trips and isn't readable as JSON", () => {
   const s = newState(0);
@@ -33,4 +33,10 @@ test("older formats load but count as unsealed", () => {
 test("modified survives normalize, and only a literal true counts", () => {
   assert.equal(normalize({ ...newState(0), modified: true }).modified, true);
   assert.equal(normalize({ ...newState(0), modified: "yes" }).modified, false);
+});
+
+test("Catalog Everything keeps the modified mark", () => {
+  const s = { ...newState(0), bangs: 50, finale: true, modified: true };
+  assert.equal(catalogEverything(s, 1), true);
+  assert.equal(s.modified, true);
 });
