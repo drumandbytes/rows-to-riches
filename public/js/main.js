@@ -12,12 +12,15 @@ import { track, allowed as statsAllowed, browserOptOut } from "./analytics.js";
 import { createTour } from "./tour.js";
 import { encodeSave, decodeSave } from "./seal.js";
 import { createLeaderboard } from "./leaderboard.js";
+import { createGalaxySaves } from "./galaxy.js";
 import { pushAvailable, initPush, enablePush, disablePush, schedulePush } from "./push.js";
 
 const SAVE_KEY = "r2r.save";
 // Set once this browser has written a sealed save. Before that, an unsealed (plain JSON)
 // save is the pre-seal format and migrates clean; after it, an unsealed one was edited.
 const SEALED_KEY = "r2r.sealed";
+// galaxy.click cloud saves (galaxy.js), set up below when embedded there.
+let galaxy = null;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -92,6 +95,7 @@ function fromSave({ raw, sealed }, strict = true) {
 }
 
 function saveLocal() {
+  galaxy?.save();
   try {
     localStorage.setItem(SAVE_KEY, encodeSave(S));
     localStorage.setItem(SEALED_KEY, "1");
@@ -1658,6 +1662,31 @@ $("about-version").textContent = `v${VERSION}`;
 const embedded = window.top !== window.self;
 $("embed-note").hidden = !embedded;
 $("cloud").hidden = embedded;
+// On galaxy.click, galaxy's own cloud saves (galaxy.js); elsewhere the messages go nowhere.
+galaxy = embedded
+  ? createGalaxySaves({
+      state: () => S, encodeSave, decodeSave, toast,
+      summary: (s) => `${fmt(s.everRows)} rows · ${E.environmentFor(s).name}`,
+      onCloudAhead: offerGalaxySave,
+    })
+  : null;
+
+/** galaxy.click's autosave, if it's further along than this browser. Returns whether it asked. */
+function offerGalaxySave(decoded) {
+  const cloud = fromSave(decoded);
+  if (cloud.everRows.lte(S.everRows.add(1))) return false;
+  modal(
+    `<h2>galaxy.click save is ahead</h2><p>Your galaxy.click cloud save has <b>${fmt(cloud.everRows)}</b> lifetime rows; this browser has <b>${fmt(S.everRows)}</b>.</p>`,
+    [
+      ["Keep this browser", "", () => galaxy.resume()],
+      ["Load galaxy save", "primary", () => {
+        replaceState(cloud);
+        galaxy.resume();
+      }],
+    ],
+  );
+  return true;
+}
 
 // Installable app: offline shell via the service worker (not inside someone else's iframe).
 if ("serviceWorker" in navigator && !embedded) navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -2039,6 +2068,7 @@ render(true);
 if (!prefs.tourDone && S.everRows.lt(50)) setTimeout(() => tour.start(), 600);
 checkWhatsNew();
 lb.init();
+galaxy?.start();
 document.addEventListener("change", (e) => {
   if (e.target.id === "tour-lb") lb.setOptIn(e.target.checked);
 });
@@ -2075,6 +2105,7 @@ document.addEventListener("visibilitychange", () => {
   schedulePush(pushPlan());
   E.tick(S, Date.now());
   saveLocal();
+  galaxy?.save(true);
   if (Date.now() - lastCloudPush > 20_000) pushCloud({ keepalive: true });
 });
 // Two open tabs would overwrite each other's saves; the tab that's behind adopts the other.
