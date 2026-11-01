@@ -252,7 +252,8 @@
             </div>
             <h3>Privacy</h3>
             <label class="toggle"><input type="checkbox" id="opt-stats" /> Send anonymous gameplay stats</label>
-            <p class="muted" id="stats-note">No cookies and no identifiers: only things like "a session lasted 25 minutes in the prod environment" or "someone reached their first acquisition after 6 hours". It helps balance the game. Your browser's Global Privacy Control or Do Not Track setting turns this off automatically.</p>
+            <p class="muted" id="stats-note">No cookies and no identifiers: only things like "a session lasted 25 minutes in the prod environment" or "someone reached their first acquisition after 6 hours". It helps balance the game.</p>
+            <p class="muted" id="gpc-note" hidden>Your browser sends Global Privacy Control or Do Not Track, so this started off. Turning it on here overrides that for this game only.</p>
             <h3>Danger zone</h3>
             <button type="button" class="danger" id="reset">DROP DATABASE (hard reset)</button>
           </div>
@@ -319,7 +320,7 @@
               <li>Cloud vendors in the Inbox are parodies. Any resemblance to your actual cloud bill is coincidental.</li>
             </ul>
             <h3>Privacy</h3>
-            <p class="muted">No ads and no cookies. Cloud save stores your save and a hash of your account code, nothing else about you; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy. Feedback you send is stored with the game context shown in the form, plus your email only if you add one. Nothing else leaves your browser unless you sign in.</p>
+            <p class="muted">No ads and no cookies. Cloud save stores your save and a hash of your account code, nothing else about you; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy (they start off if your browser sends Global Privacy Control or Do Not Track). Feedback you send is stored with the game context shown in the form, plus your email only if you add one. Nothing else leaves your browser unless you sign in.</p>
             <p class="muted">Everything loads from this site, which runs on Cloudflare: no Google Fonts, CDNs, trackers or embeds. The one extra request is Cloudflare's own cookieless page-view counter. Feedback reaches me as a Telegram message.</p>
           </div>
         </div>

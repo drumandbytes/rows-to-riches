@@ -6,8 +6,9 @@ const DEFAULTS = { master: 0.7, sfx: 0.6, music: 0.35, muted: false, quality: "h
   // Motion and pop-ups (Settings → Display).
   motion: matchMedia("(prefers-reduced-motion: reduce)").matches ? "reduced" : "full",
   particles: true, shake: true, sceneMode: "animated", toasts: "all", querylog: true, tourDone: false, skipChalConfirm: false, seenVersion: "",
-  // Anonymous gameplay stats (no cookies, no ids); off with Global Privacy Control too.
-  stats: true };
+  // Anonymous gameplay stats (no cookies, no ids). With Global Privacy Control / DNT they
+  // stay off unless statsGpcOptIn: an explicit opt-in from the toggle.
+  stats: true, statsGpcOptIn: false };
 
 function load() {
   try {
