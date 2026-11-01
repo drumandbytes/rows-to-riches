@@ -268,6 +268,7 @@ export const TUNING = {
   equityMultCap: 100, xenoMultCap: 100, axiomMultCap: 1e3, axiomBoostCap: 100, multSoftPower: 0.5,
   // Completed challenges each prestige needs from the layer below (0 in sims comparing curves).
   gateNeed: 3,
+  axiomPower: 0.7,
 };
 const bigUnsoftcap = (y, cap, power) => (big(y).lte(cap) ? big(y) : big(cap).mul(big(y).div(cap).pow(1 / power)));
 
@@ -398,7 +399,10 @@ export const CHALLENGE_LAYERS = [
 // ---- Layer 4: Big Bang → Axioms ---------------------------------------------
 // Only after owning Everything Is Data. Axioms are permanent and never spent.
 
-const axiomsFor = (allRows) => Math.max(1, Math.floor(bigMax(1, allRows).log10() / 30));
+// Axioms grow with the universe's rows exponent, to the power axiomPower: below 1 the late
+// game scales polynomially instead of double-exponentially (Axioms feed production, which
+// feeds the exponent).
+const axiomsFor = (allRows) => Math.max(1, Math.floor((bigMax(1, allRows).log10() / 30) ** TUNING.axiomPower));
 
 // Environments: cosmetic eras. `at` is company rows (coRows); `needs` gates the late, absurd ones
 // on actual progress so the scenery never runs ahead of the story.
