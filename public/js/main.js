@@ -10,9 +10,13 @@ import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
 import { track, allowed as statsAllowed, browserOptOut } from "./analytics.js";
 import { createTour } from "./tour.js";
+import { encodeSave, decodeSave } from "./seal.js";
 import { pushAvailable, initPush, enablePush, disablePush, schedulePush } from "./push.js";
 
 const SAVE_KEY = "r2r.save";
+// Set once this browser has written a sealed save. Before that, an unsealed (plain JSON)
+// save is the pre-seal format and migrates clean; after it, an unsealed one was edited.
+const SEALED_KEY = "r2r.sealed";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -68,17 +72,25 @@ const comboMult = () => 1 + Math.min(combo, COMBO_MAX) * 0.05;
 
 function loadLocal() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) return E.normalize(JSON.parse(raw));
+    const text = localStorage.getItem(SAVE_KEY);
+    if (text) return fromSave(decodeSave(text), localStorage.getItem(SEALED_KEY) !== null);
   } catch {
     /* corrupt or blocked storage: start fresh */
   }
   return E.newState();
 }
 
+/** A decoded save as state; `strict` marks unsealed saves as modified (see SEALED_KEY). */
+function fromSave({ raw, sealed }, strict = true) {
+  const s = E.normalize(raw);
+  if (!sealed && strict) s.modified = true;
+  return s;
+}
+
 function saveLocal() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+    localStorage.setItem(SAVE_KEY, encodeSave(S));
+    localStorage.setItem(SEALED_KEY, "1");
   } catch {
     /* private mode */
   }
@@ -86,7 +98,7 @@ function saveLocal() {
 }
 
 function replaceState(next) {
-  S = E.normalize(next);
+  S = next;
   structureKey = "";
   // An imported or cloud save may be hours old: credit that time with the offline cap.
   applyOffline();
@@ -1143,6 +1155,7 @@ function updateStats() {
     ["This run", fmtDuration((now - S.runStartedAt) / 1000)],
     ["Playing since", new Date(S.startedAt).toLocaleDateString()],
     ["Offline cap", fmtDuration(E.offlineCapSecs(S))],
+    ...(S.modified ? [["Save", "modified: plays normally, not ranked"]] : []),
   ];
   const html = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   if ($("stats").innerHTML !== html) $("stats").innerHTML = html;
@@ -1250,7 +1263,8 @@ function offerCloud(cloud) {
     [
       ["Keep this device", "", () => pushCloud({ force: true })],
       ["Load cloud save", "primary", () => {
-        replaceState(cloud);
+        // From our own server, which validated it on upload: no seal to check.
+        replaceState(E.normalize(cloud));
         pushCloud();
       }],
     ],
@@ -1888,7 +1902,7 @@ async function sendFeedback(btn) {
 
 function exportSave() {
   E.tick(S, Date.now());
-  const text = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+  const text = encodeSave(S);
   modal(`<h2>Export save</h2><p class="muted">Copy this somewhere safe.</p><textarea readonly id="export-text">${text}</textarea>`, [
     ["Copy", "primary", () => navigator.clipboard?.writeText(text).then(() => toast("Copied."))],
     ["Close"],
@@ -1901,9 +1915,9 @@ function importSave() {
     ["Cancel"],
     ["Import", "primary", () => {
       try {
-        const raw = JSON.parse(decodeURIComponent(escape(atob($("import-text").value.trim()))));
-        replaceState(raw);
-        toast("Save imported.");
+        const next = fromSave(decodeSave($("import-text").value));
+        replaceState(next);
+        toast(next.modified ? "Save imported. It's from an edited or pre-0.4 export, so it plays normally but won't be ranked." : "Save imported.");
         pushCloud({ force: true });
       } catch {
         toast("That doesn't look like a save.");
@@ -2038,7 +2052,7 @@ document.addEventListener("visibilitychange", () => {
 addEventListener("storage", (e) => {
   if (e.key !== SAVE_KEY || !e.newValue) return;
   try {
-    const other = E.normalize(JSON.parse(e.newValue));
+    const other = fromSave(decodeSave(e.newValue));
     if (E.big(other.everRows ?? 0).gt(S.everRows.add(1))) {
       S = other;
       structureKey = "";

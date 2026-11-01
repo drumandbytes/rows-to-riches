@@ -50,6 +50,7 @@ Numbers are plain doubles. Each universe caps at 1e300 rows and multipliers cap 
 ## Saves and sync
 
 - The game is local-first. It autosaves to `localStorage` every 5s and whenever the tab is hidden. Export and Import live under Settings.
+- **Sealed saves** (`public/js/seal.js`): saves are stored and exported as `r2r1.<base64url JSON>.<seal>`, so they aren't readable at a glance. A save whose seal doesn't match still loads but is marked `modified` (Stats shows it) and is never ranked. It's a deterrent, not security: the seal's code ships with the game. Plain-JSON saves from before 0.4 migrate clean once per browser (`r2r.sealed` marks that a sealed save was written); older unsealed exports import as modified.
 - **Cloud sync** is optional. Create an **account code** (`R2R-XXXX-XXXX-XXXX-XXXX-XXXX`, 100 random bits) and enter it, or open its `#code=` link, on your other devices. No email, no password; the server keeps only a hash. Lost it? Any device that's still signed in can make a new one. Settings → Delete account removes everything.
 - When two devices disagree, the save with more all-time rows wins automatically. If the cloud is ahead, the game asks first.
 

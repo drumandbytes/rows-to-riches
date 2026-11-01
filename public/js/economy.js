@@ -603,6 +603,8 @@ export function newState(now = Date.now()) {
     eq: ZERO, eqSpent: ZERO, eqFree: ZERO, board: {},
     xeno: ZERO, xenoSpent: ZERO, xeno_tech: {},
     axioms: 0, finale: false,
+    // Loaded from a save whose seal didn't match (seal.js): plays normally, never ranked.
+    modified: false,
     chal: null, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
     momentum: 0,
     okr: null, // quarterly OKRs: { quarter, endsAt (online ms), items: [{ kind, label, base, target, done }] }
@@ -649,6 +651,7 @@ export function normalize(raw, now = Date.now()) {
   // Older saves lack the outer layers: everything so far belongs to one company.
   for (const k of ["coRows", "civRows", "everRows"]) if (raw[k] === undefined) s[k] = s.allRows;
   if (!Number.isFinite(raw.playthroughStartedAt)) s.playthroughStartedAt = s.startedAt;
+  s.modified = raw.modified === true;
   s.prod = PRODUCERS.map((_, i) => Math.floor(num(raw.prod?.[i])));
   s.upg = [...new Set(Array.isArray(s.upg) ? s.upg : [])].filter((id) => UPGRADE_BY_ID[id]);
   s.arch = [...new Set(Array.isArray(s.arch) ? s.arch : [])].filter((id) => ARCH_BY_ID[id]);
