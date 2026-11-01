@@ -103,3 +103,7 @@ echo "LEADERBOARD_KEY=$(node tools/lb-key.js)" >> .dev.vars
 Commits and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: …`, `fix: …`): [release-please](https://github.com/googleapis/release-please) builds the version and `CHANGELOG.md` from them, and each release deploys automatically. Balance changes should come with a `node tools/sim.js` run showing that no layer snowballs.
 
 Maintainer notes (deploys, secrets, moderation) are in [`docs/maintaining.md`](docs/maintaining.md).
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md): you may read, run, modify and share the game for any noncommercial purpose, including personal use, study and hobby projects. Commercial use, such as hosting a copy with ads or selling it, isn't permitted. The vendored [break_infinity.js](public/js/lib/break_infinity.js) keeps its own [MIT license](public/js/lib/break_infinity.LICENSE.txt).
