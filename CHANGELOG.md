@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.4.1...v0.5.0) (2026-11-01)
+
+
+### Features
+
+* galaxy.click cloud saves when embedded there ([#35](https://github.com/drumandbytes/rows-to-riches/issues/35)) ([1f3011b](https://github.com/drumandbytes/rows-to-riches/commit/1f3011b016875bf05cd7a4767baec24ef0cd2146))
+
 ## [0.4.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.4.0...v0.4.1) (2026-11-01)
 
 
