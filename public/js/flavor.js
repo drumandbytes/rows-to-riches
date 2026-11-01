@@ -153,6 +153,20 @@ export const TICKER = {
   ],
 };
 
+// After the first Big Bang, and after Catalog Everything: mixed into every environment.
+TICKER.bang = [
+  "The previous universe left a sticky note: 'the coffee machine is broken'. It still is.",
+  "Physics v2 shipped. Gravity is now a feature flag.",
+  "You recognise this galaxy. You've deduplicated it before.",
+  "The Big Bang was rescheduled twice; nobody blocked out the time.",
+  "Changelog for this universe: 'minor fixes and performance improvements'.",
+];
+TICKER.catalog = [
+  "Everything has been cataloged. Everything has also changed since. Please re-catalog.",
+  "The universe now has a README. Nobody reads it, which proves it's a real README.",
+  "New Game+: same universe, bigger numbers, identical stand-ups.",
+];
+
 // Corporate life, any environment.
 TICKER.corporate = [
   "Leadership announces a new mission statement. It is the old one, in a new font.",
@@ -343,5 +357,26 @@ export const INBOX = [
     body: "This universe is about to run out of floating point. Consider a Big Bang. We will not be taking questions." },
   { id: "bang", from: "The Previous Universe", kind: "email", when: (s) => s.bangs > 0,
     subject: "forwarding address",
-    body: "Hi, I've moved on. Please forward any rows that arrive for me. Also you left the lights on (all of them, everywhere)." },
+    body: "Hi, I've moved on. Please forward any rows that arrive for me. Also you left the lights on (all of them, everywhere)." },  // late game: contact, Big Bang milestones, Catalog Everything
+  { id: "contact", from: "Ministry of First Contact", kind: "news", when: (s) => s.contact > 0,
+    subject: "Humanity makes first contact; aliens ask for the data dictionary",
+    body: "The visitors were polite but firm: they will not integrate with anyone whose column names include 'temp2'. Talks continue." },
+  { id: "hivehr", from: "Hive Mind HR", kind: "email", when: after("contact", 3600e3),
+    subject: "Onboarding: you are now 0.0000001% of us",
+    body: "Welcome to the collective. Your laptop will arrive in 4–6 light-years. Until then, please share a brain with Kevin." },
+  { id: "bang10", from: "Cosmology Quarterly", kind: "news", when: (s) => s.bangs >= 10,
+    subject: "Local data team recycles its tenth universe",
+    body: "Astronomers report the cosmic microwave background now contains a recognisable watermark. It says 'staging'." },
+  { id: "bang100", from: "HR <hr@everywhere>", kind: "email", when: (s) => s.bangs >= 100,
+    subject: "Time in role: 100 universes",
+    body: "Congratulations on your 100-universe work anniversary! As a token of our appreciation, please find attached one (1) branded lanyard. It is the same lanyard." },
+  { id: "bang250", from: "Department of Entropy", kind: "alert", when: (s) => s.bangs >= 250,
+    subject: "Entropy budget exceeded",
+    body: "You have reset the universe more often than the universe has reset you. Our auditors have opened a ticket. Its priority is 'eventually'." },
+  { id: "catalog", from: "Everything", kind: "email", when: (s) => s.completions > 0,
+    subject: "Re: hi, it's everything",
+    body: "You did it. I am fully cataloged. I have never felt so documented. Now please do it again; I've changed a bit since then." },
+  { id: "catalog3", from: "The Board (of Everything)", kind: "email", when: (s) => s.completions >= 3,
+    subject: "Q4 planning: what's after Everything?",
+    body: "We've cataloged Everything three times. The board would like to see a plan for Everything Else. Please have slides ready by Monday." },
 ];
