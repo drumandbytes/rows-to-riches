@@ -394,7 +394,8 @@ const wouldDouble = (l) => E.big(l.pending(S)).gte((l.id === "bang" ? E.big(l.ha
 
 /** Each source's share of production (plain numbers that sum to 1), for the scene. */
 function sourceShares(gm) {
-  const rates = E.PRODUCERS.map((p) => (S.prod[p.i] ? E.producerRate(S, p.i, gm) : E.big(0)));
+  const pm = E.producerMultipliers(S);
+  const rates = E.PRODUCERS.map((p) => (S.prod[p.i] ? E.producerRate(S, p.i, gm, pm) : E.big(0)));
   const total = rates.reduce((a, b) => a.add(b), E.big(0));
   return rates.map((r) => (total.gt(0) ? r.div(total).toNumber() : 0));
 }
@@ -610,7 +611,7 @@ const gitopsOwned = () => E.boardLevel(S, "gitops") > 0;
 
 // Each source strategy scores the affordable candidates; the auto-buyer buys the top one.
 const SOURCE_STRATEGIES = {
-  value: (i, gm) => E.big(gm).mul(E.PRODUCERS[i].rate * E.producerMultiplier(S, i)).div(E.producerCost(S, i, 1)).log10(),
+  value: (i, gm, pm) => E.big(gm).mul(E.PRODUCERS[i].rate * pm[i]).div(E.producerCost(S, i, 1)).log10(),
   cheapest: (i) => -E.producerCost(S, i, 1).log10(),
   newest: (i) => i,
   // Fewest rows needed to reach the next ×2 threshold wins.
@@ -637,11 +638,12 @@ function autoBuy() {
     const score = SOURCE_STRATEGIES[set.autoStrategy] ?? SOURCE_STRATEGIES.value;
     for (let n = 0; n < 20; n++) {
       const gm = E.globalMultiplier(S);
+      const pm = E.producerMultipliers(S);
       let best = -1;
       let bestScore = -Infinity;
       for (const p of E.PRODUCERS) {
         if (!E.producerUnlocked(S, p.i) || set.autoSkip.includes(p.id) || E.producerCost(S, p.i, 1).gt(S.rows)) continue;
-        const sc = score(p.i, gm);
+        const sc = score(p.i, gm, pm);
         if (sc > bestScore) [best, bestScore] = [p.i, sc];
       }
       if (best < 0) break;
@@ -939,13 +941,14 @@ const sharePct = (f) => (f >= 0.995 ? "100%" : f >= 0.1 ? `${Math.round(f * 100)
 function updateSources() {
   if (tab !== "sources") return;
   const gm = E.globalMultiplier(S);
+  const pm = E.producerMultipliers(S);
   const raw = E.rawRate(S).max(1e-300);
   for (const li of $("sources").querySelectorAll("li[data-i]")) {
     const i = Number(li.dataset.i);
     const p = E.PRODUCERS[i];
     const n = buyAmount(i);
     const cost = E.producerCost(S, i, n);
-    const each = E.big(gm).mul(p.rate * E.producerMultiplier(S, i));
+    const each = E.big(gm).mul(p.rate * pm[i]);
     const owned = S.prod[i];
     li.querySelector(".count").textContent = owned ? `×${owned}` : "";
     li.classList.toggle("running", owned > 0);
@@ -958,7 +961,7 @@ function updateSources() {
       chip.textContent = chipText;
       chip.className = `chip ${owned ? "run" : "queued"}`;
     }
-    const total = E.producerRate(S, i, gm);
+    const total = E.producerRate(S, i, gm, pm);
     li.querySelector(".sub").textContent = owned
       ? `${fmt(each)}/s each · ${fmt(total)}/s total · ${sharePct(total.div(raw).toNumber())} of output`
       : `${fmt(each)}/s each · ${p.flavor}`;

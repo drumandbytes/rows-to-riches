@@ -9,7 +9,7 @@ const ROW = 15;
 const HEAD = 22;
 const GAP_Y = 14;
 const COL_X = [10, 232, 454, 690, 926];
-const LAYER_LABELS = ["raw (Fivetrain / Airbite)", "staging (dbd)", "intermediate (dbd)", "marts", "dimensions"];
+const LAYER_LABELS = ["raw (Sixtran / Airbite)", "staging (dbd)", "intermediate (dbd)", "marts", "dimensions"];
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -19,7 +19,7 @@ function tablesFor(s) {
   const upgCount = (i) => s.upg.filter((id) => UPGRADES.find((u) => u.id === id)?.target === i && id.indexOf("syn_") !== 0).length;
   const owned = PRODUCERS.filter((p) => s.prod[p.i] > 0);
   for (const p of owned) {
-    const syncer = p.i % 2 ? "airbite" : "fivetrain";
+    const syncer = p.i % 2 ? "airbite" : "sixtran";
     tables.push({ id: `raw_${p.id}`, layer: 0, name: `raw.${p.id}`, hue: producerHue(p.i), cols: [["payload", "JSONB"], [`_${syncer}_synced_at`, "TIMESTAMP"]] });
     const n = upgCount(p.i);
     if (n >= 1) {

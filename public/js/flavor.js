@@ -171,7 +171,7 @@ TICKER.corporate = [
 
 // Parody tooling, any environment. Any resemblance to real vendors is, legally speaking, a vibe.
 TICKER.tools = [
-  "Fivetrain bills you per Monthly Active Row. This month: all of them.",
+  "Sixtran bills you per Monthly Active Row. This month: all of them.",
   "dbd run: 4,812 models built. 3 of them are used. One of them is used by you.",
   "Airbite connector #312 released: syncs your fridge to your warehouse.",
   "The Lookie dashboard has 400 tiles. The CEO looks at one number.",
@@ -246,9 +246,10 @@ export const INBOX = [
   { id: "streaming", from: "VP of Product", kind: "email", when: P(5),
     subject: "Re: Re: Re: real-time??",
     body: "Love the new streaming setup! Can the dashboard refresh every second? Also can it be emailed to me every morning as a PDF?" },
-  { id: "fivetrain", from: "Fivetrain Billing", kind: "vendor", when: P(4),
+  // Id from the vendor's old name; ids are stored in saves, so it stays.
+  { id: "fivetrain", from: "Sixtran Billing", kind: "vendor", when: P(4),
     subject: "Your Monthly Active Rows invoice",
-    body: "This month you synced 41 million Monthly Active Rows, 40.9 million of which were the same row updated every minute by a cron job. Thank you for choosing Fivetrain!" },
+    body: "This month you synced 41 million Monthly Active Rows, 40.9 million of which were the same row updated every minute by a cron job. Thank you for choosing Sixtran!" },
   { id: "dbd", from: "dbd Cloud", kind: "vendor", when: (s) => s.upg.length >= 15,
     subject: "Your project now has 1,000 models",
     body: "Congratulations! Your dbd project has 1,000 models. 640 of them are called something like int_orders_final_v2__deduped. Have you considered a model for your models?" },
@@ -282,7 +283,7 @@ export const INBOX = [
   { id: "warehouse", from: "Snowfake Data Cloud", kind: "vendor", when: P(7),
     subject: "Your credits are running low",
     body: "Your warehouse ran 4,000 queries overnight. 3,998 of them were SELECT * LIMIT 10 from the same table. Top up your credits to keep exploring!" },
-  { id: "lakehouse", from: "Databrix", kind: "vendor", when: P(8),
+  { id: "lakehouse", from: "Databucks", kind: "vendor", when: P(8),
     subject: "Introducing the Lakehouse Lakehouse",
     body: "You loved the lake. You loved the house. Now meet the Lakehouse Lakehouse: a lakehouse for your lakehouses. Book a demo today." },
   { id: "capacity", from: "Amazonian Web Servers", kind: "vendor", when: P(9),
