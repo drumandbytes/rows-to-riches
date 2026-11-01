@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.3.0...v0.4.0) (2026-11-01)
+
+
+### Features
+
+* opt-in leaderboards with signed start tickets and server-checked saves ([#30](https://github.com/drumandbytes/rows-to-riches/issues/30)) ([68db11b](https://github.com/drumandbytes/rows-to-riches/commit/68db11b698dd7ce10bc3379f7d4ccaeade16af39))
+* sealed saves: encoded storage and exports, edited saves marked as modified ([#29](https://github.com/drumandbytes/rows-to-riches/issues/29)) ([adf6fec](https://github.com/drumandbytes/rows-to-riches/commit/adf6fecfd0ef3ca5c06610b4f30222b14f0390ad))
+
 ## [0.3.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.2.2...v0.3.0) (2026-11-01)
 
 
