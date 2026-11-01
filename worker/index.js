@@ -239,6 +239,7 @@ async function handleFeedback(request, env, ctx) {
 // what's due. Pushes carry no payload: the page leaves the texts for the service worker.
 const MAX_PUSH_DELAY_MS = 13 * 3_600_000; // the longest offline cap is 12 h
 const PUSH_KINDS = new Set(["cap", "chal"]);
+const PUSH_GAP_MS = 30 * 60e3;
 const pushKey = (env) => (env.VAPID_PRIVATE_JWK ? JSON.parse(env.VAPID_PRIVATE_JWK) : null);
 
 async function handlePush(request, env) {
@@ -250,29 +251,33 @@ async function handlePush(request, env) {
   const body = await readJson(request);
   if (!validEndpoint(body?.endpoint) || !Array.isArray(body.events)) return json({ error: "Bad request." }, 400);
   const now = Date.now();
-  const events = body.events.filter((e) => PUSH_KINDS.has(e?.kind) && Number.isFinite(e.at)).slice(0, PUSH_KINDS.size);
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM push_schedule WHERE endpoint = ?").bind(body.endpoint),
-    ...events.map((e) =>
-      env.DB.prepare("INSERT OR REPLACE INTO push_schedule (endpoint, kind, notify_at) VALUES (?, ?, ?)").bind(body.endpoint, e.kind, Math.min(Math.max(e.at, now), now + MAX_PUSH_DELAY_MS)),
-    ),
-  ]);
+  const events = body.events.filter((e) => PUSH_KINDS.has(e?.kind) && Number.isFinite(e.at)).slice(0, PUSH_KINDS.size).sort((a, b) => a.at - b.at);
+  // No bursts: each push comes at least PUSH_GAP_MS after the one before.
+  let prev = -Infinity;
+  const rows = events.map((e) => {
+    prev = Math.max(e.at, now, prev + PUSH_GAP_MS);
+    return env.DB.prepare("INSERT OR REPLACE INTO push_schedule (endpoint, kind, notify_at) VALUES (?, ?, ?)").bind(body.endpoint, e.kind, Math.min(prev, now + MAX_PUSH_DELAY_MS));
+  });
+  await env.DB.batch([env.DB.prepare("DELETE FROM push_schedule WHERE endpoint = ?").bind(body.endpoint), ...rows]);
   return json({ ok: true });
 }
 
 async function sendDuePushes(env) {
   const jwk = pushKey(env);
   if (!jwk) return;
-  const { results } = await env.DB.prepare("SELECT endpoint, kind FROM push_schedule WHERE notify_at <= ? LIMIT 200").bind(Date.now()).all();
+  const now = Date.now();
+  // One push per browser per run, however much is due: the service worker shows it all
+  // as a single notification.
+  const { results } = await env.DB.prepare("SELECT DISTINCT endpoint FROM push_schedule WHERE notify_at <= ? LIMIT 200").bind(now).all();
   if (!results.length) return;
   const done = [];
-  for (const { endpoint, kind } of results) {
+  for (const { endpoint } of results) {
     const status = await sendPush(jwk, endpoint, env.APP_ORIGIN).catch(() => 0);
     // 404/410: the browser dropped the subscription, so drop everything for it. Otherwise
     // it was sent, or isn't worth a retry.
     done.push(status === 404 || status === 410
       ? env.DB.prepare("DELETE FROM push_schedule WHERE endpoint = ?").bind(endpoint)
-      : env.DB.prepare("DELETE FROM push_schedule WHERE endpoint = ? AND kind = ?").bind(endpoint, kind));
+      : env.DB.prepare("DELETE FROM push_schedule WHERE endpoint = ? AND notify_at <= ?").bind(endpoint, now));
   }
   await env.DB.batch(done);
 }

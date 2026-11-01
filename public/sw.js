@@ -49,15 +49,19 @@ self.addEventListener("fetch", (event) => {
 });
 
 // Scheduled notifications (opt-in). Pushes have no payload: the page left the plan in Cache
-// Storage when it was hidden, so show whatever in it is due. Tags keep a repeat from stacking.
+// Storage when it was hidden. Everything due goes into one notification, and the shared tag
+// makes a later one replace it rather than stack.
 self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
-      const res = await (await caches.open("r2r-push")).match("/push-plan");
+      const cache = await caches.open("r2r-push");
+      const res = await cache.match("/push-plan");
       const plan = res ? await res.json() : [];
       const due = plan.filter((e) => e.at <= Date.now() + 60_000);
-      const show = due.length ? due : [{ kind: "cap", body: "Your pipelines miss you." }];
-      await Promise.all(show.map((e) => self.registration.showNotification("Rows to Riches", { body: e.body, icon: "/icon-192.png", tag: e.kind })));
+      // Shown ones leave the plan, so a later push (the server spaces them out) doesn't repeat them.
+      await cache.put("/push-plan", Response.json(plan.filter((e) => !due.includes(e))));
+      const body = due.length ? due.map((e) => e.body).join("\n") : "Your pipelines miss you.";
+      await self.registration.showNotification("Rows to Riches", { body, icon: "/icon-192.png", tag: "r2r" });
     })(),
   );
 });

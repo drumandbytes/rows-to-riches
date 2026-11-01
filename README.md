@@ -30,7 +30,7 @@ The story starts reasonable and gets steadily sillier: a CSV on localhost, then 
 | **Embedding** | `frame-ancestors` allows galaxy.click only. Embedded players get a note that cloud sync needs the main site (iframe storage is partitioned). |
 | **Installable app (PWA)** | Manifest, maskable icons and a network-first service worker (`public/sw.js`): installs on desktop and Android, Add to Home Screen on iOS, and plays offline. **Adding a JS module means adding it to `SHELL` in `sw.js`**, or offline loads miss it. |
 | **Offline progress** | Closed tabs keep earning: the first minute at full rate, then half, up to 2h (+1h per Bigger Disks level). |
-| **Notifications** | Opt-in (Save → Notifications), via Web Push while the game is closed: offline cap full, and 10 min before a running challenge times out. When hidden the page sends its schedule (D1 `push_schedule`: push endpoint, kind, time; deleted once sent or on return) and leaves the texts in Cache Storage for the service worker; a 5-minute cron sends what's due. Pushes carry no payload, so `worker/push.js` only signs a VAPID JWT. |
+| **Notifications** | Opt-in (Save → Notifications), via Web Push while the game is closed: offline cap full, and 10 min before a running challenge times out. When hidden the page sends its schedule (D1 `push_schedule`: push endpoint, kind, time; deleted once sent or on return) and leaves the texts in Cache Storage for the service worker; a 5-minute cron sends what's due. Anti-spam: pushes for one browser are spaced ≥30 min apart, each cron run sends at most one per browser, and the service worker merges what's due into a single notification that replaces the previous one. Pushes carry no payload, so `worker/push.js` only signs a VAPID JWT. |
 
 ### Prestige layers
 
