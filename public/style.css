@@ -741,3 +741,6 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); b
 .tier.locked { opacity: 0.6; }
 .tier button { padding: 3px 10px; font-size: 12px; }
 @media (max-width: 500px) { .tier { grid-template-columns: 34px 1fr auto; } .tier .muted { grid-column: 2 / -1; grid-row: 2; } }
+
+.linkish { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; font: inherit; cursor: pointer; }
+.whats-new { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
