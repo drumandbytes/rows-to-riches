@@ -1339,11 +1339,16 @@ async function releaseNotes(version) {
   }
 }
 
+// A changelog line as HTML: escaped, with release-please's links to this repo's PRs made
+// clickable (any other link stays text).
+const noteHtml = (note) =>
+  esc(note).replace(/\[([^\]]+)\]\((https:\/\/github\.com\/drumandbytes\/rows-to-riches\/)issues\/(\d+)\)/g, (_, label, repo, n) => `<a href="${repo}pull/${n}" target="_blank" rel="noopener">${label}</a>`);
+
 async function showWhatsNew(version, { quiet = false } = {}) {
   const notes = await releaseNotes(version);
   if (!notes.length) return quiet || toast("No release notes for this version yet.");
   const intro = RELEASE_INTROS[Math.floor(Math.random() * RELEASE_INTROS.length)](version);
-  modal(`<h2>📰 What's new</h2><p class="muted">${esc(intro)}</p><ul class="whats-new">${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>`, [["Nice", "primary"]]);
+  modal(`<h2>📰 What's new</h2><p class="muted">${esc(intro)}</p><ul class="whats-new">${notes.map((n) => `<li>${noteHtml(n)}</li>`).join("")}</ul>`, [["Nice", "primary"]]);
 }
 
 // Once per new version, and never on a first visit (that's the walkthrough's moment).
