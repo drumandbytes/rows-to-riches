@@ -14,7 +14,7 @@ const SHELL = [
   "/icon-192.png",
   "/icon-512.png",
   ...["jetbrains-mono", "space-grotesk"].map((f) => `/fonts/${f}-latin-wght-normal.woff2`),
-  ...["main", "economy", "format", "flavor", "scene", "widgets", "sync", "prefs", "audio", "music", "erd", "active", "analytics", "tour", "big", "lib/break_infinity"].map((m) => `/js/${m}.js`),
+  ...["main", "economy", "format", "flavor", "scene", "widgets", "sync", "prefs", "audio", "music", "erd", "active", "analytics", "tour", "push", "big", "lib/break_infinity"].map((m) => `/js/${m}.js`),
 ];
 
 self.addEventListener("install", (event) => {
@@ -45,5 +45,30 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(async () => (await caches.match(req, { ignoreSearch: true })) ?? (req.mode === "navigate" ? caches.match("/") : Response.error())),
+  );
+});
+
+// Scheduled notifications (opt-in). Pushes have no payload: the page left the plan in Cache
+// Storage when it was hidden. Everything due goes into one notification, and the shared tag
+// makes a later one replace it rather than stack.
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open("r2r-push");
+      const res = await cache.match("/push-plan");
+      const plan = res ? await res.json() : [];
+      const due = plan.filter((e) => e.at <= Date.now() + 60_000);
+      // Shown ones leave the plan, so a later push (the server spaces them out) doesn't repeat them.
+      await cache.put("/push-plan", Response.json(plan.filter((e) => !due.includes(e))));
+      const body = due.length ? due.map((e) => e.body).join("\n") : "Your pipelines miss you.";
+      await self.registration.showNotification("Rows to Riches", { body, icon: "/icon-192.png", tag: "r2r" });
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window" }).then((list) => list.find((c) => new URL(c.url).origin === self.location.origin)?.focus() ?? self.clients.openWindow("/")),
   );
 });

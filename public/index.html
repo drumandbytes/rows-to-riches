@@ -250,6 +250,11 @@
               <button type="button" id="export">Export save</button>
               <button type="button" id="import">Import save</button>
             </div>
+            <div id="push-wrap" hidden>
+              <h3>Notifications</h3>
+              <label class="toggle"><input type="checkbox" id="opt-push" /> Notify me when offline storage is full or a challenge is about to time out</label>
+              <p class="muted" id="push-note">While the game is closed: one notification when your offline cap fills up, and one 10 minutes before a running challenge times out. To schedule them, this browser's push address and the times are stored on the server until they're sent or you come back; nothing else. On iPhone and iPad it only works once the game is added to the Home Screen.</p>
+            </div>
             <h3>Privacy</h3>
             <label class="toggle"><input type="checkbox" id="opt-stats" /> Send anonymous gameplay stats</label>
             <p class="muted" id="stats-note">No cookies and no identifiers: only things like "a session lasted 25 minutes in the prod environment" or "someone reached their first acquisition after 6 hours". It helps balance the game.</p>
@@ -320,7 +325,7 @@
               <li>Cloud vendors in the Inbox are parodies. Any resemblance to your actual cloud bill is coincidental.</li>
             </ul>
             <h3>Privacy</h3>
-            <p class="muted">No ads and no cookies. Cloud save stores your save and a hash of your account code, nothing else about you; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy (they start off if your browser sends Global Privacy Control or Do Not Track). Feedback you send is stored with the game context shown in the form, plus your email only if you add one. Nothing else leaves your browser unless you sign in.</p>
+            <p class="muted">No ads and no cookies. Cloud save stores your save and a hash of your account code, nothing else about you; delete both any time under Save. Anonymous gameplay stats (session length, which environment you're in, prestige milestones, without any identifier) help balance the game; turn them off under Save → Privacy (they start off if your browser sends Global Privacy Control or Do Not Track). Feedback you send is stored with the game context shown in the form, plus your email only if you add one. If you turn on notifications, your browser's push address is stored until they're sent. Nothing else leaves your browser unless you sign in.</p>
             <p class="muted">Everything loads from this site, which runs on Cloudflare: no Google Fonts, CDNs, trackers or embeds. The one extra request is Cloudflare's own cookieless page-view counter. Feedback reaches me as a Telegram message.</p>
           </div>
         </div>
