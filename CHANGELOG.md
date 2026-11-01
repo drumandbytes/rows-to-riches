@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.2.0...v0.2.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* serve break_infinity from js/lib, which the zone WAF doesn't block ([#23](https://github.com/drumandbytes/rows-to-riches/issues/23)) ([0641e59](https://github.com/drumandbytes/rows-to-riches/commit/0641e59dc5033281eca680f40245567d3986136e))
+
 ## [0.2.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.1.5...v0.2.0) (2026-10-31)
 
 
