@@ -10,6 +10,7 @@ import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
 import { track, allowed as statsAllowed } from "./analytics.js";
 import { createTour } from "./tour.js";
+import { pushAvailable, initPush, enablePush, disablePush, schedulePush } from "./push.js";
 
 const SAVE_KEY = "r2r.save";
 const $ = (id) => document.getElementById(id);
@@ -1601,6 +1602,23 @@ $("opt-stats").addEventListener("change", (e) => {
   setPref("stats", e.target.checked);
   showPrefs();
 });
+// The offline notification toggle only shows where both the browser and the server support it
+// (not in an iframe, where the service worker isn't registered).
+if (window.top === window.self)
+  pushAvailable().then(async (ok) => {
+    if (!ok) return;
+    $("push-wrap").hidden = false;
+    $("opt-push").checked = await initPush();
+  });
+$("opt-push").addEventListener("change", async (e) => {
+  e.target.disabled = true;
+  if (!e.target.checked) await disablePush().catch(() => {});
+  else if (!(await enablePush().catch(() => false))) {
+    e.target.checked = false;
+    toast(Notification.permission === "denied" ? "Notifications are blocked for this site in your browser's settings." : "This browser couldn't turn on notifications.", "info");
+  }
+  e.target.disabled = false;
+});
 $("opt-mood").addEventListener("change", (e) => {
   setPref("mood", e.target.value);
   audio.unlock();
@@ -1991,12 +2009,26 @@ setInterval(saveLocal, 5000);
 setInterval(() => {
   if (cloudDirty && Date.now() - lastCloudPush > 60_000) pushCloud();
 }, 5000);
+// What to notify about while the game is closed (if notifications are on). The challenge
+// alert comes 10 min before the limit, and only with over 15 min left: the cron runs every
+// 5 min, so it lands with 5–10 min to spare.
+function pushPlan() {
+  const now = Date.now();
+  const plan = [{ kind: "cap", at: now + E.offlineCapSecs(S) * 1000, body: "Offline storage is full. The pipelines are idling and the intern has started asking questions." }];
+  const t = S.chal && E.parseTier(S.chal);
+  const left = E.CHALLENGE_LIMIT_MS - E.challengeElapsed(S, now);
+  if (t && left > 15 * 60e3) plan.push({ kind: "chal", at: now + left - 10 * 60e3, body: `${t.challenge.name} ${ROMAN[t.tier]}: 10 minutes left on the clock. Finish it, or abandon it with dignity.` });
+  return plan;
+}
+
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
+    schedulePush([]);
     applyOffline();
     render(true);
     return;
   }
+  schedulePush(pushPlan());
   E.tick(S, Date.now());
   saveLocal();
   if (Date.now() - lastCloudPush > 20_000) pushCloud({ keepalive: true });

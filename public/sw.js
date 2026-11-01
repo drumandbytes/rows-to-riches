@@ -14,7 +14,7 @@ const SHELL = [
   "/icon-192.png",
   "/icon-512.png",
   ...["jetbrains-mono", "space-grotesk"].map((f) => `/fonts/${f}-latin-wght-normal.woff2`),
-  ...["main", "economy", "format", "flavor", "scene", "widgets", "sync", "prefs", "audio", "music", "erd", "active", "analytics", "tour", "big", "vendor/break_infinity"].map((m) => `/js/${m}.js`),
+  ...["main", "economy", "format", "flavor", "scene", "widgets", "sync", "prefs", "audio", "music", "erd", "active", "analytics", "tour", "push", "big", "vendor/break_infinity"].map((m) => `/js/${m}.js`),
 ];
 
 self.addEventListener("install", (event) => {
@@ -45,5 +45,26 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(async () => (await caches.match(req, { ignoreSearch: true })) ?? (req.mode === "navigate" ? caches.match("/") : Response.error())),
+  );
+});
+
+// Scheduled notifications (opt-in). Pushes have no payload: the page left the plan in Cache
+// Storage when it was hidden, so show whatever in it is due. Tags keep a repeat from stacking.
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      const res = await (await caches.open("r2r-push")).match("/push-plan");
+      const plan = res ? await res.json() : [];
+      const due = plan.filter((e) => e.at <= Date.now() + 60_000);
+      const show = due.length ? due : [{ kind: "cap", body: "Your pipelines miss you." }];
+      await Promise.all(show.map((e) => self.registration.showNotification("Rows to Riches", { body: e.body, icon: "/icon-192.png", tag: e.kind })));
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window" }).then((list) => list.find((c) => new URL(c.url).origin === self.location.origin)?.focus() ?? self.clients.openWindow("/")),
   );
 });

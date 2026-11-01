@@ -29,7 +29,8 @@ The story starts reasonable and gets steadily sillier: a CSV on localhost, then 
 | **Analytics** | Cookieless and identifier-free: anonymous events to Workers Analytics Engine via `/api/t`. Players can opt out under Save → Privacy; GPC and DNT are respected. |
 | **Embedding** | `frame-ancestors` allows galaxy.click only. Embedded players get a note that cloud sync needs the main site (iframe storage is partitioned). |
 | **Installable app (PWA)** | Manifest, maskable icons and a network-first service worker (`public/sw.js`): installs on desktop and Android, Add to Home Screen on iOS, and plays offline. **Adding a JS module means adding it to `SHELL` in `sw.js`**, or offline loads miss it. |
-| **Offline progress** | Closed tabs keep earning at the current rate, up to 4h (more with Bigger Disks). |
+| **Offline progress** | Closed tabs keep earning: the first minute at full rate, then half, up to 2h (+1h per Bigger Disks level). |
+| **Notifications** | Opt-in (Save → Notifications), via Web Push while the game is closed: offline cap full, and 10 min before a running challenge times out. When hidden the page sends its schedule (D1 `push_schedule`: push endpoint, kind, time; deleted once sent or on return) and leaves the texts in Cache Storage for the service worker; a 5-minute cron sends what's due. Pushes carry no payload, so `worker/push.js` only signs a VAPID JWT. |
 
 ### Prestige layers
 
@@ -88,6 +89,7 @@ Infrastructure lives in the org's OpenTofu repos; secrets stay out of state. Fir
 4. **Deploy**: merging to `main` runs `.github/workflows/deploy.yml` (tests → D1 migrations → `wrangler deploy`). The Worker's `custom_domain` route creates `rowstoriches.drumandbytes.dev`.
    Releases: commits follow Conventional Commits (`feat: …`, `fix: …`). release-please keeps a release PR open with the version bump (package.json and `VERSION` in `public/js/main.js`) and `CHANGELOG.md`; merging it tags `vX.Y.Z`, and the tag runs `deploy.yml` (tests → D1 migrations → `wrangler deploy`). Patch releases auto-merge once CI passes; minor and major wait for you. `npm run deploy` still works for an emergency deploy from a checkout, without a version bump.
 5. **Import the new DNS records** into dnb-cloudflare-tf: the two Worker custom-domain records. `_dmarc.rowstoriches` (`p=reject`) stays: the subdomain sends no mail, so nobody may send as it.
+6. **Web Push** (optional): `node tools/vapid.js | npx wrangler secret put VAPID_PRIVATE_JWK` makes the key and stores it without printing it. Without the secret the notification toggle stays hidden. A new key drops every subscription.
 
 Already covered, nothing to do:
 - **Page views**: Cloudflare Web Analytics is zone-wide and auto-injected on drumandbytes.dev; the CSP allows it.
