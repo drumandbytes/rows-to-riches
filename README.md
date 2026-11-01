@@ -14,13 +14,13 @@ The story starts reasonable and gets steadily sillier: a CSV on localhost, then 
 | **Numbers** | No ceiling: rows, rates and currencies use break_infinity.js Decimals (up to 1e9e15), and all ten notations format them, e.g. `3.20e9,500` or `e1.50e12`. |
 | **INSERT** | The click. Fast clicking builds a combo (up to +100%). Upgrades turn it from +1 row into a share of your rows/s, and the button's SQL grows up with them. |
 | **Data Sources** | 26 sources, from Spreadsheet Intern to Everything Is Data. Each one stands on the pipeline stage and sends packets to the storage sink. Cards show each source's share of output; sell mode sells bought units back for half. |
-| **Upgrades** | 9 ×2 upgrades per source, 25 synergies (each source boosts the next), plus click and global upgrades: about 280 in total. |
+| **Upgrades** | 9 ×2 upgrades per source, 25 synergies (each source boosts the next), plus click and global upgrades: about 330 in total. |
 | **Schema** | Columns multiply everything. Alien data types (`QUBIT`, `VIBE`, `NULLER_THAN_NULL`, …) make every column stronger. |
 | **Incidents** | PagerDuty alerts, backfills, viral dashboards, schema drift and, later, 🛸 abductions. |
 | **Environments** | localhost → dev → staging → prod → multi-region → quantum → planetary → orbital → interstellar → first contact → multiverse → everything. Each has its own backdrop and ticker jokes. |
-| **Challenges** | 13 restricted runs across three tiers (no columns, sources ×100 cost, no INSERT, production ÷1e9, …). Beat the goal for a strong reward that lasts until the layer above next resets: Re-platform challenges until the next Acquisition, and so on. |
+| **Challenges** | 22 restricted runs across three tiers (no columns, sources ×100 cost, no INSERT, production ÷1e9, …). Beat the goal for a strong reward that lasts until the layer above next resets: Re-platform challenges until the next Acquisition, and so on. |
 | **Inbox** | About 30 emails, news items and vendor notices triggered by milestones. Amazonian Web Servers would like you to finance your own data center. |
-| **Stats & Data Catalog** | About 200 achievements (+1% production each) and detailed stats: best rows/s, fastest prestiges, longest combo, time played, … |
+| **Stats & Data Catalog** | About 250 achievements (+1% production each) and detailed stats: best rows/s, fastest prestiges, longest combo, time played, … |
 | **Settings** | Game (company name, number notation, automation), Audio (master / SFX / music), Display (quality, full screen on desktop), Save (cloud, save now, export / import, reset), Help, About. Volumes, quality and notation are per device and never synced. |
 | **Audio** | All synthesized live with Web Audio: sound effects, plus generative music with one mood per environment (lo-fi localhost → server-room pulse → quantum bells → space pads → alien scales → music box). No audio files. |
 | **Secrets** | A few hidden achievements, plus one you get by clicking it. |

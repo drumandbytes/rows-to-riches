@@ -1,5 +1,6 @@
 // Balance simulator: plays greedily and prints prestige milestones.
 //   node tools/sim.js [hours=72] [clicksPerSec=2]
+// DUMP=file.json also writes the final state as a save.
 // PROBE=1 calibrates challenge goals: the first time each prestige gate blocks, every tier
 // that unlocks in the era just ending is played from that state for an hour and its
 // progress printed (log10 run rows at 15/30/45/60 min, and minutes to the current goal).
@@ -195,6 +196,9 @@ while (now < hours * 3.6e6) {
     log(`status: all=${fmt(s.allRows)} rate=${fmt(E.baseRate(s))} top=${E.PRODUCERS[top]?.id} ins=${fmt(s.ins)} eq=${fmt(s.eq)} xeno=${fmt(s.xeno)} replat=${s.replat} acq=${s.acq}`);
   }
 }
+
+// DUMP=file writes the final state as a save (e.g. for screenshots); timestamps start at 0.
+if (process.env.DUMP) (await import("node:fs")).writeFileSync(process.env.DUMP, JSON.stringify(s));
 
 if (process.env.SUMMARY) {
   const h = (x) => (x === undefined ? "—" : `${x.toFixed(1)}h`);
