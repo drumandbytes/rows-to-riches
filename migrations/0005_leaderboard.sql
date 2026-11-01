@@ -18,6 +18,8 @@ CREATE TABLE lb_entries (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+-- Names are unique; a taken one is rerolled by the client.
+CREATE UNIQUE INDEX lb_name ON lb_entries (name);
 CREATE INDEX lb_fastest ON lb_entries (fastest_ms);
 CREATE INDEX lb_rows ON lb_entries (rows_log10);
 CREATE INDEX lb_bangs ON lb_entries (bangs);

@@ -86,6 +86,8 @@ export async function handleCheckpoint(body, env, ping) {
   const old = await env.DB.prepare("SELECT name, flagged, fastest_ms FROM lb_entries WHERE id = ?").bind(ticket.n).first();
   const name = old?.name ?? (validName(body.name) ? body.name : null);
   if (!name) return { status: 400, data: { error: "Pick a generated name." } };
+  // Names stay unique (lb_name index): a new entry with a taken one gets 409 and rerolls.
+  if (!old && (await env.DB.prepare("SELECT 1 FROM lb_entries WHERE name = ?").bind(name).first())) return { status: 409, data: { error: "Name taken." } };
   // Fastest completion: the first checkpoint that sees one, by server time, on a ticket from
   // the game's real start. Later checkpoints (New Game+) never change it.
   const fastest = old?.fastest_ms ?? (!ticket.late && s.completions > 0 ? now - ticket.t : null);

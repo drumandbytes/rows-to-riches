@@ -35,9 +35,10 @@ test("tokens verify, and a tampered or foreign one doesn't", async () => {
 
 test("names: generated ones validate, typed ones don't", () => {
   for (let i = 0; i < 50; i++) assert.ok(validName(randomName()));
-  assert.ok(validName("Eventually Consistent Otter"));
+  assert.ok(validName("Eventually Consistent Sleepy Otter"));
   assert.ok(!validName("Admin"));
-  assert.ok(!validName("Idempotent <b>Walrus</b>"));
+  assert.ok(!validName("Idempotent Walrus"));
+  assert.ok(!validName("Idempotent Grumpy <b>Walrus</b>"));
 });
 
 test("pace: a run far ahead of the simulator is flagged, a normal one isn't", () => {
@@ -49,7 +50,7 @@ test("pace: a run far ahead of the simulator is flagged, a normal one isn't", ()
 async function savedGame(e, { fresh = true, edit } = {}) {
   const { ticket } = await handleTicket(null, { fresh }, e);
   const s = newState(Date.now());
-  s.lb = { ticket, optIn: true, name: "Idempotent Walrus", locked: false };
+  s.lb = { ticket, optIn: true, name: "Idempotent Grumpy Walrus", locked: false };
   edit?.(s);
   return { ticket, save: encodeSave(s) };
 }
@@ -58,7 +59,7 @@ test("checkpoint: an honest new save is listed, by name, on the rows board", asy
   const e = env();
   const pings = [];
   const { ticket, save } = await savedGame(e);
-  const r = await handleCheckpoint({ ticket, save, name: "Idempotent Walrus" }, e, (m) => pings.push(m));
+  const r = await handleCheckpoint({ ticket, save, name: "Idempotent Grumpy Walrus" }, e, (m) => pings.push(m));
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.equal(pings.length, 0);
   const me = JSON.parse(Buffer.from(ticket.split(".")[0], "base64url")).n;
@@ -72,11 +73,11 @@ test("checkpoint: modified, foreign-ticket and rule-breaking saves are refused",
   const e = env();
   const { ticket } = await handleTicket(null, { fresh: true }, e);
   const a = await savedGame(e, { edit: (s) => (s.modified = true) });
-  assert.equal((await handleCheckpoint({ ticket: a.ticket, save: a.save, name: "Idempotent Walrus" }, e, () => {})).status, 422);
+  assert.equal((await handleCheckpoint({ ticket: a.ticket, save: a.save, name: "Idempotent Grumpy Walrus" }, e, () => {})).status, 422);
   const b = await savedGame(e);
-  assert.equal((await handleCheckpoint({ ticket, save: b.save, name: "Idempotent Walrus" }, e, () => {})).status, 400);
+  assert.equal((await handleCheckpoint({ ticket, save: b.save, name: "Idempotent Grumpy Walrus" }, e, () => {})).status, 400);
   const c = await savedGame(e, { edit: (s) => (s.rows = big("1e9")) });
-  const r = await handleCheckpoint({ ticket: c.ticket, save: c.save, name: "Idempotent Walrus" }, e, () => {});
+  const r = await handleCheckpoint({ ticket: c.ticket, save: c.save, name: "Idempotent Grumpy Walrus" }, e, () => {});
   assert.equal(r.status, 422);
   assert.match(r.data.error, /rules/);
 });
@@ -90,20 +91,30 @@ test("checkpoint: a run ahead of real time is listed but flagged and pinged once
       s.everRows = s.allRows = s.civRows = s.coRows = s.runRows = big("1e12");
     },
   });
-  const r1 = await handleCheckpoint({ ticket, save, name: "Idempotent Walrus" }, e, (m) => pings.push(m));
+  const r1 = await handleCheckpoint({ ticket, save, name: "Idempotent Grumpy Walrus" }, e, (m) => pings.push(m));
   assert.equal(r1.status, 200, JSON.stringify(r1.data));
-  await handleCheckpoint({ ticket, save, name: "Idempotent Walrus" }, e, (m) => pings.push(m));
+  await handleCheckpoint({ ticket, save, name: "Idempotent Grumpy Walrus" }, e, (m) => pings.push(m));
   assert.equal(pings.length, 1);
   const board = await handleBoard(new URL("https://x/api/lb/board?b=rows"), e);
-  assert.equal(board.data.top[0].name, "Idempotent Walrus");
+  assert.equal(board.data.top[0].name, "Idempotent Grumpy Walrus");
   assert.equal(board.data.top[0].rank, 1);
 });
 
 test("remove deletes the entry", async () => {
   const e = env();
   const { ticket, save } = await savedGame(e, { edit: (s) => (s.everRows = s.allRows = s.civRows = s.coRows = s.runRows = big(5000)) });
-  await handleCheckpoint({ ticket, save, name: "Idempotent Walrus" }, e, () => {});
+  await handleCheckpoint({ ticket, save, name: "Idempotent Grumpy Walrus" }, e, () => {});
   assert.equal((await handleBoard(new URL("https://x/api/lb/board?b=rows"), e)).data.top.length, 1);
   await handleRemove({ ticket }, e);
   assert.equal((await handleBoard(new URL("https://x/api/lb/board?b=rows"), e)).data.top.length, 0);
+});
+
+test("names are unique: a taken one gets 409, the owner keeps theirs", async () => {
+  const e = env();
+  const a = await savedGame(e);
+  assert.equal((await handleCheckpoint({ ticket: a.ticket, save: a.save, name: "Idempotent Grumpy Walrus" }, e, () => {})).status, 200);
+  const b = await savedGame(e);
+  assert.equal((await handleCheckpoint({ ticket: b.ticket, save: b.save, name: "Idempotent Grumpy Walrus" }, e, () => {})).status, 409);
+  assert.equal((await handleCheckpoint({ ticket: b.ticket, save: b.save, name: "Idempotent Sleepy Walrus" }, e, () => {})).status, 200);
+  assert.equal((await handleCheckpoint({ ticket: a.ticket, save: a.save, name: "Idempotent Grumpy Walrus" }, e, () => {})).status, 200);
 });

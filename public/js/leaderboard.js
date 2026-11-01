@@ -47,7 +47,12 @@ export function createLeaderboard({ state, encodeSave, fmt, fmtDuration, esc, to
     if (!available || !s.lb.optIn || !s.lb.ticket || s.modified || stopped) return;
     lastSent = Date.now();
     if (!s.lb.name) s.lb.name = randomName();
-    const r = await post("checkpoint", { ticket: s.lb.ticket, save: encodeSave(s), name: s.lb.name });
+    let r = await post("checkpoint", { ticket: s.lb.ticket, save: encodeSave(s), name: s.lb.name });
+    // Names are unique: a taken one (rare, ~1.2M of them) quietly becomes another.
+    for (let tries = 0; r.status === 409 && tries < 5; tries++) {
+      s.lb.name = randomName();
+      r = await post("checkpoint", { ticket: s.lb.ticket, save: encodeSave(s), name: s.lb.name });
+    }
     if (r.status === 200) {
       Object.assign(state().lb, { name: r.data.name, locked: true });
       boardCache.key = ""; // our own entry just changed
