@@ -114,9 +114,12 @@ a { color: var(--accent); }
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
-/* iOS 26 still blurs the ~40pt under the status bar in the installed app; keep the header content below it. */
+/* iOS 26 still blurs the ~40pt under the status bar in the installed app; keep the header content below it.
+   -webkit-touch-callout is only supported on iOS/iPadOS, so Android and desktop installs keep the old spacing. */
 @media (display-mode: standalone) {
-  .top { padding-top: calc(28px + env(safe-area-inset-top)); }
+  @supports (-webkit-touch-callout: none) {
+    .top { padding-top: calc(28px + env(safe-area-inset-top)); }
+  }
 }
 .brand { display: flex; align-items: center; gap: 10px; flex: none; }
 .logo {
