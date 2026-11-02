@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.1...v0.7.2) (2026-11-02)
+
+
+### Bug Fixes
+
+* call update() from the auto-buyer options, it still used the old updateSettings name ([b46b035](https://github.com/drumandbytes/rows-to-riches/commit/b46b035e8e0ca9b32fd629bd7e981542c5dd251a))
+
 ## [0.7.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.0...v0.7.1) (2026-11-02)
 
 
