@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.7.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.7...v0.7.0) (2026-11-02)
+
+
+### Features
+
+* 16 more emails, late-game ticker and finale lines, three more secret achievements ([d16d0c2](https://github.com/drumandbytes/rows-to-riches/commit/d16d0c2c12594c25739efabf18595c1063d450ef))
+* accessibility pass with an axe CI test ([9b6476e](https://github.com/drumandbytes/rows-to-riches/commit/9b6476ec2129a36c3aeb38efefd2a8e396cd44ee))
+* add 144 and 240 fps frame-rate options ([ef459a0](https://github.com/drumandbytes/rows-to-riches/commit/ef459a0e9f1c7146423d858226730c4cc4d40bc5))
+* keep unearned secret achievements out of the catalog and disguise Click Me ([36564c7](https://github.com/drumandbytes/rows-to-riches/commit/36564c730313ddaf83781ceb677066d4a735036a))
+* offer a reload when a new version is ready and check for updates on return ([c4b09b7](https://github.com/drumandbytes/rows-to-riches/commit/c4b09b7123a8a71cc4687cb701f7d60e5d90ab93))
+* one shared frame loop with a frame-rate setting and idle throttling ([427249c](https://github.com/drumandbytes/rows-to-riches/commit/427249c35e55e13b404d93287b3be52afb2dc315))
+* run history on the Stats tab: production curve and a prestige log ([af9bdfd](https://github.com/drumandbytes/rows-to-riches/commit/af9bdfddba5b0e467131974fdff923d64a6604c2))
+* share card, a picture of the run drawn on demand ([3ed2d4c](https://github.com/drumandbytes/rows-to-riches/commit/3ed2d4c106dedcfe5e25d46194cc0c97e8e7d674))
+
+
+### Bug Fixes
+
+* drop the status-bar strip, the header clearance alone stops the iOS blur ([0858ad9](https://github.com/drumandbytes/rows-to-riches/commit/0858ad97ed9c9edd872c5073a39325dc42adaeae))
+* precache the share card module ([2fb1e3d](https://github.com/drumandbytes/rows-to-riches/commit/2fb1e3d856b7eb9c4367eb92cf0aad475ebb6772))
+
 ## [0.6.7](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.6...v0.6.7) (2026-11-02)
 
 
