@@ -1,7 +1,7 @@
 // The prestige layers: Re-platform, Acquisition, First Contact and Big Bang, their shops, the
 // challenges and the challenge banner. The game loop's auto-prestige and the per-tick tab dot use it too.
 
-export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, audio, track, afterPurchase, saveLocal, render, selectTab, setHtml, ROMAN, getTab }) {
+export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, audio, track, afterPurchase, render, setHtml, ROMAN, getTab }) {
   let prestigeTab = "replat";
 
   const LAYERS = [

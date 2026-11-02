@@ -1049,18 +1049,10 @@ function selectTab(name) {
     b.tabIndex = on ? 0 : -1;
   }
   for (const p of document.querySelectorAll(".pane")) p.hidden = p.id !== `pane-${name}`;
-  if (name === "settings") {
-    settingsFeature().then((m) => {
-      settings = m;
-      render(true);
-    });
-  }
+  if (name === "settings") settingsFeature().then((m) => ((settings = m), render(true)));
   if (name === "stats") {
     lb.render(true);
-    statsFeature().then((m) => {
-      stats = m;
-      render(true);
-    });
+    statsFeature().then((m) => ((stats = m), render(true)));
   }
   render(true);
 }
