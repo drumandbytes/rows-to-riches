@@ -1333,7 +1333,9 @@ async function releaseNotes(version) {
     const start = md.search(new RegExp(`^## \\[?${version.replace(/\./g, "\\.")}\\]?`, "m"));
     if (start < 0) return [];
     const section = md.slice(start).split(/\n## /)[0];
-    return [...section.matchAll(/^\* (.+)$/gm)].map((m) => m[1].replace(/\s*\(\[[0-9a-f]{7}\]\([^)]*\)\)$/, "").replace(/\*\*/g, ""));
+    const notes = [...section.matchAll(/^\* (.+)$/gm)].map((m) => m[1].replace(/\s*\(\[[0-9a-f]{7}\]\([^)]*\)\)$/, "").replace(/\*\*/g, ""));
+    // A PR whose title equals its branch commit's message is listed twice (merge commit + commit).
+    return [...new Set(notes)];
   } catch {
     return []; // offline, or a local build without a changelog
   }
