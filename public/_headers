@@ -2,11 +2,9 @@
 # That includes sw.js, so service-worker updates always reach players.
 # Third parties: none, apart from Cloudflare Web Analytics (cookieless, same company that
 # already serves the site). Fonts are self-hosted; keep it that way.
-# Framing: only galaxy.click may embed the game (X-Frame-Options can't allow-list, so the
-# CSP frame-ancestors directive does the job instead).
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; manifest-src 'self'; frame-ancestors 'self' https://galaxy.click https://*.galaxy.click
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; manifest-src 'self'; frame-ancestors 'self'
   Cache-Control: no-cache

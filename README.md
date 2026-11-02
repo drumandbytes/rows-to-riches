@@ -48,8 +48,7 @@ The game is local-first: it saves in your browser every few seconds. Nothing ide
 - **Anonymous gameplay stats**: events like "a session lasted 25 minutes in prod", with no identifiers, to help balance the game. Turn them off under Settings → Save. Browsers sending Global Privacy Control or Do Not Track start with them off.
 - **Notifications (optional)**: a push when your offline storage is full, or 10 minutes before a running challenge times out. The server stores only your browser's push address and the times, until they're sent.
 - **Leaderboards (optional)**: fastest Catalog Everything, most rows, most Big Bangs and most Catalogs. You appear under a generated name like "Idempotent Grumpy Walrus" and can remove yourself any time.
-- **On [galaxy.click](https://galaxy.click)**, signed-in players get galaxy's own cloud saves instead of account codes (`public/js/galaxy.js`).
-- **Export / import** moves a save by hand, for example between galaxy.click and the main site.
+- **Export / import** moves a save by hand.
 
 Saves are encoded and sealed, so a save edited by hand still plays but is marked as modified and never ranked. The server re-checks every uploaded save against the game's own rules: currencies must match the rows earned, and rows can't grow faster than the save could produce them in real time. Leaderboard times come from the server's clock, from a ticket signed when the game starts.
 
