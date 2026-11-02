@@ -4,6 +4,7 @@ import { prefs, setPref } from "./prefs.js";
 import * as audio from "./audio.js";
 import { TICKER, OFFLINE_JOKES, FINALE, INBOX } from "./flavor.js";
 import { createScene, producerHue } from "./scene.js";
+import { onFrame, setFrameCap } from "./frames.js";
 import { createQueryLog, createSparkline, sparks, banner, confetti } from "./widgets.js";
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
@@ -823,10 +824,14 @@ function render(force = false) {
 }
 
 // Smoothly rolls the big counter towards the real bank; drops snap instantly.
-function animateCounter() {
+let counterAt = 0;
+function animateCounter(t) {
   const target = S.rows;
+  // 20% of the gap per 60 Hz frame, whatever the real frame rate is (1 fps while the page is hidden).
+  const ease = 1 - 0.8 ** (Math.min(1000, t - counterAt) / 16.7);
+  counterAt = t;
   shownRows = E.big(shownRows);
-  shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(0.2));
+  shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(ease));
   const text = fmt(shownRows);
   const el = $("rows");
   if (el.textContent !== text) {
@@ -834,7 +839,6 @@ function animateCounter() {
     el.textContent = text;
     if (grew) fitCounter();
   }
-  requestAnimationFrame(animateCounter);
 }
 
 // Fits the header on narrow screens. The row count shrinks first (the CSS size is the cap);
@@ -1168,14 +1172,17 @@ function updateSchema() {
 
 function buildAch() {
   const icon = (a) => (a.id.startsWith("own_") ? E.PRODUCERS.find((p) => a.id.startsWith(`own_${p.id}_`))?.icon : { rows: "🗄️", clicks: "👆", cols: "🧱", incidents: "🚨", replat: "💡", acq: "📈", contact: "👽", bangs: "🌀", chal: "🏁", env: "🗺️", combo: "🔥", speed: "⏱️", night: "🌙", full: "🧩", no: "🙌", online: "🌱", rate: "🚿" }[a.id.split("_")[0]]);
-  $("ach").innerHTML = E.ACHIEVEMENTS.map((a) => {
+  // Secrets stay out of the grid (and the count) until earned, so nobody can tell how many exist.
+  const list = E.ACHIEVEMENTS.filter((a) => !a.secret || S.ach.includes(a.id));
+  $("ach").innerHTML = list.map((a) => {
     const got = S.ach.includes(a.id);
-    const hidden = a.secret && !got;
-    const title = got ? `${a.name}: ${a.desc}` : hidden ? "Secret achievement" : `??? — ${a.desc}`;
-    const glyph = hidden ? "🤫" : a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
-    return `<button type="button" class="${got ? "got" : ""} ${a.id === "clickme" && !got ? "clickme" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : hidden ? "Secret" : "Locked")}">${glyph}</button>`;
+    // "Click Me" looks like any other locked entry; players find it by poking around.
+    const plain = a.id === "clickme" && !got;
+    const title = got ? `${a.name}: ${a.desc}` : plain ? "Locked" : `??? — ${a.desc}`;
+    const glyph = a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
+    return `<button type="button" class="${got ? "got" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : "Locked")}">${plain ? "⭐" : glyph}</button>`;
   }).join("");
-  $("ach-count").textContent = `${S.ach.length}/${E.ACHIEVEMENTS.length}`;
+  $("ach-count").textContent = `${S.ach.length}/${list.length}`;
 }
 
 function updateStats() {
@@ -1645,7 +1652,7 @@ document.addEventListener("click", (e) => {
     const a = E.ACH_BY_ID[t.dataset.ach];
     if (a.id === "clickme" && !S.ach.includes(a.id)) grantSecret("clickme");
     else if (S.ach.includes(a.id)) toast(`🏅 <b>${esc(a.name)}</b> — ${esc(a.desc)}`);
-    else toast(a.secret ? "🤫 A secret. Keep playing… or keep poking around." : `🔒 ${esc(a.desc)}`);
+    else toast(`🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
   else if (t.id === "catalog-btn") confirmCatalog();
@@ -1767,9 +1774,10 @@ function showPrefs() {
   document.documentElement.classList.toggle("hc", prefs.contrast === "high");
   document.body.classList.toggle("no-particles", !prefs.particles);
   scene.setQuality(prefs.quality);
+  setFrameCap(Number(prefs.fps));
   scene.setMotion({ reduced: prefs.motion === "reduced", shake: prefs.shake, mode: prefs.sceneMode });
   document.querySelector(".stage").hidden = prefs.sceneMode === "hidden";
-  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-contrast", "contrast"]]) $(id).value = prefs[key];
+  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"], ["opt-contrast", "contrast"]]) $(id).value = prefs[key];
   for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]]) $(id).checked = prefs[key];
   $("fullscreen").textContent = document.fullscreenElement ? "⛶ Exit full screen" : "⛶ Full screen";
 }
@@ -1779,7 +1787,7 @@ $("opt-notation").addEventListener("change", (e) => {
   setNotation(prefs.notation);
   render(true);
 });
-for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-contrast", "contrast"]]) {
+for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"], ["opt-contrast", "contrast"]]) {
   $(id).addEventListener("change", (e) => {
     setPref(key, e.target.value);
     showPrefs();
@@ -2059,8 +2067,13 @@ function loop() {
     spawnIncident();
     scheduleIncident(now);
   }
-  render();
+  // Nobody is looking when the tab is hidden: redraw once a second instead of five times.
+  if (!document.hidden || now - lastRenderAt >= 1000) {
+    lastRenderAt = now;
+    render();
+  }
 }
+let lastRenderAt = 0;
 
 // ---- walkthrough -------------------------------------------------------------
 
@@ -2117,7 +2130,7 @@ document.addEventListener("change", (e) => {
 });
 rotateTicker();
 shownRows = S.rows;
-animateCounter();
+onFrame(animateCounter);
 setInterval(loop, 200);
 setInterval(() => spark.sample(E.rate(S, Date.now())), 1000);
 setInterval(autoBuy, 1000);

@@ -2,7 +2,7 @@
 // and a desktop can differ, and never synced to the cloud.
 
 const KEY = "r2r.prefs";
-const DEFAULTS = { master: 0.7, sfx: 0.6, music: 0.35, muted: false, quality: "high", contrast: "standard", notation: "suffix", clock: "auto", mood: "auto",
+const DEFAULTS = { master: 0.7, sfx: 0.6, music: 0.35, muted: false, quality: "high", fps: "60", contrast: "standard", notation: "suffix", clock: "auto", mood: "auto",
   // Motion and pop-ups (Settings → Display).
   motion: matchMedia("(prefers-reduced-motion: reduce)").matches ? "reduced" : "full",
   particles: true, shake: true, sceneMode: "animated", toasts: "all", querylog: true, tourDone: false, skipChalConfirm: false, seenVersion: "",
