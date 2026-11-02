@@ -133,7 +133,8 @@ a { color: var(--accent); }
 .rows #rows.bump { color: var(--accent); }
 .rate { font-size: 12px; color: var(--accent); display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
 .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent); animation: ping 1.4s infinite; }
-@keyframes ping { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+/* Fade to the accent at 0 alpha, not `transparent`: iOS interpolates that through transparent black and draws a dark halo. */
+@keyframes ping { 70% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent); } 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } }
 
 /* ---- layout + windows ---- */
 .layout { display: grid; gap: 18px; padding: 18px; max-width: 1260px; margin: 0 auto; }
