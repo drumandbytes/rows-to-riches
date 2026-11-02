@@ -38,7 +38,7 @@ test("incident pop-ups load on demand and can be clicked", { skip: !process.env.
   assert.deepEqual(errors, []);
 }));
 
-test("re-platforming works and its Insights buy something in the shop", { skip: !process.env.BROWSER_SMOKE }, () => withBrowser(8794, async (browser) => {
+test("re-platforming works, the shop sells, and a challenge can be started", { skip: !process.env.BROWSER_SMOKE }, () => withBrowser(8794, async (browser) => {
   // A save that has earned enough for a re-platform, written by the game's own code.
   const first = await browser.newPage();
   await first.goto("http://localhost:8794/");
@@ -66,5 +66,10 @@ test("re-platforming works and its Insights buy something in the shop", { skip: 
   await page.waitForFunction(() => /Insights: [1-9]/.test(document.querySelector("#prestige-card")?.textContent ?? ""));
   await page.click('#prestige-shops button.buy[data-shop="arch"]:not([disabled])');
   await page.waitForSelector("#prestige-shops li.owned");
+  // The Challenges list renders, and a challenge can be started.
+  await page.click('#prestige-seg button[data-layer="chal"]');
+  await page.click("#prestige-shops [data-challenge]:not([disabled])");
+  await page.click("#modal button.primary");
+  await page.waitForSelector("#chal-banner:not([hidden])");
   assert.deepEqual(errors, []);
 }));
