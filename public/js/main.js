@@ -5,15 +5,14 @@ import * as audio from "./audio.js";
 import { TICKER, OFFLINE_JOKES, FINALE, INBOX } from "./flavor.js";
 import { createScene, producerHue } from "./scene.js";
 import { onFrame, setFrameCap } from "./frames.js";
-import { createQueryLog, createSparkline, createHistoryChart, sparks, banner, confetti } from "./widgets.js";
+import { createQueryLog, createSparkline, sparks, banner, confetti } from "./widgets.js";
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
 import { track, allowed as statsAllowed, browserOptOut } from "./analytics.js";
-import { createTour } from "./tour.js";
 import { encodeSave, decodeSave } from "./seal.js";
 import { createLeaderboard } from "./leaderboard.js";
-import { pushAvailable, initPush, enablePush, disablePush, schedulePush } from "./push.js";
+import { schedulePush } from "./push.js";
 
 const SAVE_KEY = "r2r.save";
 // Set once this browser has written a sealed save. Before that, an unsealed (plain JSON)
@@ -57,7 +56,6 @@ const lb = createLeaderboard({ state: () => S, encodeSave, fmt, fmtDuration, esc
 
 const queryLog = createQueryLog($("querylog"));
 const spark = createSparkline($("spark"));
-const histChart = createHistoryChart($("hist"), (v) => fmt(v));
 
 // The INSERT button grows up with click upgrades.
 const INSERT_LABELS = [
@@ -684,86 +682,6 @@ function scheduleIncident(now) {
   nextIncidentAt = now + E.incidentEvery(S) * 1000 * (0.55 + Math.random() * 0.9);
 }
 
-function spawnIncident() {
-  const pool = E.incidentsFor(S);
-  const total = pool.reduce((s, x) => s + x.weight, 0);
-  let r = Math.random() * total;
-  const inc = pool.find((x) => (r -= x.weight) < 0) ?? pool[0];
-  const btn = document.createElement("button");
-  btn.className = "incident";
-  btn.type = "button";
-  btn.textContent = inc.labels ? inc.labels[Math.floor(Math.random() * inc.labels.length)] : inc.label;
-  btn.style.left = `${8 + Math.random() * (innerWidth - 220)}px`;
-  btn.style.top = `${90 + Math.random() * Math.max(80, innerHeight - 260)}px`;
-  const gone = setTimeout(() => {
-    btn.remove();
-    if (inc.trap) passedPhish();
-    if (inc.rescue) lostTable();
-  }, 13_000);
-  const resolve = () => {
-    clearTimeout(gone);
-    btn.remove();
-    resolveIncident(inc);
-  };
-  btn.addEventListener("click", resolve);
-  // Self-healing pipelines fix incidents; they don't click suspicious links.
-  if (E.archOn(S, "selfheal") && !inc.trap) setTimeout(() => btn.isConnected && resolve(), 3000);
-  $("incident-layer").append(btn);
-  audio.sfx("incident");
-}
-
-function lostTable() {
-  E.tick(S, Date.now());
-  const lost = S.rows.mul(0.1);
-  S.rows = S.rows.sub(lost);
-  toast(`💀 <b>Table lost.</b> Nobody restored it in time: −${fmt(lost)} rows. The intern has been promoted to manager.`);
-  audio.sfx("deny");
-}
-
-function passedPhish() {
-  S.stats.phishPassed++;
-  E.tick(S, Date.now());
-  const amount = E.baseRate(S).mul(120).add(13);
-  E.earn(S, amount);
-  toast(`✅ <b>Phishing test passed.</b> IT is proud of you: +${fmt(amount)} rows.`, "info");
-  audio.sfx("achievement");
-}
-
-function resolveIncident(inc) {
-  const now = Date.now();
-  E.tick(S, now);
-  scene.shake();
-  // A clicked phishing test isn't a resolved incident.
-  if (!inc.trap) {
-    S.incidents++;
-    audio.sfx("resolve");
-  }
-  if (inc.rescue) {
-    S.stats.rescues++;
-    const amount = E.baseRate(S).mul(60).add(13);
-    E.earn(S, amount);
-    toast(`🧯 <b>${inc.title}</b>: ${esc(inc.desc)} +${fmt(amount)} rows.`);
-  } else if (inc.trap) {
-    S.buffs.push({ kind: "prod", mult: inc.buff.mult, until: now + inc.buff.secs * 1000, name: "Security training" });
-    grantSecret("phished");
-    toast(`🎣 <b>${inc.title}</b>: you clicked it. Production ×${inc.buff.mult} for ${inc.buff.secs}s while you do the training.`);
-    audio.sfx("deny");
-  } else if (inc.buff) {
-    const secs = inc.buff.secs * (E.archOn(S, "slo") ? 2 : 1);
-    const mult = Math.round(inc.buff.mult * E.incidentMult(S) * 100) / 100;
-    S.buffs.push({ kind: inc.buff.kind, mult, until: now + secs * 1000, name: inc.title });
-    toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: ×${mult} for ${secs}s.`, "info");
-  } else if (inc.lump) {
-    const amount = E.baseRate(S).mul(900).min(S.rows.mul(E.backfillCap(S))).add(13);
-    E.earn(S, amount);
-    scene.floatText(`+${fmt(amount)}`, "#ffb547");
-    scene.burst(12);
-    toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: +${fmt(amount)} rows.`, "info");
-  }
-  saveLocal();
-  render(true);
-}
-
 // ---- rendering ---------------------------------------------------------------
 
 function render(force = false) {
@@ -814,14 +732,14 @@ function render(force = false) {
     structureKey = key;
     buildSources();
     buildUpgrades();
-    buildAch();
+    if (tab === "stats") stats?.buildAch();
   }
   updateSources();
   updateUpgrades();
   updateSchema();
   renderPrestige();
-  if (tab === "stats") updateStats();
-  if (tab === "settings") updateSettings();
+  if (tab === "stats") stats?.update();
+  if (tab === "settings") settings?.update();
 }
 
 // Smoothly rolls the big counter towards the real bank; drops snap instantly.
@@ -1171,179 +1089,6 @@ function updateSchema() {
   btn.classList.toggle("affordable", !frozen && cost.lte(S.rows));
 }
 
-function buildAch() {
-  const icon = (a) => (a.id.startsWith("own_") ? E.PRODUCERS.find((p) => a.id.startsWith(`own_${p.id}_`))?.icon : { rows: "🗄️", clicks: "👆", cols: "🧱", incidents: "🚨", replat: "💡", acq: "📈", contact: "👽", bangs: "🌀", chal: "🏁", env: "🗺️", combo: "🔥", speed: "⏱️", night: "🌙", full: "🧩", no: "🙌", online: "🌱", rate: "🚿" }[a.id.split("_")[0]]);
-  // Secrets stay out of the grid (and the count) until earned, so nobody can tell how many exist.
-  const list = E.ACHIEVEMENTS.filter((a) => !a.secret || S.ach.includes(a.id));
-  $("ach").innerHTML = list.map((a) => {
-    const got = S.ach.includes(a.id);
-    // "Click Me" looks like any other locked entry; players find it by poking around.
-    const plain = a.id === "clickme" && !got;
-    const title = got ? `${a.name}: ${a.desc}` : plain ? "Locked" : `??? — ${a.desc}`;
-    const glyph = a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
-    return `<button type="button" class="${got ? "got" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : "Locked")}">${plain ? "⭐" : glyph}</button>`;
-  }).join("");
-  $("ach-count").textContent = `${S.ach.length}/${list.length}`;
-}
-
-function updateStats() {
-  const now = Date.now();
-  const rows = [
-    ["Company", esc(S.company || "unnamed")],
-    ["Rows (bank)", fmt(S.rows)],
-    ["Rows this run", fmt(S.runRows)],
-    ["Rows/s", fmt(E.rate(S, now))],
-    ["Per INSERT", fmt(E.clickValue(S, now))],
-    ["Global multiplier", `×${fmt(E.globalMultiplier(S))}`],
-    ["INSERTs by hand", fmt(S.clicks)],
-    ["Incidents resolved", fmt(S.incidents)],
-    ["Re-platforms", fmt(S.replat)],
-    ["Insights", fmt(S.ins)],
-    ["Acquisitions", fmt(S.acq)],
-    ["Equity", fmt(S.eq)],
-    ["First Contacts", fmt(S.contact)],
-    ["Xenobytes", fmt(S.xeno)],
-    ["Universes", fmt(S.bangs + 1)],
-    ["Axioms", fmt(S.axioms)],
-    ["Rows this company", fmt(S.coRows)],
-    ["Rows this universe", fmt(S.allRows)],
-    ["Rows ever", fmt(S.everRows)],
-    ["Best rows/s", fmt(S.stats.bestRate)],
-    ["Data gravity", E.rawRate(S).gt(E.GRAVITY_AT) ? `−${(100 * (1 - E.baseRate(S).div(E.rawRate(S)).toNumber())).toFixed(1)}% (raw ${fmt(E.rawRate(S))}/s)` : `none below ${fmt(E.GRAVITY_AT)}/s`],
-    ["Best single INSERT", fmt(S.stats.bestClick)],
-    ["Longest combo", `×${S.stats.bestCombo}`],
-    ["Fastest re-platform", S.stats.fastestReplat ? fmtDuration(S.stats.fastestReplat / 1000) : "—"],
-    ["Fastest acquisition", S.stats.fastestAcq ? fmtDuration(S.stats.fastestAcq / 1000) : "—"],
-    ["Longest time away", fmtDuration(S.stats.longestAway / 1000)],
-    ["Time played", fmtDuration(S.stats.onlineMs / 1000)],
-    ["Challenges completed", fmt(S.chalWins)],
-    ["Emails received", fmt(S.inbox.length)],
-    ["This run", fmtDuration((now - S.runStartedAt) / 1000)],
-    ["Playing since", new Date(S.startedAt).toLocaleDateString()],
-    ["Offline cap", fmtDuration(E.offlineCapSecs(S))],
-    ...(S.modified ? [["Save", "modified: plays normally, not ranked"]] : []),
-  ];
-  const html = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-  if ($("stats").innerHTML !== html) $("stats").innerHTML = html;
-  updateHistory(now);
-}
-
-const RUN_NAMES = { replat: ["💡", "Re-platform"], acq: ["📈", "Acquisition"], contact: ["👽", "First Contact"], bang: ["🌀", "Big Bang"], catalog: ["🎉", "Catalog Everything"] };
-function updateHistory(now) {
-  const { pts, runs } = S.hist;
-  $("hist").hidden = pts.length < 2;
-  if (pts.length >= 2) {
-    histChart.draw(pts, runs, now);
-    $("hist").setAttribute("aria-label", `Production over time: from ${fmt(E.big(10).pow(pts[0][1]))} to ${fmt(E.big(10).pow(pts.at(-1)[1]))} rows per second.`);
-  }
-  const html = runs.slice(-8).reverse().map((r) => {
-    const [icon, name] = RUN_NAMES[r.layer];
-    return `<li><span aria-hidden="true">${icon}</span><span>${name}</span><b>${fmtDuration(r.ms / 1000)}</b><span class="when">${fmtDuration((now - r.at) / 1000)} ago</span></li>`;
-  }).join("");
-  if ($("runs").innerHTML !== html) $("runs").innerHTML = html;
-}
-
-// A picture of the run for posting. Drawn on demand by sharecard.js, which loads only now.
-async function shareCard(button) {
-  const label = button.textContent;
-  button.disabled = true;
-  try {
-    const { makeShareCard } = await import("./sharecard.js");
-    const now = Date.now();
-    const prestiges = [["💡", S.replat], ["📈", S.acq], ["👽", S.contact], ["🌀", S.bangs]].filter(([, n]) => n > 0);
-    const blob = await makeShareCard({
-      company: S.company,
-      rows: fmt(S.everRows),
-      rate: fmt(E.rate(S, now)),
-      env: E.environmentFor(S).name,
-      hue: E.environmentFor(S).hue,
-      tiles: [
-        ["sources", fmt(S.prod.reduce((a, b) => a + b, 0))],
-        ["catalog entries", String(S.ach.length)],
-        ["playing for", fmtDuration((now - S.playthroughStartedAt) / 1000)],
-        ["playthroughs", String(S.completions + (E.canCatalog(S) ? 1 : 0))],
-      ],
-      prestiges,
-      url: "rowstoriches.drumandbytes.dev",
-    });
-    const file = new File([blob], "rows-to-riches.png", { type: "image/png" });
-    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: "Rows to Riches", text: "My data team so far. https://rowstoriches.drumandbytes.dev/" });
-    else {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "rows-to-riches.png";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-    }
-  } catch {
-    /* cancelled, or the browser can't share files */
-  } finally {
-    button.disabled = false;
-    button.textContent = label;
-  }
-}
-$("share-card").addEventListener("click", (e) => shareCard(e.currentTarget));
-
-function updateSettings() {
-  if (document.activeElement !== $("opt-company")) $("opt-company").value = S.company;
-  const bots = { radar: (S.board.radarbot ?? 0) > 0, board: (S.xeno_tech.boardbot ?? 0) > 0, xeno: S.bangs >= 1, bang: S.bangs >= 100 };
-  const automation = autoBuyerOwned() || E.boardLevel(S, "autoreplat") || bots.radar || bots.board || bots.xeno;
-  $("auto-none").hidden = !!automation;
-  $("auto-wrap").hidden = !autoBuyerOwned();
-  $("auto-gitops").hidden = !gitopsOwned();
-  $("auto-gitops-hint").hidden = gitopsOwned() || !autoBuyerOwned();
-  const set = S.settings;
-  $("opt-auto-sources").checked = set.autoSources;
-  $("opt-auto-strategy").value = set.autoStrategy;
-  $("opt-auto-upgrades").checked = set.autoUpgrades;
-  $("opt-upg-strategy").value = set.upgStrategy;
-  $("opt-auto-columns").checked = set.autoColumns;
-  $("autoreplat-wrap").hidden = !E.boardLevel(S, "autoreplat");
-  for (const k of ["radar", "board", "xeno", "bang"]) {
-    $(`auto-${k}-wrap`).hidden = !bots[k];
-    $(`opt-auto-${k}`).checked = set[`auto${k[0].toUpperCase()}${k.slice(1)}`];
-  }
-  $("chal-confirm-wrap").hidden = !S.chalEver.length;
-  $("opt-chal-confirm").checked = !prefs.skipChalConfirm;
-  if (document.activeElement !== $("opt-autoreplat")) $("opt-autoreplat").value = S.settings.autoReplatAt;
-  const box = $("cloud");
-  const state = sync.session.token ? "in" : "out";
-  if (box.dataset.state === state) return;
-  box.dataset.state = state;
-  box.innerHTML = sync.session.token
-    ? `<p>Signed in with an account code. Progress syncs every minute and when you leave the page.</p>
-       <div class="row-buttons"><button type="button" id="sync-now">Sync now</button><button type="button" id="new-code">🔑 Get a new account code</button><button type="button" id="sign-out">Sign out</button><button type="button" class="danger" id="delete-account">Delete account</button></div>
-       <p class="muted" id="sync-status"></p>`
-    : `<p class="muted">Play on several devices with an <b>account code</b>: no email, no password. Create one here, then enter it on your other devices.</p>
-       <div class="row-buttons"><button type="button" class="primary" id="create-code">🔑 Create an account code</button></div>
-       <form class="cloud-form" id="code-form"><input type="text" id="code-input" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="R2R-XXXX-XXXX-XXXX-XXXX-XXXX" aria-label="Account code" />
-       <button type="submit">Sign in with code</button><p class="muted" id="code-status"></p></form>`;
-}
-
-function showCode(code, fresh) {
-  const link = `${location.origin}/#code=${code}`;
-  modal(
-    `<h2>${fresh ? "Your account code" : "Your new account code"}</h2>
-     <p class="account-code" id="account-code">${esc(code)}</p>
-     <p>Enter it on your other devices under Settings → Save. Write it down or keep it in your password manager: <b>this is the only time it's shown</b>, and nothing else can recover it.</p>
-     ${fresh ? "" : `<p class="muted">The old code no longer works. Devices already signed in stay signed in.</p>`}
-     <div class="row-buttons"><button type="button" id="copy-code">📋 Copy code</button><button type="button" id="copy-link">🔗 Copy sign-in link</button>${navigator.share ? `<button type="button" id="share-code">📤 Share</button>` : ""}</div>
-     <p class="muted">Anyone with the code or link can play this save, so share it only with your own devices.</p>`,
-    [["I've saved it", "primary"]],
-  );
-  const copy = async (text, btn) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      btn.textContent = "✅ Copied";
-    } catch {
-      getSelection().selectAllChildren($("account-code"));
-    }
-  };
-  $("copy-code").onclick = (e) => copy(code, e.currentTarget);
-  $("copy-link").onclick = (e) => copy(link, e.currentTarget);
-  if ($("share-code")) $("share-code").onclick = () => navigator.share({ title: "Rows to Riches account code", text: code, url: link }).catch(() => {});
-}
-
 // ---- cloud -------------------------------------------------------------------
 
 // Settings → Game → Clock: "auto" follows the device locale.
@@ -1437,97 +1182,11 @@ async function codeSignIn(code, status) {
 
 // ---- what's new ----------------------------------------------------------------
 
-const RELEASE_INTROS = [
-  (v) => `IT has deployed v${v}. Nobody was consulted.`,
-  (v) => `v${v} is live. The change advisory board approved it retroactively.`,
-  (v) => `A new release, v${v}, went out on a Friday afternoon. Here's what changed.`,
-];
-
-/** The changelog section for one version, as plain bullet texts ([] if it isn't there). */
-async function releaseNotes(version) {
-  try {
-    const res = await fetch("/CHANGELOG.md", { cache: "no-store" });
-    if (!res.ok) return [];
-    const md = await res.text();
-    const start = md.search(new RegExp(`^## \\[?${version.replace(/\./g, "\\.")}\\]?`, "m"));
-    if (start < 0) return [];
-    const section = md.slice(start).split(/\n## /)[0];
-    const notes = [...section.matchAll(/^\* (.+)$/gm)].map((m) => m[1].replace(/\s*\(\[[0-9a-f]{7}\]\([^)]*\)\)$/, "").replace(/\*\*/g, ""));
-    // A PR whose title equals its branch commit's message is listed twice (merge commit + commit).
-    return [...new Set(notes)];
-  } catch {
-    return []; // offline, or a local build without a changelog
-  }
-}
-
-// A changelog line as HTML: escaped, with release-please's links to this repo's PRs made
-// clickable (any other link stays text).
-const noteHtml = (note) =>
-  esc(note).replace(/\[([^\]]+)\]\((https:\/\/github\.com\/drumandbytes\/rows-to-riches\/)issues\/(\d+)\)/g, (_, label, repo, n) => `<a href="${repo}pull/${n}" target="_blank" rel="noopener">${label}</a>`);
-
-async function showWhatsNew(version, { quiet = false } = {}) {
-  const notes = await releaseNotes(version);
-  if (!notes.length) return quiet || toast("No release notes for this version yet.");
-  const intro = RELEASE_INTROS[Math.floor(Math.random() * RELEASE_INTROS.length)](version);
-  modal(`<h2>📰 What's new</h2><p class="muted">${esc(intro)}</p><ul class="whats-new">${notes.map((n) => `<li>${noteHtml(n)}</li>`).join("")}</ul>`, [["Nice", "primary"]]);
-}
-
 // Once per new version, and never on a first visit (that's the walkthrough's moment).
 function checkWhatsNew() {
   const seen = prefs.seenVersion;
   setPref("seenVersion", VERSION);
-  if (seen && seen !== VERSION) setTimeout(() => showWhatsNew(VERSION, { quiet: true }), 1500);
-}
-
-// ---- the end -------------------------------------------------------------------
-
-const COMPLETION_TEXTS = [
-  (t) => `<p>The universe, all matter and antimatter, is now cataloged, modelled, and has a dashboard.</p><p>Nobody has opened the dashboard.</p><p><b>Time to insight: ${t}.</b> Leadership would like it in less next quarter.</p>`,
-  (t) => `<p><b>Everything is data. Data is everything.</b></p><p>Every particle has a primary key. Dark matter turned out to be an unindexed table.</p><p>The board congratulates you and has scheduled a meeting to discuss what's next. The meeting has no agenda.</p><p><b>Completed in ${t}.</b></p>`,
-  (t) => `<p>All matter and antimatter is now modelled, governed and visible on one dashboard. Your Snowfake bill for this quarter is the universe.</p><p><b>Completed in ${t}.</b> Share it, or keep going. Somewhere, a stakeholder already has a follow-up question.</p>`,
-];
-
-function showCompletion(ms) {
-  const t = fmtDuration(ms / 1000);
-  const first = !S.completions;
-  confetti(200);
-  audio.sfx("prestige");
-  const share = `I cataloged the entire universe in Rows to Riches${first ? ` in ${t}` : ""}. It has a dashboard now. https://rowstoriches.drumandbytes.dev/`;
-  modal(
-    `<h2>🎉 Congratulations</h2>${COMPLETION_TEXTS[Math.floor(Math.random() * COMPLETION_TEXTS.length)](t)}
-     <p class="muted">${first ? "This was your first playthrough; that time is your record." : `Playthrough #${S.completions + 1}.`} You can <b>Catalog Everything</b> now to start a stronger New Game+, or keep playing: Big Bangs keep scaling (Prestige → Big Bang).</p>
-     <div class="row-buttons"><button type="button" id="share-completion">📤 Share</button></div>`,
-    [
-      ["Keep playing", "", () => {
-        grantSecret("keepplaying");
-      }],
-      ["Catalog Everything", "primary", confirmCatalog],
-    ],
-  );
-  $("share-completion").onclick = async (e) => {
-    try {
-      if (navigator.share) await navigator.share({ title: "Rows to Riches", text: share });
-      else {
-        await navigator.clipboard.writeText(share);
-        e.currentTarget.textContent = "✅ Copied";
-      }
-    } catch {
-      /* cancelled */
-    }
-  };
-}
-
-function confirmCatalog() {
-  modal(
-    `<h2>🗂️ Catalog Everything?</h2><p>Everything resets: rows, sources, every prestige layer, Axioms and Big Bangs. You start over with New Game+: production ×${E.NG_PROD ** (S.completions + 1)} and prestige gains ×${(E.NG_GAIN ** (S.completions + 1)).toFixed(2)} for the whole playthrough.</p><p class="muted">Achievements, the Data Catalog, lifetime stats and your company name stay.</p>`,
-    [["Cancel"], ["Catalog Everything", "primary", () => {
-      if (!E.catalogEverything(S, Date.now())) return;
-      track("catalog", S);
-      toast(`🗂️ <b>Everything cataloged.</b> New Game+ ${S.completions}. Back to one CSV on localhost.`);
-      afterPurchase();
-      selectTab("sources");
-    }]],
-  );
+  if (seen && seen !== VERSION) setTimeout(() => whatsNew().then((w) => w.show(VERSION, { quiet: true })), 1500);
 }
 
 // ---- small UI helpers --------------------------------------------------------
@@ -1583,6 +1242,28 @@ function modal(html, buttons) {
   if (!dlg.open) dlg.showModal();
 }
 
+// Features that load the first time they're used (each module exports a factory that gets what it needs from here).
+const lazy = (load, make) => {
+  let ready;
+  return () => (ready ??= load().then(make).catch((e) => ((ready = undefined), Promise.reject(e))));
+};
+// What the lazily loaded features share: each factory takes this one object and uses what it needs.
+const ctx = {
+  E, prefs, setPref, scene, audio, lb, $, esc, fmt, fmtDuration, toast, modal, confetti, grantSecret, saveLocal, render, selectTab, afterPurchase,
+  pushCloud, codeSignIn, replaceState, fromSave, autoBuyerOwned, gitopsOwned,
+  state: () => S,
+  version: VERSION,
+  track: (event, extra) => track(event, S, extra),
+};
+const feedback = lazy(() => import("./feedback.js"), (m) => m.createFeedback(ctx));
+const whatsNew = lazy(() => import("./whatsnew.js"), (m) => m.createWhatsNew(ctx));
+const completion = lazy(() => import("./completion.js"), (m) => m.createCompletion(ctx));
+let stats; // set once the Stats tab has been opened
+const statsFeature = lazy(() => import("./stats.js"), (m) => m.createStats(ctx));
+let settings; // set once the Settings tab has been opened
+const settingsFeature = lazy(() => import("./settings.js"), (m) => m.createSettings(ctx));
+const incidents = lazy(() => import("./incidents.js"), (m) => m.createIncidents(ctx));
+
 // Shuffle bag: every line shows once before any repeats. The current environment's lines
 // go in three times, older ones once, plus a few that mention your own numbers.
 let tickerBag = [];
@@ -1625,9 +1306,18 @@ function selectTab(name) {
     b.tabIndex = on ? 0 : -1;
   }
   for (const p of document.querySelectorAll(".pane")) p.hidden = p.id !== `pane-${name}`;
+  if (name === "settings") {
+    settingsFeature().then((m) => {
+      settings = m;
+      render(true);
+    });
+  }
   if (name === "stats") {
-    buildAch();
     lb.render(true);
+    statsFeature().then((m) => {
+      stats = m;
+      render(true);
+    });
   }
   render(true);
 }
@@ -1680,7 +1370,7 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.challenge) onStartChallenge(t.dataset.challenge, Number(t.dataset.tier ?? 1));
   else if (t.closest("[data-request]")) active.answer(t.closest("[data-request]").dataset.request);
   else if (t.dataset.okrToggle) $("okr-strip").classList.toggle("open");
-  else if (t.dataset.feedback) openFeedback();
+  else if (t.dataset.feedback) feedback().then((f) => f.open());
   else if (t.dataset.autoSrc) {
     const skip = S.settings.autoSkip;
     const id = t.dataset.autoSrc;
@@ -1713,8 +1403,8 @@ document.addEventListener("click", (e) => {
     else toast(`🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
-  else if (t.id === "catalog-btn") confirmCatalog();
-  else if (t.id === "whats-new") showWhatsNew(VERSION);
+  else if (t.id === "catalog-btn") completion().then((c) => c.confirmCatalog());
+  else if (t.id === "whats-new") whatsNew().then((w) => w.show(VERSION));
   else if (t.id === "create-code") {
     t.disabled = true;
     sync
@@ -1722,7 +1412,7 @@ document.addEventListener("click", (e) => {
       .then((r) => {
         if (!r.ok) return toast(`☁️ ${esc(r.data.error ?? `Couldn't create a code (${r.status}).`)}`);
         render(true);
-        showCode(r.data.code, true);
+        settings.showCode(r.data.code, true);
         reconcileCloud();
       })
       .catch(() => toast("☁️ Couldn't reach the server."))
@@ -1732,7 +1422,7 @@ document.addEventListener("click", (e) => {
       ["Cancel"],
       ["New code", "primary", async () => {
         const r = await sync.rotateCode().catch(() => null);
-        if (r?.ok) showCode(r.data.code, false);
+        if (r?.ok) settings.showCode(r.data.code, false);
         else toast("☁️ Couldn't create a new code right now.");
       }],
     ]);
@@ -1750,8 +1440,8 @@ document.addEventListener("click", (e) => {
         render(true);
       }],
     ]);
-  } else if (t.id === "export") exportSave();
-  else if (t.id === "import") importSave();
+  } else if (t.id === "export") settings.exportSave();
+  else if (t.id === "import") settings.importSave();
   else if (t.id === "reset") {
     modal(`<h2>DROP DATABASE?</h2><p>Erases <b>all</b> progress on this device, including Insights and Architecture. A cloud save, if any, is kept until this device syncs again.</p>`, [
       ["Cancel"],
@@ -1770,21 +1460,6 @@ $("opt-stats").addEventListener("change", (e) => {
   setPref("stats", e.target.checked);
   if (browserOptOut()) setPref("statsGpcOptIn", e.target.checked);
   showPrefs();
-});
-// The offline notification toggle only shows where both the browser and the server support it.
-pushAvailable().then(async (ok) => {
-  if (!ok) return;
-  $("push-wrap").hidden = false;
-  $("opt-push").checked = await initPush();
-});
-$("opt-push").addEventListener("change", async (e) => {
-  e.target.disabled = true;
-  if (!e.target.checked) await disablePush().catch(() => {});
-  else if (!(await enablePush().catch(() => false))) {
-    e.target.checked = false;
-    toast(Notification.permission === "denied" ? "Notifications are blocked for this site in your browser's settings." : "This browser couldn't turn on notifications.", "info");
-  }
-  e.target.disabled = false;
 });
 $("opt-mood").addEventListener("change", (e) => {
   setPref("mood", e.target.value);
@@ -1927,23 +1602,6 @@ function companySlug() {
   return (S.company || "your-startup").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "startup";
 }
 
-$("opt-company").addEventListener("change", (e) => {
-  S.company = E.cleanCompany(e.target.value);
-  e.target.value = S.company;
-  saveLocal();
-  if (S.company) toast(`🏷️ Welcome to <b>${esc(S.company)}</b>.`);
-  render(true);
-});
-
-// Read the Docs: every Help section opened at least once this session.
-const helpOpened = new Set();
-for (const d of document.querySelectorAll(".help details")) {
-  d.addEventListener("toggle", () => {
-    if (d.open) helpOpened.add(d.querySelector("summary").textContent);
-    if (helpOpened.size === document.querySelectorAll(".help details").length) grantSecret("readdocs");
-  });
-}
-
 const KONAMI = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"];
 let konamiAt = 0;
 document.addEventListener("keydown", (e) => {
@@ -1986,115 +1644,7 @@ document.addEventListener("keydown", (e) => {
 
 // Browsers only start audio after a gesture.
 for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => audio.unlock(), { capture: true });
-$("opt-autoreplat").addEventListener("change", (e) => {
-  S.settings.autoReplatAt = Math.max(1.1, Number(e.target.value) || 2);
-  saveLocal();
-});
-// Auto-buyer settings live in the save (they're about this game, not this device).
-for (const [id, key, kind] of [
-  ["opt-auto-sources", "autoSources", "check"], ["opt-auto-upgrades", "autoUpgrades", "check"], ["opt-auto-columns", "autoColumns", "check"],
-  ["opt-auto-radar", "autoRadar", "check"], ["opt-auto-board", "autoBoard", "check"], ["opt-auto-xeno", "autoXeno", "check"], ["opt-auto-bang", "autoBang", "check"],
-  ["opt-auto-strategy", "autoStrategy", "value"], ["opt-upg-strategy", "upgStrategy", "value"],
-]) {
-  $(id).addEventListener("change", (e) => {
-    S.settings[key] = kind === "check" ? e.target.checked : e.target.value;
-    saveLocal();
-    updateSettings();
-  });
-}
-
-$("cloud").addEventListener("submit", (e) => {
-  e.preventDefault();
-  codeSignIn($("code-input").value, $("code-status"));
-});
-
 // ---- feedback -------------------------------------------------------------------
-
-function feedbackContext() {
-  return {
-    v: VERSION,
-    env: E.environmentFor(S).id,
-    device: matchMedia("(pointer: coarse)").matches ? "mobile" : "desktop",
-    notation: prefs.notation,
-    replat: S.replat,
-    acq: S.acq,
-    contact: S.contact,
-    bangs: S.bangs,
-    log10Rows: Math.round(S.everRows.add(1).log10() * 10) / 10,
-    playHours: Math.round((S.stats.onlineMs / 3.6e6) * 10) / 10,
-  };
-}
-
-function openFeedback() {
-  const ctx = feedbackContext();
-  modal(
-    `<h2>💬 Send feedback</h2>
-     <div class="feedback">
-       <label class="field">Type <select id="fb-category"><option value="bug">🐛 Bug</option><option value="idea">💡 Idea</option><option value="balance">⚖️ Balance</option><option value="other">💬 Other</option></select></label>
-       <textarea id="fb-message" maxlength="2000" placeholder="What happened, what would make it better, or what made you laugh…"></textarea>
-       <input type="email" id="fb-contact" placeholder="Email, if you'd like a reply (optional)" />
-       <input type="text" id="fb-website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
-       <p class="muted">Sent along: version ${esc(ctx.v)}, ${esc(ctx.env)}, ${esc(ctx.device)}, ${ctx.replat} re-platforms, ${ctx.acq} acquisitions, ~${ctx.playHours}h played. Nothing that identifies you unless you add an email.</p>
-       <p class="muted" id="fb-status"></p>
-     </div>`,
-    [["Cancel"], ["Send", "primary"]],
-  );
-  // Dialog buttons submit (and close) by default; Send stays open until the server accepts.
-  const send = [...document.querySelectorAll("#modal button")].find((b) => b.textContent === "Send");
-  send.type = "button";
-  send.addEventListener("click", () => sendFeedback(send));
-  setTimeout(() => $("fb-message").focus());
-}
-
-async function sendFeedback(btn) {
-  const message = $("fb-message").value.trim();
-  if (message.length < 5) {
-    $("fb-status").textContent = "Please write a little more.";
-    return;
-  }
-  btn.disabled = true;
-  $("fb-status").textContent = "Sending…";
-  try {
-    const res = await fetch("/api/feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category: $("fb-category").value, message, contact: $("fb-contact").value, website: $("fb-website").value, context: feedbackContext() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error ?? `Failed (${res.status})`);
-    $("modal").close();
-    toast("💬 Thanks! Your feedback was sent. A ticket has been created and assigned to nobody.");
-  } catch (err) {
-    $("fb-status").textContent = err instanceof Error ? err.message : "Couldn't send. Are you offline?";
-    btn.disabled = false;
-  }
-}
-
-function exportSave() {
-  E.tick(S, Date.now());
-  const text = encodeSave(S);
-  modal(`<h2>Export save</h2><p class="muted">Copy this somewhere safe.</p><textarea readonly id="export-text">${text}</textarea>`, [
-    ["Copy", "primary", () => navigator.clipboard?.writeText(text).then(() => toast("Copied."))],
-    ["Close"],
-  ]);
-  $("export-text").select();
-}
-
-function importSave() {
-  modal(`<h2>Import save</h2><p class="muted">Paste an exported save. This replaces progress on this device.</p><textarea id="import-text"></textarea>`, [
-    ["Cancel"],
-    ["Import", "primary", () => {
-      try {
-        const next = fromSave(decodeSave($("import-text").value));
-        replaceState(next);
-        toast(next.modified ? "Save imported. It's from an edited or pre-0.4 export, so it plays normally but won't be ranked." : "Save imported.");
-        pushCloud({ force: true });
-      } catch {
-        toast("That doesn't look like a save.");
-      }
-    }],
-  ]);
-}
 
 // ---- loop --------------------------------------------------------------------
 
@@ -2137,12 +1687,12 @@ function loop() {
   autoPrestige();
   checkFinale();
   const completed = E.markCompletion(S, now);
-  if (completed) showCompletion(completed);
+  if (completed) completion().then((c) => c.show(completed));
   checkInbox();
   active.tick();
   if (new Date().getHours() === 3) grantSecret("nightowl");
   if (now >= nextIncidentAt && !document.hidden && E.incidentsAllowed(S)) {
-    spawnIncident();
+    incidents().then((m) => m.spawn());
     scheduleIncident(now);
   }
   // Nobody is looking when the tab is hidden: redraw once a second instead of five times.
@@ -2155,42 +1705,10 @@ let lastRenderAt = 0;
 
 // ---- walkthrough -------------------------------------------------------------
 
-const tabButton = (name) => document.querySelector(`.tabs button[data-tab="${name}"]`);
-const tour = createTour(
-  [
-    { title: "Welcome to the data team", text: "You <i>are</i> the data team. Your job: rows. Lots of rows. This short tour shows the basics; you can replay it any time from Settings → Help.", next: "Show me around" },
-    { title: "Press INSERT", text: "Every press adds rows. Press quickly to build a combo (Space works too). Try it a few times.", target: () => $("insert"), until: () => S.clicks >= 5 },
-    {
-      title: "Hire your first Data Source",
-      text: "A Spreadsheet Intern types rows for you every second, even while the game is closed. Keep pressing INSERT until you can afford one, then buy it.",
-      target: () => $("sources").querySelector("li[data-i]"),
-      enter: () => selectTab("sources"),
-      until: () => S.prod[0] >= 1,
-    },
-    { title: "Rows and rows per second", text: "Your bank, and how much your sources make per second. Buy more sources, and better ones, to grow it. ×10 and max buy in bulk; <b>sell</b> sells sources back for half.", target: () => document.querySelector(".counter") },
-    { title: "Upgrades", text: "Owning more of a source unlocks upgrades: ×2 production, synergies between neighbouring sources, a stronger INSERT. A dot on the tab means you can afford one.", target: () => tabButton("upgrades") },
-    { title: "Schema", text: "Columns multiply <i>everything</i>. They're expensive, and worth it.", target: () => tabButton("schema") },
-    { title: "Prestige", text: "Growth eventually slows. Then you re-platform: start over with Insights that make everything faster. There are four layers of this, and it gets weird.", target: () => tabButton("prestige") },
-    { title: "Inbox and incidents", text: "Vendors email you here. Alerts also pop up on screen: click them for bonuses. Except phishing tests. Never click those.", target: () => $("inbox-btn") },
-    {
-      // Getters: whether the server has leaderboards is only known once lb.init() answers.
-      get title() {
-        return lb.available ? "Leaderboards" : "Stats";
-      },
-      get text() {
-        return lb.available
-          ? `Want to compare? Join the leaderboards: fastest Catalog Everything, most rows, Big Bangs and Catalogs. You'd show up under a generated name, nothing else.<br><label class="toggle"><input type="checkbox" id="tour-lb" ${S.lb.optIn ? "checked" : ""}/> Join the leaderboards</label><span class="muted">Change your mind any time under Stats.</span>`
-          : "Your stats and the Data Catalog live here. Every catalog entry is +1% production.";
-      },
-      target: () => tabButton("stats"),
-    },
-    { title: "That's it", text: "Name your company, change number formats, music and motion under Settings. Help explains every system in detail. Good luck out there.", target: () => tabButton("settings") },
-  ],
-  { onEnd: () => setPref("tourDone", true) },
-);
+const walkthrough = lazy(() => import("./walkthrough.js"), (m) => m.createWalkthrough(ctx));
 $("replay-tour").addEventListener("click", () => {
   selectTab("sources");
-  tour.start();
+  walkthrough().then((t) => t.start());
 });
 
 // Older saves kept the notation in the save itself.
@@ -2200,7 +1718,7 @@ showPrefs();
 applyOffline();
 render(true);
 // Fresh saves only: someone syncing an old save onto a new device doesn't need the tour.
-if (!prefs.tourDone && S.everRows.lt(50)) setTimeout(() => tour.start(), 600);
+if (!prefs.tourDone && S.everRows.lt(50)) setTimeout(() => walkthrough().then((t) => t.start()), 600);
 checkWhatsNew();
 lb.init();
 document.addEventListener("change", (e) => {
