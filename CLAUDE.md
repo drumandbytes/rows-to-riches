@@ -30,4 +30,5 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 npm run dev              # wrangler dev, local D1
 npm run db:migrate:local
 npm test
+npm run test:a11y        # axe + keyboard checks in a real browser (CHROMIUM=1 locally); CI runs it too
 ```

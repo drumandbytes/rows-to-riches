@@ -85,6 +85,7 @@
   </head>
   <body>
     <div class="bg" aria-hidden="true"></div>
+    <div id="sr-status" class="sr-only" role="status"></div>
     <div class="status-edge" aria-hidden="true"></div>
 
     <header class="top">
@@ -98,7 +99,7 @@
         <div class="rate"><span class="pulse" aria-hidden="true"></span><span id="rate">0</span>/s</div>
       </div>
       <!-- Rightmost, so the counter's changing width never moves it. -->
-      <button type="button" class="inbox-btn" id="inbox-btn" aria-label="Inbox">📬<i class="badge" id="inbox-badge" hidden></i></button>
+      <button type="button" class="inbox-btn" id="inbox-btn"><span aria-hidden="true">📬</span><span class="sr-only">Inbox</span><i class="badge" id="inbox-badge" hidden></i></button>
     </header>
 
     <main class="layout">
@@ -172,7 +173,7 @@
             <button type="button" data-view="erd" class="on">🕸️ ERD</button>
             <button type="button" data-view="ddl">📜 DDL</button>
           </div>
-          <div class="erd" id="erd"></div>
+          <div class="erd" id="erd" role="region" aria-label="Schema diagram" tabindex="0"></div>
           <pre class="ddl" id="ddl" hidden></pre>
           <button class="big" id="add-column" type="button"></button>
         </div>
@@ -185,8 +186,12 @@
         </div>
 
         <div class="pane" id="pane-stats" role="tabpanel" hidden>
-          <div class="pane-head"><h2><span class="cm">In [1]:</span> Stats</h2></div>
+          <div class="pane-head"><h2><span class="cm">In [1]:</span> Stats</h2><button type="button" id="share-card">🖼️ Share card</button></div>
           <dl class="stats" id="stats"></dl>
+          <h3>Run history</h3>
+          <canvas id="hist" class="hist" role="img" aria-label="Production over time"></canvas>
+          <p class="muted" id="hist-note">Production every few minutes, with a dashed line at each prestige. It builds up as you play.</p>
+          <ol class="runs" id="runs"></ol>
           <section id="lb" hidden>
             <h3>Leaderboards</h3>
             <label class="toggle"><input type="checkbox" id="lb-join" /> Join the leaderboards</label>
@@ -272,6 +277,22 @@
               <select id="opt-quality">
                 <option value="high">High: full animations</option>
                 <option value="low">Low: fewer particles, calmer animations (saves battery)</option>
+              </select>
+            </label>
+            <label class="field">Contrast
+              <select id="opt-contrast">
+                <option value="standard">Standard</option>
+                <option value="high">High: brighter text and borders</option>
+              </select>
+            </label>
+            <label class="field">Frame rate
+              <select id="opt-fps">
+                <option value="60">60 fps: smooth and steady</option>
+                <option value="30">30 fps: saves battery</option>
+                <option value="120">120 fps: for high-refresh screens</option>
+                <option value="144">144 fps: for 144 Hz monitors</option>
+                <option value="240">240 fps: for 240 Hz monitors (heavy on battery)</option>
+                <option value="0">Match the display</option>
               </select>
             </label>
             <h3>Motion &amp; pop-ups</h3>
@@ -416,7 +437,7 @@
       </section>
     </noscript>
 
-    <div id="incident-layer"></div>
+    <div id="incident-layer" aria-live="polite"></div>
     <div id="update-bar" class="update-bar" role="status" hidden><span>A new version is ready.</span> <button type="button" id="update-reload" class="primary">Reload</button></div>
     <div id="toasts" aria-live="polite"><button type="button" id="toasts-clear" class="toasts-clear">✕ Clear all</button></div>
     <dialog id="modal"><form method="dialog" id="modal-body"></form></dialog>

@@ -112,6 +112,7 @@ export function sparks(x, y, hue, n = 14) {
   for (let k = 0; k < n; k++) {
     const el = document.createElement("i");
     el.className = "spark";
+    el.setAttribute("aria-hidden", "true");
     const a = Math.random() * Math.PI * 2;
     const d = 30 + Math.random() * 60;
     el.style.cssText = `left:${x}px;top:${y}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 20}px;--h:${hue + Math.random() * 40}`;
@@ -125,6 +126,7 @@ export function confetti(n = 36) {
   for (let k = 0; k < n; k++) {
     const el = document.createElement("i");
     el.className = "confetti";
+    el.setAttribute("aria-hidden", "true");
     el.style.cssText = `left:${Math.random() * 100}vw;--h:${Math.random() * 360};--r:${Math.random() * 720 - 360}deg;--d:${1.6 + Math.random() * 1.6}s;--x:${(Math.random() - 0.5) * 120}px`;
     document.body.append(el);
     setTimeout(() => el.remove(), 3400);
@@ -139,4 +141,52 @@ export function banner(title, sub) {
   confetti();
   setTimeout(() => el.classList.add("out"), 2600);
   setTimeout(() => el.remove(), 3200);
+}
+
+const RUN_COLORS = { replat: "#e0a84a", acq: "#6aab73", contact: "#b07cd8", bang: "#d9574f", catalog: "#e3e5e8" };
+
+/** Production over time (log scale), with a dashed line wherever you prestiged. */
+export function createHistoryChart(canvas, format) {
+  return {
+    draw(pts, runs, now = Date.now()) {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const { width: w, height: h } = canvas.getBoundingClientRect();
+      if (!w) return;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      if (pts.length < 2) return;
+      const accent = getComputedStyle(canvas).getPropertyValue("--accent").trim();
+      const muted = getComputedStyle(canvas).getPropertyValue("--muted").trim();
+      const t0 = pts[0][0];
+      const t1 = Math.max(now, pts.at(-1)[0]);
+      const lo = Math.min(...pts.map((p) => p[1]));
+      const hi = Math.max(...pts.map((p) => p[1]));
+      const span = hi - lo || 1;
+      const padL = 6, padR = 6, padT = 14, padB = 4;
+      const x = (t) => padL + ((t - t0) / (t1 - t0 || 1)) * (w - padL - padR);
+      const y = (v) => h - padB - ((v - lo) / span) * (h - padT - padB);
+      ctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1;
+      for (const r of runs) {
+        if (r.at < t0) continue;
+        ctx.strokeStyle = RUN_COLORS[r.layer];
+        ctx.beginPath();
+        ctx.moveTo(x(r.at), padT - 4);
+        ctx.lineTo(x(r.at), h - padB);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      pts.forEach((p, i) => (i ? ctx.lineTo(x(p[0]), y(p[1])) : ctx.moveTo(x(p[0]), y(p[1]))));
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = muted;
+      ctx.fillText(`${format(big(10).pow(hi))}/s`, padL, 10);
+    },
+  };
 }

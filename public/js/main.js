@@ -4,7 +4,8 @@ import { prefs, setPref } from "./prefs.js";
 import * as audio from "./audio.js";
 import { TICKER, OFFLINE_JOKES, FINALE, INBOX } from "./flavor.js";
 import { createScene, producerHue } from "./scene.js";
-import { createQueryLog, createSparkline, sparks, banner, confetti } from "./widgets.js";
+import { onFrame, setFrameCap } from "./frames.js";
+import { createQueryLog, createSparkline, createHistoryChart, sparks, banner, confetti } from "./widgets.js";
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
@@ -56,6 +57,7 @@ const lb = createLeaderboard({ state: () => S, encodeSave, fmt, fmtDuration, esc
 
 const queryLog = createQueryLog($("querylog"));
 const spark = createSparkline($("spark"));
+const histChart = createHistoryChart($("hist"), (v) => fmt(v));
 
 // The INSERT button grows up with click upgrades.
 const INSERT_LABELS = [
@@ -823,10 +825,14 @@ function render(force = false) {
 }
 
 // Smoothly rolls the big counter towards the real bank; drops snap instantly.
-function animateCounter() {
+let counterAt = 0;
+function animateCounter(t) {
   const target = S.rows;
+  // 20% of the gap per 60 Hz frame, whatever the real frame rate is (1 fps while the page is hidden).
+  const ease = 1 - 0.8 ** (Math.min(1000, t - counterAt) / 16.7);
+  counterAt = t;
   shownRows = E.big(shownRows);
-  shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(0.2));
+  shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(ease));
   const text = fmt(shownRows);
   const el = $("rows");
   if (el.textContent !== text) {
@@ -834,7 +840,6 @@ function animateCounter() {
     el.textContent = text;
     if (grew) fitCounter();
   }
-  requestAnimationFrame(animateCounter);
 }
 
 // Fits the header on narrow screens. The row count shrinks first (the CSS size is the cap);
@@ -987,8 +992,8 @@ function buildSources() {
         key: `p${p.i}`,
         html: `<li class="node" data-i="${p.i}" style="--h:${producerHue(p.i)}">
         <div class="ico" aria-hidden="true">${p.icon}</div>
-        <div><div class="name">${esc(p.name)}<span class="count"></span><span class="chip"></span><button type="button" class="auto-chip" data-auto-src="${p.id}" title="Include in the auto-buyer" hidden>🤖</button></div><div class="sub"></div><div class="run-bar"><i></i></div></div>
-        <button class="buy" type="button" data-buy-producer="${p.i}"></button></li>`,
+        <div><div class="name"><span id="pn${p.i}">${esc(p.name)}</span><span class="count"></span><span class="chip"></span><button type="button" class="auto-chip" data-auto-src="${p.id}" title="Include in the auto-buyer" hidden>🤖</button></div><div class="sub"></div><div class="run-bar" aria-hidden="true"><i></i></div></div>
+        <button class="buy" type="button" data-buy-producer="${p.i}" aria-describedby="pn${p.i}"></button></li>`,
       });
     } else if (!teased) {
       teased = true;
@@ -997,7 +1002,11 @@ function buildSources() {
     }
   }
   syncList($("sources"), items);
-  document.querySelectorAll(".buy-amount button[data-buy]").forEach((b) => b.classList.toggle("on", String(S.settings.buy) === b.dataset.buy));
+  document.querySelectorAll(".buy-amount button[data-buy]").forEach((b) => {
+    const on = String(S.settings.buy) === b.dataset.buy;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", String(on));
+  });
   $("sell-mode").classList.toggle("on", selling);
   $("sell-mode").setAttribute("aria-pressed", selling);
   $("sources").classList.toggle("selling", selling);
@@ -1164,14 +1173,17 @@ function updateSchema() {
 
 function buildAch() {
   const icon = (a) => (a.id.startsWith("own_") ? E.PRODUCERS.find((p) => a.id.startsWith(`own_${p.id}_`))?.icon : { rows: "🗄️", clicks: "👆", cols: "🧱", incidents: "🚨", replat: "💡", acq: "📈", contact: "👽", bangs: "🌀", chal: "🏁", env: "🗺️", combo: "🔥", speed: "⏱️", night: "🌙", full: "🧩", no: "🙌", online: "🌱", rate: "🚿" }[a.id.split("_")[0]]);
-  $("ach").innerHTML = E.ACHIEVEMENTS.map((a) => {
+  // Secrets stay out of the grid (and the count) until earned, so nobody can tell how many exist.
+  const list = E.ACHIEVEMENTS.filter((a) => !a.secret || S.ach.includes(a.id));
+  $("ach").innerHTML = list.map((a) => {
     const got = S.ach.includes(a.id);
-    const hidden = a.secret && !got;
-    const title = got ? `${a.name}: ${a.desc}` : hidden ? "Secret achievement" : `??? — ${a.desc}`;
-    const glyph = hidden ? "🤫" : a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
-    return `<button type="button" class="${got ? "got" : ""} ${a.id === "clickme" && !got ? "clickme" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : hidden ? "Secret" : "Locked")}">${glyph}</button>`;
+    // "Click Me" looks like any other locked entry; players find it by poking around.
+    const plain = a.id === "clickme" && !got;
+    const title = got ? `${a.name}: ${a.desc}` : plain ? "Locked" : `??? — ${a.desc}`;
+    const glyph = a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
+    return `<button type="button" class="${got ? "got" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : "Locked")}">${plain ? "⭐" : glyph}</button>`;
   }).join("");
-  $("ach-count").textContent = `${S.ach.length}/${E.ACHIEVEMENTS.length}`;
+  $("ach-count").textContent = `${S.ach.length}/${list.length}`;
 }
 
 function updateStats() {
@@ -1213,7 +1225,64 @@ function updateStats() {
   ];
   const html = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   if ($("stats").innerHTML !== html) $("stats").innerHTML = html;
+  updateHistory(now);
 }
+
+const RUN_NAMES = { replat: ["💡", "Re-platform"], acq: ["📈", "Acquisition"], contact: ["👽", "First Contact"], bang: ["🌀", "Big Bang"], catalog: ["🎉", "Catalog Everything"] };
+function updateHistory(now) {
+  const { pts, runs } = S.hist;
+  $("hist").hidden = pts.length < 2;
+  if (pts.length >= 2) {
+    histChart.draw(pts, runs, now);
+    $("hist").setAttribute("aria-label", `Production over time: from ${fmt(E.big(10).pow(pts[0][1]))} to ${fmt(E.big(10).pow(pts.at(-1)[1]))} rows per second.`);
+  }
+  const html = runs.slice(-8).reverse().map((r) => {
+    const [icon, name] = RUN_NAMES[r.layer];
+    return `<li><span aria-hidden="true">${icon}</span><span>${name}</span><b>${fmtDuration(r.ms / 1000)}</b><span class="when">${fmtDuration((now - r.at) / 1000)} ago</span></li>`;
+  }).join("");
+  if ($("runs").innerHTML !== html) $("runs").innerHTML = html;
+}
+
+// A picture of the run for posting. Drawn on demand by sharecard.js, which loads only now.
+async function shareCard(button) {
+  const label = button.textContent;
+  button.disabled = true;
+  try {
+    const { makeShareCard } = await import("./sharecard.js");
+    const now = Date.now();
+    const prestiges = [["💡", S.replat], ["📈", S.acq], ["👽", S.contact], ["🌀", S.bangs]].filter(([, n]) => n > 0);
+    const blob = await makeShareCard({
+      company: S.company,
+      rows: fmt(S.everRows),
+      rate: fmt(E.rate(S, now)),
+      env: E.environmentFor(S).name,
+      hue: E.environmentFor(S).hue,
+      tiles: [
+        ["sources", fmt(S.prod.reduce((a, b) => a + b, 0))],
+        ["catalog entries", String(S.ach.length)],
+        ["playing for", fmtDuration((now - S.playthroughStartedAt) / 1000)],
+        ["playthroughs", String(S.completions + (E.canCatalog(S) ? 1 : 0))],
+      ],
+      prestiges,
+      url: "rowstoriches.drumandbytes.dev",
+    });
+    const file = new File([blob], "rows-to-riches.png", { type: "image/png" });
+    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: "Rows to Riches", text: "My data team so far. https://rowstoriches.drumandbytes.dev/" });
+    else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "rows-to-riches.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    }
+  } catch {
+    /* cancelled, or the browser can't share files */
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+  }
+}
+$("share-card").addEventListener("click", (e) => shareCard(e.currentTarget));
 
 function updateSettings() {
   if (document.activeElement !== $("opt-company")) $("opt-company").value = S.company;
@@ -1472,6 +1541,7 @@ function floatText(text, x, y) {
   }
   const el = document.createElement("div");
   el.className = "float";
+  el.setAttribute("aria-hidden", "true");
   el.textContent = text;
   el.style.left = `${x - 20 + (Math.random() - 0.5) * 30}px`;
   el.style.top = `${y - 20}px`;
@@ -1549,7 +1619,11 @@ function dynamicTicker() {
 
 function selectTab(name) {
   tab = name;
-  for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  for (const b of document.querySelectorAll(".tabs button")) {
+    const on = b.dataset.tab === name;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+  }
   for (const p of document.querySelectorAll(".pane")) p.hidden = p.id !== `pane-${name}`;
   if (name === "stats") {
     buildAch();
@@ -1561,6 +1635,22 @@ function selectTab(name) {
 document.querySelector(".tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tab]");
   if (b) selectTab(b.dataset.tab);
+});
+// Tabs wire themselves to their panels, and the arrow keys move between them (roving tabindex).
+for (const b of document.querySelectorAll(".tabs button")) {
+  b.id = `tab-${b.dataset.tab}`;
+  b.setAttribute("aria-controls", `pane-${b.dataset.tab}`);
+  $(`pane-${b.dataset.tab}`).setAttribute("aria-labelledby", b.id);
+}
+document.querySelector(".tabs").addEventListener("keydown", (e) => {
+  const tabs = [...document.querySelectorAll(".tabs button")];
+  const at = tabs.indexOf(document.activeElement);
+  const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[e.key];
+  if (at < 0 || to === undefined) return;
+  e.preventDefault();
+  const next = tabs[(to + tabs.length) % tabs.length];
+  next.focus();
+  selectTab(next.dataset.tab);
 });
 
 const insertBtn = $("insert");
@@ -1620,7 +1710,7 @@ document.addEventListener("click", (e) => {
     const a = E.ACH_BY_ID[t.dataset.ach];
     if (a.id === "clickme" && !S.ach.includes(a.id)) grantSecret("clickme");
     else if (S.ach.includes(a.id)) toast(`🏅 <b>${esc(a.name)}</b> — ${esc(a.desc)}`);
-    else toast(a.secret ? "🤫 A secret. Keep playing… or keep poking around." : `🔒 ${esc(a.desc)}`);
+    else toast(`🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
   else if (t.id === "catalog-btn") confirmCatalog();
@@ -1755,11 +1845,13 @@ function showPrefs() {
   }
   document.body.classList.toggle("low", prefs.quality === "low");
   document.body.classList.toggle("no-motion", prefs.motion === "reduced");
+  document.documentElement.classList.toggle("hc", prefs.contrast === "high");
   document.body.classList.toggle("no-particles", !prefs.particles);
   scene.setQuality(prefs.quality);
+  setFrameCap(Number(prefs.fps));
   scene.setMotion({ reduced: prefs.motion === "reduced", shake: prefs.shake, mode: prefs.sceneMode });
   document.querySelector(".stage").hidden = prefs.sceneMode === "hidden";
-  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) $(id).value = prefs[key];
+  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"], ["opt-contrast", "contrast"]]) $(id).value = prefs[key];
   for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]]) $(id).checked = prefs[key];
   $("fullscreen").textContent = document.fullscreenElement ? "⛶ Exit full screen" : "⛶ Full screen";
 }
@@ -1769,7 +1861,7 @@ $("opt-notation").addEventListener("change", (e) => {
   setNotation(prefs.notation);
   render(true);
 });
-for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) {
+for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"], ["opt-contrast", "contrast"]]) {
   $(id).addEventListener("change", (e) => {
     setPref(key, e.target.value);
     showPrefs();
@@ -1821,7 +1913,10 @@ $("schema-seg").addEventListener("click", (e) => {
 $("settings-seg").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-section]");
   if (!b) return;
-  for (const x of $("settings-seg").children) x.classList.toggle("on", x === b);
+  for (const x of $("settings-seg").children) {
+    x.classList.toggle("on", x === b);
+    x.setAttribute("aria-pressed", String(x === b));
+  }
   for (const sec of document.querySelectorAll("#pane-settings .section")) sec.hidden = sec.dataset.section !== b.dataset.section;
 });
 
@@ -2035,6 +2130,7 @@ function loop() {
     toast(`🏁 <b>${esc(c.name)} ${ROMAN[result.tier]} complete</b> in ${time}${result.record ? " (new best)" : ""}. ${reward} Speed bonus ×${E.speedBonus(S, result.key).toFixed(2)}.`);
     structureKey = "";
   }
+  E.sampleHistory(S, now);
   autoPrestige();
   checkFinale();
   const completed = E.markCompletion(S, now);
@@ -2046,8 +2142,13 @@ function loop() {
     spawnIncident();
     scheduleIncident(now);
   }
-  render();
+  // Nobody is looking when the tab is hidden: redraw once a second instead of five times.
+  if (!document.hidden || now - lastRenderAt >= 1000) {
+    lastRenderAt = now;
+    render();
+  }
 }
+let lastRenderAt = 0;
 
 // ---- walkthrough -------------------------------------------------------------
 
@@ -2104,11 +2205,15 @@ document.addEventListener("change", (e) => {
 });
 rotateTicker();
 shownRows = S.rows;
-animateCounter();
+onFrame(animateCounter);
 setInterval(loop, 200);
 setInterval(() => spark.sample(E.rate(S, Date.now())), 1000);
 setInterval(autoBuy, 1000);
 setInterval(rotateTicker, 9000);
+// Screen readers get a short summary now and then instead of the counter ticking every frame.
+setInterval(() => {
+  if (!document.hidden) $("sr-status").textContent = `${fmt(S.rows)} rows, ${fmt(E.rate(S, Date.now()))} per second.`;
+}, 30_000);
 setInterval(saveLocal, 5000);
 setInterval(() => {
   if (cloudDirty && Date.now() - lastCloudPush > 60_000) pushCloud();
