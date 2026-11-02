@@ -9,6 +9,7 @@ import { createQueryLog, createSparkline, sparks, banner, confetti } from "./wid
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
+import { createPrestige } from "./prestige.js";
 import { track, allowed as statsAllowed, browserOptOut } from "./analytics.js";
 import { encodeSave, decodeSave } from "./seal.js";
 import { createLeaderboard } from "./leaderboard.js";
@@ -278,196 +279,12 @@ function afterPurchase() {
 
 // ---- prestige layers -----------------------------------------------------------
 
-const LAYERS = [
-  {
-    id: "replat", icon: "💡", name: "Re-platform", cur: "Insights",
-    have: (s) => s.ins, spendable: (s) => s.ins.sub(s.insSpent),
-    pending: E.pendingInsights, run: E.replatform, verb: "Re-platform",
-    progress: (s) => `Next Insight at ${fmt(E.nextInsightAt(s))} company rows (${fmt(s.coRows)} so far).`,
-    effect: (s) => `Insights boost production: +${E.insightPct(s) * 100}% per point, with diminishing returns (now +${fmt(E.insightBonus(s).mul(100))}%).`,
-    confirm: "Rewrite everything in this year's hot new stack. You lose rows, Data Sources, upgrades and columns.",
-    keeps: "Insights, Architecture, Tech Radar and everything above are kept.",
-    done: (g) => `💡 <b>Re-platformed.</b> +${fmt(g)} Insights. The new stack is mostly YAML.`,
-    visible: () => true,
-    shops: ["arch", "radar"],
-  },
-  {
-    id: "acq", icon: "📈", name: "Acquisition", cur: "Equity",
-    have: (s) => s.eq, spendable: (s) => s.eq.sub(s.eqSpent),
-    pending: E.pendingEquity, run: E.acquire, verb: "Get acquired",
-    progress: (s) => `Next Equity at ${fmt(E.nextEquityAt(s))} civilization rows (${fmt(s.civRows)} so far).`,
-    effect: (s) => `Equity boosts production (now ×${fmt(E.equityProdMult(s))}) and buys Board seats.`,
-    confirm: "A bigger fish buys your company. You also lose Insights, Architecture and the Tech Radar.",
-    keeps: "Equity, the Board and everything above are kept.",
-    done: (g) => `📈 <b>Acquired!</b> +${fmt(g)} Equity. Your new title is 'Head of Data Synergies'.`,
-    visible: (s) => s.acq > 0 || s.contact > 0 || s.bangs > 0 || s.ins >= 50,
-    teaser: "Unlocks once you have 50 Insights.",
-    shops: ["board"],
-  },
-  {
-    id: "contact", icon: "👽", name: "First Contact", cur: "Xenobytes",
-    have: (s) => s.xeno, spendable: (s) => s.xeno.sub(s.xenoSpent),
-    pending: E.pendingXeno, run: E.firstContact, verb: "Make contact",
-    progress: (s) =>
-      E.rndComplete(s)
-        ? `Next Xenobyte at ${fmt(E.nextXenoAt(s))} universe rows (${fmt(s.allRows)} so far).`
-        : `The aliens only talk to civilizations with a complete R&D Lab (${E.boardLevel(s, "rnd")}/${E.RND_PRODUCERS}, on the Board).`,
-    effect: (s) => `Xenobytes boost production (now ×${fmt(E.xenoProdMult(s))}) and buy alien tech.`,
-    confirm: "Aliens arrive. They are very interested in your schema. You also lose Equity and the Board.",
-    keeps: "Xenobytes, Xenotech and Axioms are kept.",
-    done: (g) => `👽 <b>Contact made.</b> +${fmt(g)} Xenobytes. They brought their own data types.`,
-    visible: (s) => s.contact > 0 || s.bangs > 0 || s.acq >= 3,
-    teaser: "Unlocks after 3 acquisitions.",
-    shops: ["xeno"],
-  },
-  {
-    id: "bang", icon: "🌀", name: "Big Bang", cur: "Axioms",
-    have: (s) => s.axioms, spendable: () => 0,
-    pending: E.pendingAxioms, run: E.bigBang, verb: "Big Bang",
-    progress: (s) =>
-      E.canBigBang(s)
-        ? `Ready. A Big Bang turns this universe's rows into Axioms: one per 30 orders of magnitude (${fmt(s.allRows)} rows so far).`
-        : "Not yet: the universe ends once you own the final Data Source, Everything Is Data. Then a Big Bang turns its rows into Axioms.",
-    effect: (s) => `Axioms are permanent. Each one triples all production and makes every other prestige currency (Insights, Equity, Xenobytes) grow 1.5× faster. You have ${s.axioms}.`,
-    confirm: "End this universe and start a new one. Everything resets except Axioms, the Data Catalog and lifetime stats.",
-    keeps: "Axioms are permanent.",
-    done: (g) => `🌀 <b>Let there be rows.</b> +${g} Axioms. A new universe boots up on localhost.`,
-    visible: (s) => s.contact > 0 || s.bangs > 0,
-    teaser: "Unlocks after First Contact.",
-    shops: [],
-  },
-];
-const LAYER_BY_ID = Object.fromEntries(LAYERS.map((l) => [l.id, l]));
-let prestigeTab = "replat";
-
-const SHOP_META = {
-  arch: { title: "Architecture", icon: "🏗️", cur: "💡", note: "One-time. Spending Insights doesn't lower their bonus." },
-  radar: { title: "Tech Radar", icon: "📡", cur: "💡", note: "Levels. Reset by acquisitions (Golden Parachute keeps some)." },
-  board: { title: "Board", icon: "🏛️", cur: "📈", note: "Levels. Reset by First Contact (unless you own Probe Swarm)." },
-  xeno: { title: "Xenotech", icon: "🛸", cur: "👽", note: "Levels. Reset by a Big Bang." },
-};
-
-// Which retention rewards apply when prestiging at each layer.
-const RETENTION = { replat: ["keepupg", "keepcols", "keepsrc"], acq: ["keepradar", "keepins"], contact: ["keepeq", "keepcontact"], bang: ["keepxeno", "keepboard"] };
-
-function onPrestige(layer) {
-  const gain = layer.pending(S);
-  if (E.big(gain).lt(1) || !E.gateOpen(S, layer.id)) return;
-  const kept = (RETENTION[layer.id] ?? []).filter((id) => E.won(S, id)).map((id) => `<li>${esc(E.CHALLENGE_BY_ID[id].reward)}</li>`);
-  modal(
-    `<h2>${layer.icon} ${layer.verb}?</h2><p>${esc(layer.confirm)}</p><p>You gain <b>${fmt(gain)} ${layer.cur}</b>.</p><p class="muted">${esc(layer.keeps)}</p>${kept.length ? `<p>🏆 Challenge rewards in effect:</p><ul class="kept">${kept.join("")}</ul>` : ""}`,
-    [["Cancel"], [layer.verb, "primary", () => doPrestige(layer)]],
-  );
-}
-
-function doPrestige(layer, quiet = false) {
-  E.tick(S, Date.now());
-  const gain = layer.run(S);
-  if (E.big(gain).lt(1)) return;
-  track(layer.id, S);
-  if (!quiet) {
-    toast(layer.done(gain));
-    scene.shake();
-    audio.sfx("prestige");
-  }
-  afterPurchase();
-}
-
-function shopItems(shop) {
-  // Architecture is paid in Insights like the Radar, so it borrows the Radar's currency keys.
-  const [defs, key, cur, spent] = E.SHOPS[shop === "arch" ? "radar" : shop];
-  const free = S[cur].sub(S[spent]);
-  if (shop === "arch") {
-    return E.ARCH.map((a) => {
-      const owned = S.arch.includes(a.id);
-      return { id: a.id, name: a.name, desc: a.desc, owned, cost: a.cost, afford: !owned && free.gte(a.cost), label: owned ? "Owned" : `${fmt(a.cost)} ${SHOP_META.arch.cur}` };
-    });
-  }
-  return Object.values(defs).map((d) => {
-    const l = S[key][d.id] ?? 0;
-    const maxed = l >= d.max;
-    const cost = E.levelCost(d, l);
-    const lv = d.max === 1 ? "" : d.max >= 100 ? `Lv ${l}` : `Lv ${l}/${d.max}`;
-    return { id: d.id, name: d.name, lv, desc: d.desc(l), owned: maxed, cost, afford: !maxed && free.gte(cost), label: maxed ? (d.max === 1 ? "Owned" : "MAX") : `${fmt(cost)} ${SHOP_META[shop].cur}` };
-  });
-}
-
-function renderShop(shop) {
-  const meta = SHOP_META[shop];
-  const items = shopItems(shop)
-    .map(
-      (it) => `<li class="item ${it.owned ? "owned" : ""} ${it.afford ? "affordable" : ""}"><div class="ico" aria-hidden="true">${meta.icon}</div>
-      <div><div class="name">${esc(it.name)}${it.lv ? ` <span class="lv">${it.lv}</span>` : ""}</div><div class="sub">${esc(it.desc)}</div></div>
-      <button class="buy" type="button" data-shop="${shop}" data-item="${it.id}" ${it.afford ? "" : "disabled"}>${it.label}</button></li>`,
-    )
-    .join("");
-  return `<h3>${meta.title}</h3><p class="muted">${meta.note}</p><ul class="list">${items}</ul>`;
-}
-
-// Tab dot / auto-prestige rule of thumb: the pending gain would at least double what you have.
-// Measured against what this company (civilization, universe) earned, so carried-over
-// currency from the Big Bang milestones doesn't stop prestige from paying off.
-const wouldDouble = (l) => E.big(l.pending(S)).gte((l.id === "bang" ? E.big(l.have(S)) : E.layerEarned(S, l.id)).max(1));
-
 /** Each source's share of production (plain numbers that sum to 1), for the scene. */
 function sourceShares(gm) {
   const pm = E.producerMultipliers(S);
   const rates = E.PRODUCERS.map((p) => (S.prod[p.i] ? E.producerRate(S, p.i, gm, pm) : E.big(0)));
   const total = rates.reduce((a, b) => a.add(b), E.big(0));
   return rates.map((r) => (total.gt(0) ? r.div(total).toNumber() : 0));
-}
-
-function renderPrestige() {
-  // Tab dot: some layer would at least double its currency.
-  const ready = LAYERS.some((l) => l.visible(S) && E.gateOpen(S, l.id) && wouldDouble(l));
-  $("ins-dot").hidden = !ready;
-  if (tab !== "prestige") return;
-  const visible = LAYERS.filter((l) => l.visible(S));
-  const chalOpen = E.CHALLENGE_LAYERS.some((l) => l.unlocked(S));
-  const next = LAYERS.find((l) => !l.visible(S));
-  if (prestigeTab === "chal" ? !E.CHALLENGE_LAYERS.some((l) => l.unlocked(S)) : !LAYER_BY_ID[prestigeTab]?.visible(S)) prestigeTab = "replat";
-  const seg =
-    visible.map((l) => `<button type="button" data-layer="${l.id}" class="${l.id === prestigeTab ? "on" : ""}">${l.icon} ${l.name}${wouldDouble(l) ? ' <i class="mini-dot"></i>' : ""}</button>`).join("") +
-    (chalOpen ? `<button type="button" data-layer="chal" class="${prestigeTab === "chal" ? "on" : ""}">🏁 Challenges</button>` : "") +
-    (next ? `<button type="button" disabled title="${esc(next.teaser)}">🔒 ???</button>` : "");
-  if ($("prestige-seg").dataset.html !== seg) {
-    $("prestige-seg").dataset.html = seg;
-    $("prestige-seg").innerHTML = seg;
-  }
-  if (prestigeTab === "chal") {
-    setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${S.chalDone.length}</b> active · ${fmt(S.chalWins)} all-time</div></div>`);
-    setHtml("prestige-shops", renderChallenges());
-    return;
-  }
-  const l = LAYER_BY_ID[prestigeTab];
-  const gain = l.pending(S);
-  const gate = E.GATE_LAYER[l.id];
-  const open = E.gateOpen(S, l.id);
-  const gateNote = gate
-    ? `<div class="gate ${open ? "ok" : ""}">${open ? "✅" : "🔒"} Needs ${E.GATE_NEED} completed ${esc(LAYER_BY_ID[gate].name)} challenges: <b>${Math.min(E.gateHave(S, l.id), E.GATE_NEED)}/${E.GATE_NEED}</b>${open ? "" : ` (🏁 Challenges tab)`}</div>`
-    : "";
-  const can = E.big(gain).gte(1) && open;
-  const card = `<div class="replat-card">
-    <div class="muted">${l.cur}: <b>${fmt(l.have(S))}</b>${l.shops.length ? ` · spendable ${fmt(l.spendable(S))}` : ""}</div>
-    <div class="num">+${fmt(gain)} ${l.icon}</div>
-    <div class="muted">${esc(l.progress(S))}</div>
-    <div class="muted">${esc(l.effect(S))}</div>${gateNote}
-    <button class="big ${can ? "affordable" : ""}" type="button" data-prestige="${l.id}" ${can ? "" : "disabled"}>${l.verb}</button></div>`;
-  if ($("prestige-card").dataset.html !== card) {
-    $("prestige-card").dataset.html = card;
-    $("prestige-card").innerHTML = card;
-  }
-  const shops =
-    l.shops.map(renderShop).join("") ||
-    `<p class="muted">Axioms are never spent; they make every future universe faster. Big Bangs themselves unlock milestones (you've done ${S.bangs}):</p><ul class="list">${E.BANG_MILESTONES.map((m) => {
-      const got = S.bangs >= m.at;
-      const text = m.secret && !got ? "Keep going. Something happens." : m.secret ? "The universe has run out of things to measure. The dashboard is still loading." : m.text;
-      return `<li class="item ${got ? "owned" : ""}"><div class="ico" aria-hidden="true">${got ? "✅" : "🌀"}</div><div><div class="name">${m.at} Big Bang${m.at === 1 ? "" : "s"}</div><div class="sub">${esc(text)}</div></div><span></span></li>`;
-    }).join("")}</ul>${E.canCatalog(S) ? `<div class="replat-card catalog"><div class="num">🗂️ Catalog Everything</div><div class="muted">The real end. Everything resets, Axioms and Big Bangs included, and you start a New Game+ ×${E.NG_PROD} stronger (production) and ×${E.NG_GAIN} faster (prestige gains) per completion. Achievements, the Data Catalog and lifetime stats stay. Completions so far: ${S.completions}.</div><button class="big affordable" type="button" id="catalog-btn">Catalog Everything</button></div>` : ""}`;
-  if ($("prestige-shops").dataset.html !== shops) {
-    $("prestige-shops").dataset.html = shops;
-    $("prestige-shops").innerHTML = shops;
-  }
 }
 
 function setHtml(id, html) {
@@ -478,81 +295,6 @@ function setHtml(id, html) {
 }
 
 const ROMAN = ["", "I", "II", "III", "IV"];
-const TIER_UNLOCK = { acq: "your first Acquisition", contact: "First Contact", bang: "a Big Bang" };
-// What a tier switches off: its unlock layer and everything above.
-const OFF_NAMES = { replat: "Insights, Architecture, Tech Radar", acq: "Board, Equity", contact: "Xenotech, Xenobytes", bang: "Axioms" };
-const tierOff = (layer) => E.LAYER_ORDER.slice(E.LAYER_ORDER.indexOf(layer)).map((l) => OFF_NAMES[l]).join(", ");
-
-function renderChallenges() {
-  return E.CHALLENGE_LAYERS.map((layer) => {
-    if (!layer.unlocked(S)) return `<h3>${esc(layer.name)}</h3><p class="muted">🔒 ${esc(layer.hint)}</p>`;
-    const items = E.CHALLENGES.filter((c) => c.layer === layer.id)
-      .map((c) => {
-        const open = E.challengeUnlocked(S, c);
-        const anyDone = S.chalDone.includes(c.id);
-        const activeHere = E.parseTier(S.chal)?.challenge === c;
-        const tiers = [];
-        for (let t = 1; t <= E.tierCount(c); t++) {
-          const key = E.tierKey(c, t);
-          const tl = E.parseTier(key).layer;
-          // Completed, even while a challenge switches its reward off.
-          const done = S.chalDone.includes(key);
-          const active = S.chal === key;
-          const unlocked = E.tierUnlocked(S, c, t);
-          const best = S.chalBest[key];
-          const status = best ? `⏱️ ${fmtDuration(best / 1000)} · ×${E.speedBonus(S, key).toFixed(2)}${t > 1 ? ` · ×${E.TIER_REWARD}` : ""}${done ? "" : " (beat it again to switch on)"}` : "";
-          const lock = t === 1 ? c.reqText : !S.chalEver.includes(E.tierKey(c, t - 1)) ? `Beat tier ${ROMAN[t - 1]} first.` : `Unlocks after ${TIER_UNLOCK[tl]}.`;
-          const btn = active
-            ? `<button type="button" data-abandon="1">Abandon</button>`
-            : unlocked
-              ? `<button type="button" data-challenge="${c.id}" data-tier="${t}" ${S.chal ? "disabled" : ""}>${done ? "Retry" : "Start"}</button>`
-              : `<button type="button" disabled>🔒</button>`;
-          tiers.push(`<div class="tier ${done ? "done" : ""} ${active ? "active" : ""} ${unlocked ? "" : "locked"}"><b>${done ? "✓ " : ""}${ROMAN[t]}</b><span>${unlocked || done ? `goal ${fmt(E.tierGoal(c, t))}` : esc(lock)}</span><span class="muted">${status}</span>${btn}</div>`);
-        }
-        return `<li class="item chal ${anyDone ? "owned" : ""} ${activeHere ? "active" : ""} ${!open && !anyDone ? "locked" : ""}"><div class="ico" aria-hidden="true">${anyDone ? "🏆" : open ? "🏁" : "🔒"}</div>
-          <div><div class="name">${esc(c.name)}</div>
-          <div class="sub">⛓ ${esc(c.restriction)}</div><div class="sub reward">🎁 ${esc(c.reward)}${E.tierCount(c) > 1 ? ` Higher tiers: production ×${E.TIER_REWARD} each.` : ""}</div>
-          <div class="tiers">${tiers.join("")}</div></div><span></span></li>`;
-      })
-      .join("");
-    return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)} per attempt; the faster you finish, the bigger the speed bonus (up to ×2). Each tier switches off the prestige power of the layer it unlocks at and everything above.</p><ul class="list">${items}</ul>`;
-  }).join("");
-}
-
-function startChallengeNow(c, tier) {
-  E.tick(S, Date.now());
-  if (E.startChallenge(S, c.id, Date.now(), tier)) {
-    toast(`🏁 <b>${esc(c.name)} ${ROMAN[tier]}</b> started. Good luck.`);
-    afterPurchase();
-  }
-}
-
-function onStartChallenge(id, tier = 1) {
-  const c = E.CHALLENGE_BY_ID[id];
-  if (prefs.skipChalConfirm) return startChallengeNow(c, tier);
-  const layer = E.parseTier(E.tierKey(c, tier)).layer;
-  modal(
-    `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p><p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.tierGoal(c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
-     ${S.chalEver.length ? `<label class="toggle"><input type="checkbox" id="skip-chal-confirm" /> Don't ask again (Settings → Game turns it back on)</label>` : ""}`,
-    [["Cancel"], ["Start challenge", "primary", () => {
-      if ($("skip-chal-confirm")?.checked) setPref("skipChalConfirm", true);
-      startChallengeNow(c, tier);
-    }]],
-  );
-}
-
-function renderChallengeBanner() {
-  const t = E.parseTier(S.chal);
-  const el = $("chal-banner");
-  el.hidden = !t;
-  if (!t) return;
-  const { challenge: c, tier } = t;
-  const goal = E.tierGoal(c, tier);
-  const pct = Math.min(100, (S.runRows.max(1).log10() / Math.log10(goal)) * 100);
-  const left = Math.max(0, E.CHALLENGE_LIMIT_MS - E.challengeElapsed(S)) / 1000;
-  setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><span>${fmt(S.runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
-}
-
 // ---- inbox -----------------------------------------------------------------------
 
 const INBOX_BY_ID = Object.fromEntries(INBOX.map((m) => [m.id, m]));
@@ -597,13 +339,13 @@ function openMail(id) {
 function autoPrestige() {
   if (!E.automationAllowed(S) || S.chal) return;
   if (E.bangMilestone(S, "autobang") && S.settings.autoBang && E.canBigBang(S) && E.gateOpen(S, "bang") && E.pendingAxioms(S) >= 1) {
-    doPrestige(LAYER_BY_ID.bang, true);
+    prestige.doPrestige(prestige.LAYER_BY_ID.bang, true);
   }
   if (E.boardLevel(S, "autoreplat") && E.pendingInsights(S).gte(E.big(3).max(E.layerEarned(S, "replat").mul(S.settings.autoReplatAt - 1)))) {
-    doPrestige(LAYER_BY_ID.replat, true);
+    prestige.doPrestige(prestige.LAYER_BY_ID.replat, true);
   }
   if (E.xenoLevel(S, "hive") && E.gateOpen(S, "acq") && E.pendingEquity(S).gte(E.layerEarned(S, "acq").max(1))) {
-    doPrestige(LAYER_BY_ID.acq);
+    prestige.doPrestige(prestige.LAYER_BY_ID.acq);
   }
 }
 
@@ -720,7 +462,7 @@ function render(force = false) {
   document.title = `${fmt(S.rows)} rows — Rows to Riches`;
   renderBuffs(now);
   renderFootprint(fp, r);
-  renderChallengeBanner();
+  prestige.renderChallengeBanner();
   active.render();
   const m = S.momentum * E.momentumCap(S);
   $("momentum").hidden = m < 0.005;
@@ -737,7 +479,7 @@ function render(force = false) {
   updateSources();
   updateUpgrades();
   updateSchema();
-  renderPrestige();
+  prestige.render();
   if (tab === "stats") stats?.update();
   if (tab === "settings") settings?.update();
 }
@@ -1255,6 +997,7 @@ const ctx = {
   version: VERSION,
   track: (event, extra) => track(event, S, extra),
 };
+const prestige = createPrestige({ ...ctx, setHtml, ROMAN, getTab: () => tab });
 const feedback = lazy(() => import("./feedback.js"), (m) => m.createFeedback(ctx));
 const whatsNew = lazy(() => import("./whatsnew.js"), (m) => m.createWhatsNew(ctx));
 const completion = lazy(() => import("./completion.js"), (m) => m.createCompletion(ctx));
@@ -1306,18 +1049,10 @@ function selectTab(name) {
     b.tabIndex = on ? 0 : -1;
   }
   for (const p of document.querySelectorAll(".pane")) p.hidden = p.id !== `pane-${name}`;
-  if (name === "settings") {
-    settingsFeature().then((m) => {
-      settings = m;
-      render(true);
-    });
-  }
+  if (name === "settings") settingsFeature().then((m) => ((settings = m), render(true)));
   if (name === "stats") {
     lb.render(true);
-    statsFeature().then((m) => {
-      stats = m;
-      render(true);
-    });
+    statsFeature().then((m) => ((stats = m), render(true)));
   }
   render(true);
 }
@@ -1364,10 +1099,10 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.buyUpgrade) onBuyUpgrade(t.dataset.buyUpgrade, t);
   else if (t.dataset.shop) onBuyShop(t.dataset.shop, t.dataset.item, t);
   else if (t.dataset.layer) {
-    prestigeTab = t.dataset.layer;
+    prestige.selectLayer(t.dataset.layer);
     render(true);
-  } else if (t.dataset.prestige) onPrestige(LAYER_BY_ID[t.dataset.prestige]);
-  else if (t.dataset.challenge) onStartChallenge(t.dataset.challenge, Number(t.dataset.tier ?? 1));
+  } else if (t.dataset.prestige) prestige.onPrestige(prestige.LAYER_BY_ID[t.dataset.prestige]);
+  else if (t.dataset.challenge) prestige.onStartChallenge(t.dataset.challenge, Number(t.dataset.tier ?? 1));
   else if (t.closest("[data-request]")) active.answer(t.closest("[data-request]").dataset.request);
   else if (t.dataset.okrToggle) $("okr-strip").classList.toggle("open");
   else if (t.dataset.feedback) feedback().then((f) => f.open());
