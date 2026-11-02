@@ -103,7 +103,7 @@ a { color: var(--accent); }
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 10px; flex: none; }
 .logo {
   display: grid;
   place-items: center;
@@ -127,8 +127,8 @@ a { color: var(--accent); }
 }
 .env::before { content: "● "; animation: blink 1.6s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0.2; } }
-.counter { text-align: right; font-family: var(--mono); margin-left: auto; }
-.rows { font-size: 24px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.counter { text-align: right; flex: 1 1 0; min-width: 0; font-family: var(--mono); }
+.rows { font-size: 24px; width: max-content; margin-left: auto; white-space: nowrap; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .rows small { font-size: 12px; font-weight: 400; color: var(--muted); }
 .rows #rows { display: inline-block; transition: transform 0.12s, color 0.2s; }
 .rows #rows.bump { transform: scale(1.12); color: var(--accent); }
@@ -466,6 +466,11 @@ a { color: var(--accent); }
   .title { font-size: 16px; }
   .title .to { margin: 0 3px; }
   .rows { font-size: 20px; }
+  .top { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  .brand { gap: 7px; }
+  .logo { width: 30px; height: 30px; font-size: 17px; }
+  .env { font-size: 10.5px; padding: 2px 7px; }
+  .rows small { font-size: 10px; }
   /* Keep the console short so Data Sources stay near the fold. */
   .console-body { padding: 10px; gap: 9px; }
   .querylog { height: 50px; font-size: 10.5px; }
@@ -498,6 +503,7 @@ a { color: var(--accent); }
 }
 @media (max-width: 340px) { .tabs button b { display: none; } }
 @media (max-width: 420px) { .brand .env { display: none; } }
+.top.no-env .env, .top.no-label .rows small, .top.no-title .title { display: none; }
 
 /* ---- effects ---- */
 .float {
