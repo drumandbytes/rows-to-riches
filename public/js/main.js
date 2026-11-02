@@ -4,6 +4,7 @@ import { prefs, setPref } from "./prefs.js";
 import * as audio from "./audio.js";
 import { TICKER, OFFLINE_JOKES, FINALE, INBOX } from "./flavor.js";
 import { createScene, producerHue } from "./scene.js";
+import { onFrame, setFrameCap } from "./frames.js";
 import { createQueryLog, createSparkline, sparks, banner, confetti } from "./widgets.js";
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
@@ -823,10 +824,14 @@ function render(force = false) {
 }
 
 // Smoothly rolls the big counter towards the real bank; drops snap instantly.
-function animateCounter() {
+let counterAt = 0;
+function animateCounter(t) {
   const target = S.rows;
+  // 20% of the gap per 60 Hz frame, whatever the real frame rate is (1 fps while the page is hidden).
+  const ease = 1 - 0.8 ** (Math.min(1000, t - counterAt) / 16.7);
+  counterAt = t;
   shownRows = E.big(shownRows);
-  shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(0.2));
+  shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(ease));
   const text = fmt(shownRows);
   const el = $("rows");
   if (el.textContent !== text) {
@@ -834,7 +839,6 @@ function animateCounter() {
     el.textContent = text;
     if (grew) fitCounter();
   }
-  requestAnimationFrame(animateCounter);
 }
 
 // Fits the header on narrow screens. The row count shrinks first (the CSS size is the cap);
@@ -1741,9 +1745,10 @@ function showPrefs() {
   document.body.classList.toggle("no-motion", prefs.motion === "reduced");
   document.body.classList.toggle("no-particles", !prefs.particles);
   scene.setQuality(prefs.quality);
+  setFrameCap(Number(prefs.fps));
   scene.setMotion({ reduced: prefs.motion === "reduced", shake: prefs.shake, mode: prefs.sceneMode });
   document.querySelector(".stage").hidden = prefs.sceneMode === "hidden";
-  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) $(id).value = prefs[key];
+  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"]]) $(id).value = prefs[key];
   for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]]) $(id).checked = prefs[key];
   $("fullscreen").textContent = document.fullscreenElement ? "⛶ Exit full screen" : "⛶ Full screen";
 }
@@ -1753,7 +1758,7 @@ $("opt-notation").addEventListener("change", (e) => {
   setNotation(prefs.notation);
   render(true);
 });
-for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) {
+for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"]]) {
   $(id).addEventListener("change", (e) => {
     setPref(key, e.target.value);
     showPrefs();
@@ -2030,8 +2035,13 @@ function loop() {
     spawnIncident();
     scheduleIncident(now);
   }
-  render();
+  // Nobody is looking when the tab is hidden: redraw once a second instead of five times.
+  if (!document.hidden || now - lastRenderAt >= 1000) {
+    lastRenderAt = now;
+    render();
+  }
 }
+let lastRenderAt = 0;
 
 // ---- walkthrough -------------------------------------------------------------
 
@@ -2088,7 +2098,7 @@ document.addEventListener("change", (e) => {
 });
 rotateTicker();
 shownRows = S.rows;
-animateCounter();
+onFrame(animateCounter);
 setInterval(loop, 200);
 setInterval(() => spark.sample(E.rate(S, Date.now())), 1000);
 setInterval(autoBuy, 1000);
