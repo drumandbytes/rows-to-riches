@@ -1164,14 +1164,17 @@ function updateSchema() {
 
 function buildAch() {
   const icon = (a) => (a.id.startsWith("own_") ? E.PRODUCERS.find((p) => a.id.startsWith(`own_${p.id}_`))?.icon : { rows: "🗄️", clicks: "👆", cols: "🧱", incidents: "🚨", replat: "💡", acq: "📈", contact: "👽", bangs: "🌀", chal: "🏁", env: "🗺️", combo: "🔥", speed: "⏱️", night: "🌙", full: "🧩", no: "🙌", online: "🌱", rate: "🚿" }[a.id.split("_")[0]]);
-  $("ach").innerHTML = E.ACHIEVEMENTS.map((a) => {
+  // Secrets stay out of the grid (and the count) until earned, so nobody can tell how many exist.
+  const list = E.ACHIEVEMENTS.filter((a) => !a.secret || S.ach.includes(a.id));
+  $("ach").innerHTML = list.map((a) => {
     const got = S.ach.includes(a.id);
-    const hidden = a.secret && !got;
-    const title = got ? `${a.name}: ${a.desc}` : hidden ? "Secret achievement" : `??? — ${a.desc}`;
-    const glyph = hidden ? "🤫" : a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
-    return `<button type="button" class="${got ? "got" : ""} ${a.id === "clickme" && !got ? "clickme" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : hidden ? "Secret" : "Locked")}">${glyph}</button>`;
+    // "Click Me" looks like any other locked entry; players find it by poking around.
+    const plain = a.id === "clickme" && !got;
+    const title = got ? `${a.name}: ${a.desc}` : plain ? "Locked" : `??? — ${a.desc}`;
+    const glyph = a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
+    return `<button type="button" class="${got ? "got" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : "Locked")}">${plain ? "⭐" : glyph}</button>`;
   }).join("");
-  $("ach-count").textContent = `${S.ach.length}/${E.ACHIEVEMENTS.length}`;
+  $("ach-count").textContent = `${S.ach.length}/${list.length}`;
 }
 
 function updateStats() {
@@ -1620,7 +1623,7 @@ document.addEventListener("click", (e) => {
     const a = E.ACH_BY_ID[t.dataset.ach];
     if (a.id === "clickme" && !S.ach.includes(a.id)) grantSecret("clickme");
     else if (S.ach.includes(a.id)) toast(`🏅 <b>${esc(a.name)}</b> — ${esc(a.desc)}`);
-    else toast(a.secret ? "🤫 A secret. Keep playing… or keep poking around." : `🔒 ${esc(a.desc)}`);
+    else toast(`🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
   else if (t.id === "catalog-btn") confirmCatalog();
