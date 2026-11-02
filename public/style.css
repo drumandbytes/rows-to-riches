@@ -99,7 +99,8 @@ a { color: var(--accent); }
   justify-content: space-between;
   gap: 12px;
   padding: calc(10px + env(safe-area-inset-top)) 18px 10px;
-  background: color-mix(in srgb, var(--bg) 75%, transparent);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
