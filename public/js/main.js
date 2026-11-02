@@ -4,7 +4,7 @@ import { prefs, setPref } from "./prefs.js";
 import * as audio from "./audio.js";
 import { TICKER, OFFLINE_JOKES, FINALE, INBOX } from "./flavor.js";
 import { createScene, producerHue } from "./scene.js";
-import { createQueryLog, createSparkline, sparks, banner, confetti } from "./widgets.js";
+import { createQueryLog, createSparkline, createHistoryChart, sparks, banner, confetti } from "./widgets.js";
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
@@ -56,6 +56,7 @@ const lb = createLeaderboard({ state: () => S, encodeSave, fmt, fmtDuration, esc
 
 const queryLog = createQueryLog($("querylog"));
 const spark = createSparkline($("spark"));
+const histChart = createHistoryChart($("hist"), (v) => fmt(v));
 
 // The INSERT button grows up with click upgrades.
 const INSERT_LABELS = [
@@ -1213,6 +1214,22 @@ function updateStats() {
   ];
   const html = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   if ($("stats").innerHTML !== html) $("stats").innerHTML = html;
+  updateHistory(now);
+}
+
+const RUN_NAMES = { replat: ["💡", "Re-platform"], acq: ["📈", "Acquisition"], contact: ["👽", "First Contact"], bang: ["🌀", "Big Bang"], catalog: ["🎉", "Catalog Everything"] };
+function updateHistory(now) {
+  const { pts, runs } = S.hist;
+  $("hist").hidden = pts.length < 2;
+  if (pts.length >= 2) {
+    histChart.draw(pts, runs, now);
+    $("hist").setAttribute("aria-label", `Production over time: from ${fmt(E.big(10).pow(pts[0][1]))} to ${fmt(E.big(10).pow(pts.at(-1)[1]))} rows per second.`);
+  }
+  const html = runs.slice(-8).reverse().map((r) => {
+    const [icon, name] = RUN_NAMES[r.layer];
+    return `<li><span aria-hidden="true">${icon}</span><span>${name}</span><b>${fmtDuration(r.ms / 1000)}</b><span class="when">${fmtDuration((now - r.at) / 1000)} ago</span></li>`;
+  }).join("");
+  if ($("runs").innerHTML !== html) $("runs").innerHTML = html;
 }
 
 function updateSettings() {
@@ -2019,6 +2036,7 @@ function loop() {
     toast(`🏁 <b>${esc(c.name)} ${ROMAN[result.tier]} complete</b> in ${time}${result.record ? " (new best)" : ""}. ${reward} Speed bonus ×${E.speedBonus(S, result.key).toFixed(2)}.`);
     structureKey = "";
   }
+  E.sampleHistory(S, now);
   autoPrestige();
   checkFinale();
   const completed = E.markCompletion(S, now);
