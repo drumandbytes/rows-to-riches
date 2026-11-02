@@ -580,6 +580,9 @@ const SECRETS = [
   ["entropy", "Heat Death", "Reach 500 Big Bangs. The dashboard is still loading.", (s) => s.bangs >= 500],
   ["outofdigits", "Out of Digits", "Reach 1e1,000,000,000,000,000 rows. The universe's database has run out of digits. There is nothing left to ingest.", (s) => s.everRows.gte(MAX_ROWS)],
   ["phished", "Gone Phishing", "Click a phishing test. IT has scheduled your training.", null],
+  ["hoarder", "Unread (25)", "Let 25 emails pile up unread. They'll keep.", (s) => s.inbox.filter((m) => !m.read).length >= 25],
+  ["sabbatical", "Out of Office", "Come back after a week away. The pipelines kept the lights on.", (s) => s.stats.longestAway >= 7 * 86_400e3],
+  ["ceremony", "Ceremony Enjoyer", "Attend 100 meetings. Nobody asked you to speak.", (s) => s.stats.meetings >= 100],
 ];
 for (const [id, name, desc, derived] of SECRETS) {
   ACHIEVEMENTS.push({ id: `secret_${id}`, name, desc, secret: true, test: derived ?? ((s) => s.secrets.includes(id)) });
