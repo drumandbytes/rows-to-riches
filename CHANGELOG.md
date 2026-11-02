@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.4...v0.6.5) (2026-11-02)
+
+
+### Bug Fixes
+
+* give iOS 26 a solid fixed strip at the status bar so it stops blurring the header ([d9b390e](https://github.com/drumandbytes/rows-to-riches/commit/d9b390eed4e06464c7f761b558080876eb669d1b))
+
 ## [0.6.4](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.3...v0.6.4) (2026-11-02)
 
 
