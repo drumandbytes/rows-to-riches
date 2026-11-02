@@ -1215,6 +1215,47 @@ function updateStats() {
   if ($("stats").innerHTML !== html) $("stats").innerHTML = html;
 }
 
+// A picture of the run for posting. Drawn on demand by sharecard.js, which loads only now.
+async function shareCard(button) {
+  const label = button.textContent;
+  button.disabled = true;
+  try {
+    const { makeShareCard } = await import("./sharecard.js");
+    const now = Date.now();
+    const prestiges = [["💡", S.replat], ["📈", S.acq], ["👽", S.contact], ["🌀", S.bangs]].filter(([, n]) => n > 0);
+    const blob = await makeShareCard({
+      company: S.company,
+      rows: fmt(S.everRows),
+      rate: fmt(E.rate(S, now)),
+      env: E.environmentFor(S).name,
+      hue: E.environmentFor(S).hue,
+      tiles: [
+        ["sources", fmt(S.prod.reduce((a, b) => a + b, 0))],
+        ["catalog entries", String(S.ach.length)],
+        ["playing for", fmtDuration((now - S.playthroughStartedAt) / 1000)],
+        ["playthroughs", String(S.completions + (E.canCatalog(S) ? 1 : 0))],
+      ],
+      prestiges,
+      url: "rowstoriches.drumandbytes.dev",
+    });
+    const file = new File([blob], "rows-to-riches.png", { type: "image/png" });
+    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: "Rows to Riches", text: "My data team so far. https://rowstoriches.drumandbytes.dev/" });
+    else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "rows-to-riches.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    }
+  } catch {
+    /* cancelled, or the browser can't share files */
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+  }
+}
+$("share-card").addEventListener("click", (e) => shareCard(e.currentTarget));
+
 function updateSettings() {
   if (document.activeElement !== $("opt-company")) $("opt-company").value = S.company;
   const bots = { radar: (S.board.radarbot ?? 0) > 0, board: (S.xeno_tech.boardbot ?? 0) > 0, xeno: S.bangs >= 1, bang: S.bangs >= 100 };
