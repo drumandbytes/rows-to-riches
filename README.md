@@ -20,6 +20,8 @@ You click **INSERT** to add rows, buy data sources that add rows for you, and up
 - **Ten number notations**, from "Finance deck" (1.23 M) to "Legacy mainframe" (Roman numerals). Numbers have no practical ceiling.
 - **Generative music** and sound effects, synthesized live with Web Audio: one mood per environment, no audio files.
 - **Offline progress**, an installable app that plays offline, and a walkthrough for new players.
+- **Stats history** (a production curve with a mark at each prestige) and a **share card** image of your run.
+- **Accessibility**: labelled controls, keyboard tab navigation, a high-contrast mode (also follows your OS setting), and an axe-core check in CI. The frame rate is adjustable (30 to 240 fps).
 
 Keyboard: <kbd>Space</kbd> INSERT · <kbd>1</kbd>–<kbd>6</kbd> tabs · <kbd>B</kbd> buy amount · <kbd>M</kbd> mute · <kbd>F</kbd> full screen.
 
@@ -60,11 +62,11 @@ Plain ES modules, no framework and no build step, on a single Cloudflare Worker.
 | --- | --- |
 | `public/` | The whole client, served as static assets: `index.html`, `style.css`, ES modules in `public/js/`, a service worker for offline play |
 | `public/js/economy.js` | All game rules as pure functions. The Worker imports the same file to validate saves |
-| `public/js/main.js` | State, the game loop and rendering |
+| `public/js/main.js` | State, the game loop and rendering. Features are separate modules (`prestige.js`, `stats.js`, `settings.js`, `incidents.js`, …), most loaded on first use |
 | `worker/` | The API: account codes, cloud saves, anonymous stats, feedback, push notifications, leaderboards |
 | `migrations/` | The D1 (SQLite) schema |
 | `tools/` | The balance simulator and other scripts, below |
-| `test/` | `node:test` suites, plus a browser smoke test |
+| `test/` | `node:test` suites, plus browser smoke and accessibility (axe) tests |
 
 Big numbers use [break_infinity.js](https://github.com/Patashu/break_infinity.js), vendored in `public/js/lib/`.
 
