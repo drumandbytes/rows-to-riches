@@ -15,7 +15,7 @@ You click **INSERT** to add rows, buy data sources that add rows for you, and up
 - **Schema**: columns multiply everything. Alien data types (`QUBIT`, `VIBE`, `NULLER_THAN_NULL`, …) make them stronger.
 - **Corporate life**: quarterly OKRs graded at an all-hands, stakeholder requests and meetings as two-choice cards, phishing tests you pass by *not* clicking.
 - **Incidents** to click: PagerDuty alerts, backfills, viral dashboards, wormholes, abductions.
-- **An inbox** of about 50 emails, news items and vendor notices from parody vendors such as Sixtran, Snowfake and Databucks.
+- **An inbox** of about 65 emails, news items and vendor notices from parody vendors such as Sixtran, Snowfake and Databucks.
 - **250+ achievements**, some secret, each worth +1% production.
 - **Ten number notations**, from "Finance deck" (1.23 M) to "Legacy mainframe" (Roman numerals). Numbers have no practical ceiling.
 - **Generative music** and sound effects, synthesized live with Web Audio: one mood per environment, no audio files.
