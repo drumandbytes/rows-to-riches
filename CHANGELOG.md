@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.0...v0.6.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* stop loading galaxy.click embed code and drop its framing allowance ([0cd6f17](https://github.com/drumandbytes/rows-to-riches/commit/0cd6f171086c0e1bc4b62df4e2ab306f4b793103))
+
 ## [0.6.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.5.0...v0.6.0) (2026-11-02)
 
 

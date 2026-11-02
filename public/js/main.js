@@ -40,7 +40,7 @@ function grantSecret(id) {
   if (!S.secrets.includes(id)) S.secrets.push(id);
 }
 
-const VERSION = "0.6.0"; // x-release-please-version
+const VERSION = "0.6.1"; // x-release-please-version
 const scene = createScene($("scene"));
 // OKRs, all-hands and stakeholder requests (active.js).
 const active = createActive({
@@ -1383,7 +1383,9 @@ async function releaseNotes(version) {
     const start = md.search(new RegExp(`^## \\[?${version.replace(/\./g, "\\.")}\\]?`, "m"));
     if (start < 0) return [];
     const section = md.slice(start).split(/\n## /)[0];
-    return [...section.matchAll(/^\* (.+)$/gm)].map((m) => m[1].replace(/\s*\(\[[0-9a-f]{7}\]\([^)]*\)\)$/, "").replace(/\*\*/g, ""));
+    const notes = [...section.matchAll(/^\* (.+)$/gm)].map((m) => m[1].replace(/\s*\(\[[0-9a-f]{7}\]\([^)]*\)\)$/, "").replace(/\*\*/g, ""));
+    // A PR whose title equals its branch commit's message is listed twice (merge commit + commit).
+    return [...new Set(notes)];
   } catch {
     return []; // offline, or a local build without a changelog
   }
