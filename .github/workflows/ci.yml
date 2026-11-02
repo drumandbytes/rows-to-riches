@@ -28,6 +28,8 @@ jobs:
       - run: node --test
       # A minute of real play in the runner's Chrome: load, click, buy, every tab, reload.
       - run: npm run test:browser
+      # axe-core (WCAG 2.2 AA + best practice) over every tab, settings section and the inbox, plus keyboard tab navigation.
+      - run: npm run test:a11y
       # Generative music: no wrong notes, clashes or awkward leaps in any mood.
       - run: node tools/music-audit.js
       # Bundles the Worker without deploying: catches import/config mistakes.
