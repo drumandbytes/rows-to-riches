@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.7](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.6...v0.6.7) (2026-11-02)
+
+
+### Bug Fixes
+
+* limit the header clearance to iOS and iPadOS installs ([ed21067](https://github.com/drumandbytes/rows-to-riches/commit/ed2106755ffb6d596ae9c94cc2a9bedcf3ae7c00))
+* push the installed-app header content clear of iOS's top edge blur ([11f1200](https://github.com/drumandbytes/rows-to-riches/commit/11f1200c25d5af8c88a103aa8235cf7b42ccd684))
+
 ## [0.6.6](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.5...v0.6.6) (2026-11-02)
 
 
