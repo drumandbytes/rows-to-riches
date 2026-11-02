@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.6](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.5...v0.6.6) (2026-11-02)
+
+
+### Bug Fixes
+
+* move push notifications from Save to the Game settings ([d396e17](https://github.com/drumandbytes/rows-to-riches/commit/d396e173b6259709ab777036baebc12387712de1))
+
 ## [0.6.5](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.4...v0.6.5) (2026-11-02)
 
 
