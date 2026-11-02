@@ -5,7 +5,7 @@ import * as audio from "./audio.js";
 import { TICKER, OFFLINE_JOKES, FINALE, INBOX } from "./flavor.js";
 import { createScene, producerHue } from "./scene.js";
 import { onFrame, setFrameCap } from "./frames.js";
-import { createQueryLog, createSparkline, createHistoryChart, sparks, banner, confetti } from "./widgets.js";
+import { createQueryLog, createSparkline, sparks, banner, confetti } from "./widgets.js";
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
 import { createActive } from "./active.js";
@@ -56,7 +56,6 @@ const lb = createLeaderboard({ state: () => S, encodeSave, fmt, fmtDuration, esc
 
 const queryLog = createQueryLog($("querylog"));
 const spark = createSparkline($("spark"));
-const histChart = createHistoryChart($("hist"), (v) => fmt(v));
 
 // The INSERT button grows up with click upgrades.
 const INSERT_LABELS = [
@@ -813,13 +812,13 @@ function render(force = false) {
     structureKey = key;
     buildSources();
     buildUpgrades();
-    buildAch();
+    if (tab === "stats") stats?.buildAch();
   }
   updateSources();
   updateUpgrades();
   updateSchema();
   renderPrestige();
-  if (tab === "stats") updateStats();
+  if (tab === "stats") stats?.update();
   if (tab === "settings") updateSettings();
 }
 
@@ -1170,119 +1169,6 @@ function updateSchema() {
   btn.classList.toggle("affordable", !frozen && cost.lte(S.rows));
 }
 
-function buildAch() {
-  const icon = (a) => (a.id.startsWith("own_") ? E.PRODUCERS.find((p) => a.id.startsWith(`own_${p.id}_`))?.icon : { rows: "🗄️", clicks: "👆", cols: "🧱", incidents: "🚨", replat: "💡", acq: "📈", contact: "👽", bangs: "🌀", chal: "🏁", env: "🗺️", combo: "🔥", speed: "⏱️", night: "🌙", full: "🧩", no: "🙌", online: "🌱", rate: "🚿" }[a.id.split("_")[0]]);
-  // Secrets stay out of the grid (and the count) until earned, so nobody can tell how many exist.
-  const list = E.ACHIEVEMENTS.filter((a) => !a.secret || S.ach.includes(a.id));
-  $("ach").innerHTML = list.map((a) => {
-    const got = S.ach.includes(a.id);
-    // "Click Me" looks like any other locked entry; players find it by poking around.
-    const plain = a.id === "clickme" && !got;
-    const title = got ? `${a.name}: ${a.desc}` : plain ? "Locked" : `??? — ${a.desc}`;
-    const glyph = a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
-    return `<button type="button" class="${got ? "got" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : "Locked")}">${plain ? "⭐" : glyph}</button>`;
-  }).join("");
-  $("ach-count").textContent = `${S.ach.length}/${list.length}`;
-}
-
-function updateStats() {
-  const now = Date.now();
-  const rows = [
-    ["Company", esc(S.company || "unnamed")],
-    ["Rows (bank)", fmt(S.rows)],
-    ["Rows this run", fmt(S.runRows)],
-    ["Rows/s", fmt(E.rate(S, now))],
-    ["Per INSERT", fmt(E.clickValue(S, now))],
-    ["Global multiplier", `×${fmt(E.globalMultiplier(S))}`],
-    ["INSERTs by hand", fmt(S.clicks)],
-    ["Incidents resolved", fmt(S.incidents)],
-    ["Re-platforms", fmt(S.replat)],
-    ["Insights", fmt(S.ins)],
-    ["Acquisitions", fmt(S.acq)],
-    ["Equity", fmt(S.eq)],
-    ["First Contacts", fmt(S.contact)],
-    ["Xenobytes", fmt(S.xeno)],
-    ["Universes", fmt(S.bangs + 1)],
-    ["Axioms", fmt(S.axioms)],
-    ["Rows this company", fmt(S.coRows)],
-    ["Rows this universe", fmt(S.allRows)],
-    ["Rows ever", fmt(S.everRows)],
-    ["Best rows/s", fmt(S.stats.bestRate)],
-    ["Data gravity", E.rawRate(S).gt(E.GRAVITY_AT) ? `−${(100 * (1 - E.baseRate(S).div(E.rawRate(S)).toNumber())).toFixed(1)}% (raw ${fmt(E.rawRate(S))}/s)` : `none below ${fmt(E.GRAVITY_AT)}/s`],
-    ["Best single INSERT", fmt(S.stats.bestClick)],
-    ["Longest combo", `×${S.stats.bestCombo}`],
-    ["Fastest re-platform", S.stats.fastestReplat ? fmtDuration(S.stats.fastestReplat / 1000) : "—"],
-    ["Fastest acquisition", S.stats.fastestAcq ? fmtDuration(S.stats.fastestAcq / 1000) : "—"],
-    ["Longest time away", fmtDuration(S.stats.longestAway / 1000)],
-    ["Time played", fmtDuration(S.stats.onlineMs / 1000)],
-    ["Challenges completed", fmt(S.chalWins)],
-    ["Emails received", fmt(S.inbox.length)],
-    ["This run", fmtDuration((now - S.runStartedAt) / 1000)],
-    ["Playing since", new Date(S.startedAt).toLocaleDateString()],
-    ["Offline cap", fmtDuration(E.offlineCapSecs(S))],
-    ...(S.modified ? [["Save", "modified: plays normally, not ranked"]] : []),
-  ];
-  const html = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-  if ($("stats").innerHTML !== html) $("stats").innerHTML = html;
-  updateHistory(now);
-}
-
-const RUN_NAMES = { replat: ["💡", "Re-platform"], acq: ["📈", "Acquisition"], contact: ["👽", "First Contact"], bang: ["🌀", "Big Bang"], catalog: ["🎉", "Catalog Everything"] };
-function updateHistory(now) {
-  const { pts, runs } = S.hist;
-  $("hist").hidden = pts.length < 2;
-  if (pts.length >= 2) {
-    histChart.draw(pts, runs, now);
-    $("hist").setAttribute("aria-label", `Production over time: from ${fmt(E.big(10).pow(pts[0][1]))} to ${fmt(E.big(10).pow(pts.at(-1)[1]))} rows per second.`);
-  }
-  const html = runs.slice(-8).reverse().map((r) => {
-    const [icon, name] = RUN_NAMES[r.layer];
-    return `<li><span aria-hidden="true">${icon}</span><span>${name}</span><b>${fmtDuration(r.ms / 1000)}</b><span class="when">${fmtDuration((now - r.at) / 1000)} ago</span></li>`;
-  }).join("");
-  if ($("runs").innerHTML !== html) $("runs").innerHTML = html;
-}
-
-// A picture of the run for posting. Drawn on demand by sharecard.js, which loads only now.
-async function shareCard(button) {
-  const label = button.textContent;
-  button.disabled = true;
-  try {
-    const { makeShareCard } = await import("./sharecard.js");
-    const now = Date.now();
-    const prestiges = [["💡", S.replat], ["📈", S.acq], ["👽", S.contact], ["🌀", S.bangs]].filter(([, n]) => n > 0);
-    const blob = await makeShareCard({
-      company: S.company,
-      rows: fmt(S.everRows),
-      rate: fmt(E.rate(S, now)),
-      env: E.environmentFor(S).name,
-      hue: E.environmentFor(S).hue,
-      tiles: [
-        ["sources", fmt(S.prod.reduce((a, b) => a + b, 0))],
-        ["catalog entries", String(S.ach.length)],
-        ["playing for", fmtDuration((now - S.playthroughStartedAt) / 1000)],
-        ["playthroughs", String(S.completions + (E.canCatalog(S) ? 1 : 0))],
-      ],
-      prestiges,
-      url: "rowstoriches.drumandbytes.dev",
-    });
-    const file = new File([blob], "rows-to-riches.png", { type: "image/png" });
-    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: "Rows to Riches", text: "My data team so far. https://rowstoriches.drumandbytes.dev/" });
-    else {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "rows-to-riches.png";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-    }
-  } catch {
-    /* cancelled, or the browser can't share files */
-  } finally {
-    button.disabled = false;
-    button.textContent = label;
-  }
-}
-$("share-card").addEventListener("click", (e) => shareCard(e.currentTarget));
-
 function updateSettings() {
   if (document.activeElement !== $("opt-company")) $("opt-company").value = S.company;
   const bots = { radar: (S.board.radarbot ?? 0) > 0, board: (S.xeno_tech.boardbot ?? 0) > 0, xeno: S.bangs >= 1, bang: S.bangs >= 100 };
@@ -1504,6 +1390,8 @@ const lazy = (load, make) => {
 const feedback = lazy(() => import("./feedback.js"), (m) => m.createFeedback({ E, state: () => S, version: VERSION, prefs, modal, toast, esc, $ }));
 const whatsNew = lazy(() => import("./whatsnew.js"), (m) => m.createWhatsNew({ esc, toast, modal }));
 const completion = lazy(() => import("./completion.js"), (m) => m.createCompletion({ E, state: () => S, fmtDuration, confetti, audio, modal, toast, $, grantSecret, track: (e) => track(e, S), afterPurchase, selectTab }));
+let stats; // set once the Stats tab has been opened
+const statsFeature = lazy(() => import("./stats.js"), (m) => m.createStats({ E, state: () => S, fmt, fmtDuration, esc, $ }));
 const openFeedback = () => feedback().then((f) => f.open());
 const showWhatsNew = (version, opts) => whatsNew().then((w) => w.show(version, opts));
 const showCompletion = (ms) => completion().then((c) => c.show(ms));
@@ -1552,8 +1440,11 @@ function selectTab(name) {
   }
   for (const p of document.querySelectorAll(".pane")) p.hidden = p.id !== `pane-${name}`;
   if (name === "stats") {
-    buildAch();
     lb.render(true);
+    statsFeature().then((m) => {
+      stats = m;
+      render(true);
+    });
   }
   render(true);
 }

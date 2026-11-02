@@ -38,6 +38,7 @@ test("the game has no axe violations", { skip: !process.env.BROWSER_SMOKE }, () 
     await page.click('#sources li[data-i="0"] .buy');
     for (const tab of ["sources", "upgrades", "schema", "prestige", "stats", "settings"]) {
       await page.click(`.tabs button[data-tab="${tab}"]`);
+    if (tab === "stats") await page.waitForSelector("#ach button", { state: "attached" }); // the lazily loaded Stats module has rendered
       if (tab !== "settings") await scan(page, `${contrast} ${tab}`);
     }
     for (const section of SECTIONS) {
