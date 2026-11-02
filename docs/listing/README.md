@@ -1,10 +1,10 @@
-# Store listing (galaxy.click and similar)
+# Store listing (game portals)
 
 Copy-paste material for game portals. Regenerate the screenshots with
 `CHROMIUM=1 node tools/screenshots.js` after visible changes (it plays the sim to fixed
 points and captures them at 1920×1080).
 
-- **Game URL:** https://rowstoriches.drumandbytes.dev/ (embedding is allowed for galaxy.click via `frame-ancestors`; no `?ref=`, since `logRef` only counts top-level page loads, not iframes)
+- **Game URL:** https://rowstoriches.drumandbytes.dev/
 - **Images:** generated, not committed (except `4-multiverse.png`, which the README shows): `node tools/screenshots.js` writes `thumbnail.png` (750×435, the pipeline scene in the multiverse; crop or pad to the portal's size) and `1-staging.png` … `6-stats.png` (1920×1080).
 
 ## Title
@@ -39,4 +39,4 @@ You are the data team. You are also the only person on the data team. Your lapto
 
 Parody vendors include Sixtran, Snowfake, Databucks, Airbite, Lookie and Monty Carlo. Any resemblance to real vendors is, legally speaking, a vibe.
 
-Made by one person at [Drumandbytes](https://drumandbytes.com/projects/?ref=galaxy). Feedback goes straight to the developer from Settings → Help.
+Made by one person at [Drumandbytes](https://drumandbytes.com/projects/). Feedback goes straight to the developer from Settings → Help.
