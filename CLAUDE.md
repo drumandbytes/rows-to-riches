@@ -15,7 +15,7 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 
 ## Rules of thumb
 
-- Commit messages and PR titles follow Conventional Commits (`feat:`, `fix:`, `chore:`…): release-please builds versions and the changelog from them, and deploys happen only on its release tags. Merges use merge commits, so the PR title becomes part of history too.
+- Commit messages and PR titles follow Conventional Commits (`feat:`, `fix:`, `chore:`…): release-please builds versions and the changelog from them, and deploys happen only on its release tags. Merges use merge commits, so the PR title becomes part of history too: give a PR a title that differs from its commit messages, or release-please lists the change twice (the What's new card dedupes identical lines, `CHANGELOG.md` doesn't).
 
 - Big numbers: rows, rates, costs, multipliers and prestige currencies are break_infinity `Decimal`s (`public/js/big.js`, vendored in `public/js/lib/`: not `vendor/`, which the zone WAF blocks as a scanner path), good to 1e9e15. Use their methods (`.add`, `.mul`, `.gte`…), never `+`, `*` or `<`: `Decimal.valueOf()` returns a string, so `d + 1` silently concatenates. Counts and levels stay plain numbers. Saves store Decimals as strings; `normalize()` revives them (and old numeric saves) with `bigSafe`. Visuals that need a plain number get a ratio or a `log10()`.
 
