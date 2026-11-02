@@ -827,9 +827,59 @@ function animateCounter() {
   const target = S.rows;
   shownRows = E.big(shownRows);
   shownRows = target.lt(shownRows) || target.sub(shownRows).lt(1) ? target : shownRows.add(target.sub(shownRows).mul(0.2));
-  $("rows").textContent = fmt(shownRows);
+  const text = fmt(shownRows);
+  const el = $("rows");
+  if (el.textContent !== text) {
+    const grew = text.length !== el.textContent.length;
+    el.textContent = text;
+    if (grew) fitCounter();
+  }
   requestAnimationFrame(animateCounter);
 }
+
+// Fits the header on narrow screens. The row count shrinks first (the CSS size is the cap);
+// once it hits the minimum the header gives way in order: env pill, title size, "rows" label, title.
+let counterBase = 0;
+let titleBase = 0;
+const MIN_COUNTER_PX = 11;
+const MIN_TITLE_PX = 12;
+function fitCounter(reset) {
+  const el = $("rows");
+  const box = el.closest(".rows");
+  const top = box.closest(".top");
+  const title = top.querySelector(".title");
+  if (reset || !counterBase) {
+    box.style.fontSize = title.style.fontSize = "";
+    top.classList.remove("no-env", "no-label", "no-title");
+    counterBase = parseFloat(getComputedStyle(box).fontSize);
+    titleBase = parseFloat(getComputedStyle(title).fontSize);
+  }
+  // Sets the count's size to what fits; returns the unclamped size.
+  const fitRows = () => {
+    const avail = box.parentElement.clientWidth;
+    const num = el.offsetWidth;
+    if (!num || !avail) return Infinity;
+    const label = box.offsetWidth - num;
+    const cur = parseFloat(box.style.fontSize) || counterBase;
+    const fit = (cur * (avail - label)) / num;
+    box.style.fontSize = `${Math.max(MIN_COUNTER_PX, Math.min(counterBase, fit)).toFixed(1)}px`;
+    return fit;
+  };
+  const shrinkTitle = () => {
+    const cur = parseFloat(title.style.fontSize) || titleBase;
+    const avail = box.parentElement.clientWidth;
+    const need = box.offsetWidth - avail;
+    const next = Math.max(MIN_TITLE_PX, (cur * (title.offsetWidth - need)) / title.offsetWidth);
+    title.style.fontSize = `${next.toFixed(1)}px`;
+  };
+  const shed = (cls) => () => top.classList.add(cls);
+  if (fitRows() >= MIN_COUNTER_PX) return;
+  for (const step of [shed("no-env"), shrinkTitle, shed("no-label"), shed("no-title")]) {
+    step();
+    if (fitRows() >= MIN_COUNTER_PX) return;
+  }
+}
+window.addEventListener("resize", () => fitCounter(true));
 
 function checkEnvironment(env) {
   if (S.settings.env === env.id) return;
