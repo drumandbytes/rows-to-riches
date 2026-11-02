@@ -1629,14 +1629,12 @@ $("opt-stats").addEventListener("change", (e) => {
   if (browserOptOut()) setPref("statsGpcOptIn", e.target.checked);
   showPrefs();
 });
-// The offline notification toggle only shows where both the browser and the server support it
-// (not in an iframe, where the service worker isn't registered).
-if (window.top === window.self)
-  pushAvailable().then(async (ok) => {
-    if (!ok) return;
-    $("push-wrap").hidden = false;
-    $("opt-push").checked = await initPush();
-  });
+// The offline notification toggle only shows where both the browser and the server support it.
+pushAvailable().then(async (ok) => {
+  if (!ok) return;
+  $("push-wrap").hidden = false;
+  $("opt-push").checked = await initPush();
+});
 $("opt-push").addEventListener("change", async (e) => {
   e.target.disabled = true;
   if (!e.target.checked) await disablePush().catch(() => {});
