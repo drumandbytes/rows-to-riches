@@ -299,6 +299,11 @@
             <label class="toggle"><input type="checkbox" id="opt-shake" /> Screen shake</label>
             <label class="toggle"><input type="checkbox" id="opt-querylog" /> Scrolling SQL query log</label>
             <p class="muted">Your system's "reduce motion" setting is always respected. Incident pop-ups always appear (they're part of the game), but with reduced motion they stop pulsing.</p>
+            <div id="push-wrap" hidden>
+              <h3>Push notifications</h3>
+              <label class="toggle"><input type="checkbox" id="opt-push" /> Notify me when offline storage is full or a challenge is about to time out</label>
+              <p class="muted" id="push-note">While the game is closed: one notification when your offline cap fills up, and one 10 minutes before a running challenge times out. To schedule them, this browser's push address and the times are stored on the server until they're sent or you come back; nothing else. On iPhone and iPad it only works once the game is added to the Home Screen.</p>
+            </div>
             <div id="install-wrap" hidden>
               <h3>App</h3>
               <button type="button" id="install">📲 Install Rows to Riches</button>
@@ -320,11 +325,6 @@
               <button type="button" id="save-now">💾 Save now</button>
               <button type="button" id="export">Export save</button>
               <button type="button" id="import">Import save</button>
-            </div>
-            <div id="push-wrap" hidden>
-              <h3>Notifications</h3>
-              <label class="toggle"><input type="checkbox" id="opt-push" /> Notify me when offline storage is full or a challenge is about to time out</label>
-              <p class="muted" id="push-note">While the game is closed: one notification when your offline cap fills up, and one 10 minutes before a running challenge times out. To schedule them, this browser's push address and the times are stored on the server until they're sent or you come back; nothing else. On iPhone and iPad it only works once the game is added to the Home Screen.</p>
             </div>
             <h3>Privacy</h3>
             <label class="toggle"><input type="checkbox" id="opt-stats" /> Send anonymous gameplay stats</label>
