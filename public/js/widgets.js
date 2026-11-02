@@ -1,4 +1,5 @@
 import { big } from "./big.js";
+import { reducedMotion } from "./prefs.js";
 // Console widgets that unlock as you grow, plus DOM effects (sparks, banners).
 
 const TABLES = ["events", "users", "orders", "clicks", "sessions", "invoices", "telemetry", "dim_customer", "fct_sales", "stg_raw_dump", "page_views", "sensor_readings"];
@@ -105,7 +106,7 @@ export function createSparkline(canvas) {
   };
 }
 
-const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches || ["low", "no-motion", "no-particles"].some((c) => document.body.classList.contains(c));
+const calm = () => reducedMotion() || ["low", "no-motion", "no-particles"].some((c) => document.body.classList.contains(c));
 
 export function sparks(x, y, hue, n = 14) {
   if (calm()) return;

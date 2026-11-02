@@ -3,6 +3,7 @@
 
 import { PRODUCERS } from "./economy.js";
 import { onFrame } from "./frames.js";
+import { reducedMotion } from "./prefs.js";
 
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const SINKS = ["📄", "📋", "🗂️", "🗄️", "🖥️", "🏢", "🗺️", "🌍", "☀️", "🌌", "🫧", "🪞", "🫠"];
@@ -40,7 +41,7 @@ function sprite(glyph, size, dpr) {
 
 export function createScene(canvas) {
   const ctx = canvas.getContext("2d");
-  let reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let reduceMotion = reducedMotion();
   let allowShake = true;
   let mode = "animated";
   let w = 0, h = 0, dpr = 1;
@@ -392,7 +393,7 @@ export function createScene(canvas) {
     },
     /** reduced: no bobbing or shaking; mode: "animated", "paused" (one still frame) or "hidden". */
     setMotion(opts) {
-      reduceMotion = opts.reduced || matchMedia("(prefers-reduced-motion: reduce)").matches;
+      reduceMotion = opts.reduced || reducedMotion();
       allowShake = opts.shake;
       mode = opts.mode;
       if (mode === "animated") start();

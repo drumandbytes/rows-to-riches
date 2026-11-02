@@ -5,11 +5,6 @@ const W = 1200;
 const H = 630;
 const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, r);
-}
-
 /** card: { company, rows, rate, env, hue, tiles: [[label, value]], prestiges: [[icon, count]], url }. Resolves to a PNG Blob. */
 export async function makeShareCard(card) {
   await Promise.all([document.fonts.load('700 80px "Space Grotesk"'), document.fonts.load('600 28px "JetBrains Mono"'), document.fonts.load('400 28px "JetBrains Mono"')]);
@@ -29,7 +24,8 @@ export async function makeShareCard(card) {
 
   // Brand
   ctx.fillStyle = "#202328";
-  roundRect(ctx, 64, 56, 56, 56, 13);
+  ctx.beginPath();
+  ctx.roundRect(64, 56, 56, 56, 13);
   ctx.fill();
   ctx.fillStyle = accent;
   for (const [x, y, w] of [[71, 66, 27], [71, 76, 12], [71, 84, 12], [71, 92, 12]]) ctx.fillRect(x, y, w, 5);
@@ -68,7 +64,8 @@ export async function makeShareCard(card) {
   tiles.forEach(([label, value], i) => {
     const x = 64 + i * (tw + gap);
     ctx.fillStyle = "#202328";
-    roundRect(ctx, x, 424, tw, 112, 16);
+    ctx.beginPath();
+  ctx.roundRect(x, 424, tw, 112, 16);
     ctx.fill();
     ctx.strokeStyle = "#353a42";
     ctx.lineWidth = 2;
