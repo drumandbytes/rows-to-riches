@@ -1437,97 +1437,11 @@ async function codeSignIn(code, status) {
 
 // ---- what's new ----------------------------------------------------------------
 
-const RELEASE_INTROS = [
-  (v) => `IT has deployed v${v}. Nobody was consulted.`,
-  (v) => `v${v} is live. The change advisory board approved it retroactively.`,
-  (v) => `A new release, v${v}, went out on a Friday afternoon. Here's what changed.`,
-];
-
-/** The changelog section for one version, as plain bullet texts ([] if it isn't there). */
-async function releaseNotes(version) {
-  try {
-    const res = await fetch("/CHANGELOG.md", { cache: "no-store" });
-    if (!res.ok) return [];
-    const md = await res.text();
-    const start = md.search(new RegExp(`^## \\[?${version.replace(/\./g, "\\.")}\\]?`, "m"));
-    if (start < 0) return [];
-    const section = md.slice(start).split(/\n## /)[0];
-    const notes = [...section.matchAll(/^\* (.+)$/gm)].map((m) => m[1].replace(/\s*\(\[[0-9a-f]{7}\]\([^)]*\)\)$/, "").replace(/\*\*/g, ""));
-    // A PR whose title equals its branch commit's message is listed twice (merge commit + commit).
-    return [...new Set(notes)];
-  } catch {
-    return []; // offline, or a local build without a changelog
-  }
-}
-
-// A changelog line as HTML: escaped, with release-please's links to this repo's PRs made
-// clickable (any other link stays text).
-const noteHtml = (note) =>
-  esc(note).replace(/\[([^\]]+)\]\((https:\/\/github\.com\/drumandbytes\/rows-to-riches\/)issues\/(\d+)\)/g, (_, label, repo, n) => `<a href="${repo}pull/${n}" target="_blank" rel="noopener">${label}</a>`);
-
-async function showWhatsNew(version, { quiet = false } = {}) {
-  const notes = await releaseNotes(version);
-  if (!notes.length) return quiet || toast("No release notes for this version yet.");
-  const intro = RELEASE_INTROS[Math.floor(Math.random() * RELEASE_INTROS.length)](version);
-  modal(`<h2>📰 What's new</h2><p class="muted">${esc(intro)}</p><ul class="whats-new">${notes.map((n) => `<li>${noteHtml(n)}</li>`).join("")}</ul>`, [["Nice", "primary"]]);
-}
-
 // Once per new version, and never on a first visit (that's the walkthrough's moment).
 function checkWhatsNew() {
   const seen = prefs.seenVersion;
   setPref("seenVersion", VERSION);
   if (seen && seen !== VERSION) setTimeout(() => showWhatsNew(VERSION, { quiet: true }), 1500);
-}
-
-// ---- the end -------------------------------------------------------------------
-
-const COMPLETION_TEXTS = [
-  (t) => `<p>The universe, all matter and antimatter, is now cataloged, modelled, and has a dashboard.</p><p>Nobody has opened the dashboard.</p><p><b>Time to insight: ${t}.</b> Leadership would like it in less next quarter.</p>`,
-  (t) => `<p><b>Everything is data. Data is everything.</b></p><p>Every particle has a primary key. Dark matter turned out to be an unindexed table.</p><p>The board congratulates you and has scheduled a meeting to discuss what's next. The meeting has no agenda.</p><p><b>Completed in ${t}.</b></p>`,
-  (t) => `<p>All matter and antimatter is now modelled, governed and visible on one dashboard. Your Snowfake bill for this quarter is the universe.</p><p><b>Completed in ${t}.</b> Share it, or keep going. Somewhere, a stakeholder already has a follow-up question.</p>`,
-];
-
-function showCompletion(ms) {
-  const t = fmtDuration(ms / 1000);
-  const first = !S.completions;
-  confetti(200);
-  audio.sfx("prestige");
-  const share = `I cataloged the entire universe in Rows to Riches${first ? ` in ${t}` : ""}. It has a dashboard now. https://rowstoriches.drumandbytes.dev/`;
-  modal(
-    `<h2>🎉 Congratulations</h2>${COMPLETION_TEXTS[Math.floor(Math.random() * COMPLETION_TEXTS.length)](t)}
-     <p class="muted">${first ? "This was your first playthrough; that time is your record." : `Playthrough #${S.completions + 1}.`} You can <b>Catalog Everything</b> now to start a stronger New Game+, or keep playing: Big Bangs keep scaling (Prestige → Big Bang).</p>
-     <div class="row-buttons"><button type="button" id="share-completion">📤 Share</button></div>`,
-    [
-      ["Keep playing", "", () => {
-        grantSecret("keepplaying");
-      }],
-      ["Catalog Everything", "primary", confirmCatalog],
-    ],
-  );
-  $("share-completion").onclick = async (e) => {
-    try {
-      if (navigator.share) await navigator.share({ title: "Rows to Riches", text: share });
-      else {
-        await navigator.clipboard.writeText(share);
-        e.currentTarget.textContent = "✅ Copied";
-      }
-    } catch {
-      /* cancelled */
-    }
-  };
-}
-
-function confirmCatalog() {
-  modal(
-    `<h2>🗂️ Catalog Everything?</h2><p>Everything resets: rows, sources, every prestige layer, Axioms and Big Bangs. You start over with New Game+: production ×${E.NG_PROD ** (S.completions + 1)} and prestige gains ×${(E.NG_GAIN ** (S.completions + 1)).toFixed(2)} for the whole playthrough.</p><p class="muted">Achievements, the Data Catalog, lifetime stats and your company name stay.</p>`,
-    [["Cancel"], ["Catalog Everything", "primary", () => {
-      if (!E.catalogEverything(S, Date.now())) return;
-      track("catalog", S);
-      toast(`🗂️ <b>Everything cataloged.</b> New Game+ ${S.completions}. Back to one CSV on localhost.`);
-      afterPurchase();
-      selectTab("sources");
-    }]],
-  );
 }
 
 // ---- small UI helpers --------------------------------------------------------
@@ -1582,6 +1496,19 @@ function modal(html, buttons) {
   }
   if (!dlg.open) dlg.showModal();
 }
+
+// Features that load the first time they're used (each module exports a factory that gets what it needs from here).
+const lazy = (load, make) => {
+  let ready;
+  return () => (ready ??= load().then(make).catch((e) => ((ready = undefined), Promise.reject(e))));
+};
+const feedback = lazy(() => import("./feedback.js"), (m) => m.createFeedback({ E, state: () => S, version: VERSION, prefs, modal, toast, esc, $ }));
+const whatsNew = lazy(() => import("./whatsnew.js"), (m) => m.createWhatsNew({ esc, toast, modal }));
+const completion = lazy(() => import("./completion.js"), (m) => m.createCompletion({ E, state: () => S, fmtDuration, confetti, audio, modal, toast, $, grantSecret, track: (e) => track(e, S), afterPurchase, selectTab }));
+const openFeedback = () => feedback().then((f) => f.open());
+const showWhatsNew = (version, opts) => whatsNew().then((w) => w.show(version, opts));
+const showCompletion = (ms) => completion().then((c) => c.show(ms));
+const confirmCatalog = () => completion().then((c) => c.confirmCatalog());
 
 // Shuffle bag: every line shows once before any repeats. The current environment's lines
 // go in three times, older ones once, plus a few that mention your own numbers.
@@ -2009,66 +1936,6 @@ $("cloud").addEventListener("submit", (e) => {
 });
 
 // ---- feedback -------------------------------------------------------------------
-
-function feedbackContext() {
-  return {
-    v: VERSION,
-    env: E.environmentFor(S).id,
-    device: matchMedia("(pointer: coarse)").matches ? "mobile" : "desktop",
-    notation: prefs.notation,
-    replat: S.replat,
-    acq: S.acq,
-    contact: S.contact,
-    bangs: S.bangs,
-    log10Rows: Math.round(S.everRows.add(1).log10() * 10) / 10,
-    playHours: Math.round((S.stats.onlineMs / 3.6e6) * 10) / 10,
-  };
-}
-
-function openFeedback() {
-  const ctx = feedbackContext();
-  modal(
-    `<h2>💬 Send feedback</h2>
-     <div class="feedback">
-       <label class="field">Type <select id="fb-category"><option value="bug">🐛 Bug</option><option value="idea">💡 Idea</option><option value="balance">⚖️ Balance</option><option value="other">💬 Other</option></select></label>
-       <textarea id="fb-message" maxlength="2000" placeholder="What happened, what would make it better, or what made you laugh…"></textarea>
-       <input type="email" id="fb-contact" placeholder="Email, if you'd like a reply (optional)" />
-       <input type="text" id="fb-website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
-       <p class="muted">Sent along: version ${esc(ctx.v)}, ${esc(ctx.env)}, ${esc(ctx.device)}, ${ctx.replat} re-platforms, ${ctx.acq} acquisitions, ~${ctx.playHours}h played. Nothing that identifies you unless you add an email.</p>
-       <p class="muted" id="fb-status"></p>
-     </div>`,
-    [["Cancel"], ["Send", "primary"]],
-  );
-  // Dialog buttons submit (and close) by default; Send stays open until the server accepts.
-  const send = [...document.querySelectorAll("#modal button")].find((b) => b.textContent === "Send");
-  send.type = "button";
-  send.addEventListener("click", () => sendFeedback(send));
-  setTimeout(() => $("fb-message").focus());
-}
-
-async function sendFeedback(btn) {
-  const message = $("fb-message").value.trim();
-  if (message.length < 5) {
-    $("fb-status").textContent = "Please write a little more.";
-    return;
-  }
-  btn.disabled = true;
-  $("fb-status").textContent = "Sending…";
-  try {
-    const res = await fetch("/api/feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category: $("fb-category").value, message, contact: $("fb-contact").value, website: $("fb-website").value, context: feedbackContext() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error ?? `Failed (${res.status})`);
-    $("modal").close();
-    toast("💬 Thanks! Your feedback was sent. A ticket has been created and assigned to nobody.");
-  } catch (err) {
-    $("fb-status").textContent = err instanceof Error ? err.message : "Couldn't send. Are you offline?";
-    btn.disabled = false;
-  }
-}
 
 function exportSave() {
   E.tick(S, Date.now());

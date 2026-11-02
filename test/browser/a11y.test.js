@@ -44,6 +44,11 @@ test("the game has no axe violations", { skip: !process.env.BROWSER_SMOKE }, () 
       await page.click(`#settings-seg button[data-section="${section}"]`);
       await scan(page, `${contrast} settings/${section}`);
     }
+    await page.click('#settings-seg button[data-section="help"]');
+    await page.click("[data-feedback]");
+    await page.waitForSelector("#fb-message");
+    await scan(page, `${contrast} feedback`);
+    await page.keyboard.press("Escape");
     await page.click("#inbox-btn");
     await scan(page, `${contrast} inbox`);
     await page.close();
