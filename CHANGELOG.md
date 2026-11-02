@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.5.0...v0.6.0) (2026-11-02)
+
+
+### Features
+
+* add share card, structured data, sitemap and guide pages for SEO ([#38](https://github.com/drumandbytes/rows-to-riches/issues/38)) ([887a932](https://github.com/drumandbytes/rows-to-riches/commit/887a932572d1ad594014590693bd356f792e8430))
+
 ## [0.5.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.4.1...v0.5.0) (2026-11-01)
 
 
