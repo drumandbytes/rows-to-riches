@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How to play Rows to Riches — idle game guide for beginners</title>
+    <meta name="description" content="Beginner's guide to Rows to Riches, the data engineering idle game: INSERT, data sources, upgrades, schema, OKRs, incidents, challenges and keyboard shortcuts." />
+    <meta name="theme-color" content="#16181c" />
+    <link rel="canonical" href="https://rowstoriches.drumandbytes.dev/how-to-play/" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <meta property="og:site_name" content="Rows to Riches" />
+    <meta property="og:title" content="How to play Rows to Riches — idle game guide for beginners" />
+    <meta property="og:description" content="Beginner's guide to Rows to Riches, the data engineering idle game: INSERT, data sources, upgrades, schema, OKRs, incidents, challenges and keyboard shortcuts." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://rowstoriches.drumandbytes.dev/how-to-play/" />
+    <meta property="og:image" content="https://rowstoriches.drumandbytes.dev/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://rowstoriches.drumandbytes.dev/og.png" />
+    <link rel="preload" href="/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/docs.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://rowstoriches.drumandbytes.dev/how-to-play/#page",
+      "url": "https://rowstoriches.drumandbytes.dev/how-to-play/",
+      "name": "How to play Rows to Riches — idle game guide for beginners",
+      "description": "Beginner's guide to Rows to Riches, the data engineering idle game: INSERT, data sources, upgrades, schema, OKRs, incidents, challenges and keyboard shortcuts.",
+      "isPartOf": {
+        "@id": "https://rowstoriches.drumandbytes.dev/#website"
+      },
+      "about": {
+        "@id": "https://rowstoriches.drumandbytes.dev/#game"
+      },
+      "inLanguage": "en",
+      "dateModified": "2026-11-02"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Rows to Riches",
+          "item": "https://rowstoriches.drumandbytes.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "How to play Rows to Riches",
+          "item": "https://rowstoriches.drumandbytes.dev/how-to-play/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Rows to Riches?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A free browser idle (incremental) game about data engineering. You click INSERT to add rows, buy data sources that add rows for you, and prestige through four layers, from a CSV on localhost to cataloging the universe."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work offline?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The game saves in your browser and installs as an app. Sources keep producing while it is closed, at half speed for up to 2 hours (more with the Bigger Disks tech)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long does it take to finish?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A simulated optimal player reaches the first acquisition after about 9 hours, First Contact after about 85, the first Big Bang after about 112 and Catalog Everything after about 350. Real players take longer: the game is meant to be left running."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is there an account or a password?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Progress is saved locally. For optional cloud saves you create an account code (R2R-XXXX-…) and enter it on another device. There is no email and no password."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it cost anything?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It is free, has no ads and nothing to buy."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I move my save to another device?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes: use the cloud save with an account code, or Export and Import under Settings → Save."
+          }
+        }
+      ]
+    }
+  ]
+}
+    </script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Rows<span>to</span>Riches</a>
+      <nav aria-label="Pages"><a href="/how-to-play/" aria-current="page">How to play</a><a href="/privacy/">Privacy</a><a href="/">Play</a></nav>
+    </header>
+    <main>
+      <h1>How to play Rows to Riches</h1>
+      <p class="lede">A short guide to the first hours of the data engineering idle game, and the answers to what people ask most.</p>
+
+      <h2>The loop</h2>
+      <p>Press <b>INSERT</b> to add rows by hand. Fast presses build a combo, up to +100%. Spend rows on <b>Data Sources</b>, which produce rows on their own, from the Spreadsheet Intern to Everything Is Data (26 in all). Each source stands on the pipeline and ships packets to storage.</p>
+      <h2>Upgrades and schema</h2>
+      <p><b>Upgrades</b> (about 330) double a source, link neighbouring sources through synergies, or strengthen INSERT. The <b>Schema</b> tab sells columns that multiply everything, at a steep price. Alien data types such as <code>QUBIT</code>, <code>VIBE</code> and <code>NULLER_THAN_NULL</code> make them stronger later.</p>
+      <h2>Corporate life</h2>
+      <p>Quarterly <b>OKRs</b> are graded at an all-hands. Stakeholder requests and meetings arrive as two-choice cards. Phishing tests are passed by <i>not</i> clicking. <b>Incidents</b> such as PagerDuty alerts, backfills, viral dashboards, wormholes and abductions appear on screen: click them for a reward. An inbox of about 50 emails and news items comes from parody vendors.</p>
+      <h2>Prestige and challenges</h2>
+      <p>When growth slows, reset a layer for a permanent currency. There are four layers, each resetting everything below it. Currencies come from a root of the rows earned and their bonuses are soft-capped, so progress stays steady instead of snowballing.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Layer</th><th>Currency</th><th>Spent on</th></tr>
+        <tr><td>💡 <b>Re-platform</b></td><td>Insights</td><td><b>Architecture</b> (one-time picks) and the <b>Tech Radar</b> (levelled tracks)</td></tr>
+        <tr><td>📈 <b>Acquisition</b></td><td>Equity</td><td><b>The Board</b>: automation, the R&amp;D Lab's extra sources, multipliers</td></tr>
+        <tr><td>👽 <b>First Contact</b></td><td>Xenobytes</td><td><b>Xenotech</b>: alien sources, alien data types, automation</td></tr>
+        <tr><td>🌀 <b>Big Bang</b></td><td>Axioms</td><td>Never spent: every Axiom boosts production and every prestige gain</td></tr>
+      </table></div>
+      <p>Each prestige needs three completed <b>challenges</b> of the layer below: runs with a restriction (no columns, no INSERT, sources ×100 cost), up to four tiers, a one-hour limit, and a bigger bonus for finishing faster. Big Bang milestones (at 1, 10, 20, 50, … 500) automate the game and make earlier layers permanent. At 50, <b>Catalog Everything</b> completes the game and starts New Game+, with production ×2 per completion.</p>
+      <h2>Keyboard shortcuts</h2>
+      <p><kbd>Space</kbd> INSERT · <kbd>1</kbd>–<kbd>6</kbd> switch tabs · <kbd>B</kbd> buy amount · <kbd>M</kbd> mute · <kbd>F</kbd> full screen.</p>
+      <h2>Tips</h2>
+      <ul>
+        <li>Check the inbox: vendor emails often hint at what unlocks next.</li>
+        <li>Leave the tab open. The game is built to be left running, and works offline.</li>
+        <li>Achievements (250+) each give +1% production, so grab the cheap ones early.</li>
+        <li>Pick a number notation under Settings; there are ten, from "Finance deck" to Roman numerals.</li>
+      </ul>
+      <h2>FAQ</h2>
+      <details><summary>What is Rows to Riches?</summary><p>A free browser idle (incremental) game about data engineering. You click INSERT to add rows, buy data sources that add rows for you, and prestige through four layers, from a CSV on localhost to cataloging the universe.</p></details>
+      <details><summary>Does it work offline?</summary><p>Yes. The game saves in your browser and installs as an app. Sources keep producing while it is closed, at half speed for up to 2 hours (more with the Bigger Disks tech).</p></details>
+      <details><summary>How long does it take to finish?</summary><p>A simulated optimal player reaches the first acquisition after about 9 hours, First Contact after about 85, the first Big Bang after about 112 and Catalog Everything after about 350. Real players take longer: the game is meant to be left running.</p></details>
+      <details><summary>Is there an account or a password?</summary><p>No. Progress is saved locally. For optional cloud saves you create an account code (R2R-XXXX-…) and enter it on another device. There is no email and no password.</p></details>
+      <details><summary>Does it cost anything?</summary><p>No. It is free, has no ads and nothing to buy.</p></details>
+      <details><summary>Can I move my save to another device?</summary><p>Yes: use the cloud save with an account code, or Export and Import under Settings → Save.</p></details>
+      <p><a class="cta" href="/">Play Rows to Riches</a></p>
+    </main>
+    <footer>
+      <p>Rows to Riches is free, has no ads and plays offline. Part of <a href="https://drumandbytes.com/projects/">Drumandbytes Projects</a> · <a href="https://github.com/drumandbytes/rows-to-riches">Source on GitHub</a></p>
+    </footer>
+  </body>
+</html>

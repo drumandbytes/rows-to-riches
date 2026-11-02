@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rows to Riches privacy and fair play — saves, stats and leaderboards</title>
+    <meta name="description" content="What Rows to Riches stores: local saves, optional cloud saves via account code, anonymous gameplay stats, push notifications and leaderboards, and how saves are checked." />
+    <meta name="theme-color" content="#16181c" />
+    <link rel="canonical" href="https://rowstoriches.drumandbytes.dev/privacy/" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <meta property="og:site_name" content="Rows to Riches" />
+    <meta property="og:title" content="Rows to Riches privacy and fair play — saves, stats and leaderboards" />
+    <meta property="og:description" content="What Rows to Riches stores: local saves, optional cloud saves via account code, anonymous gameplay stats, push notifications and leaderboards, and how saves are checked." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://rowstoriches.drumandbytes.dev/privacy/" />
+    <meta property="og:image" content="https://rowstoriches.drumandbytes.dev/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://rowstoriches.drumandbytes.dev/og.png" />
+    <link rel="preload" href="/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/docs.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://rowstoriches.drumandbytes.dev/privacy/#page",
+      "url": "https://rowstoriches.drumandbytes.dev/privacy/",
+      "name": "Rows to Riches privacy and fair play — saves, stats and leaderboards",
+      "description": "What Rows to Riches stores: local saves, optional cloud saves via account code, anonymous gameplay stats, push notifications and leaderboards, and how saves are checked.",
+      "isPartOf": {
+        "@id": "https://rowstoriches.drumandbytes.dev/#website"
+      },
+      "about": {
+        "@id": "https://rowstoriches.drumandbytes.dev/#game"
+      },
+      "inLanguage": "en",
+      "dateModified": "2026-11-02"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Rows to Riches",
+          "item": "https://rowstoriches.drumandbytes.dev/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Privacy and fair play",
+          "item": "https://rowstoriches.drumandbytes.dev/privacy/"
+        }
+      ]
+    }
+  ]
+}
+    </script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Rows<span>to</span>Riches</a>
+      <nav aria-label="Pages"><a href="/how-to-play/">How to play</a><a href="/privacy/" aria-current="page">Privacy</a><a href="/">Play</a></nav>
+    </header>
+    <main>
+      <h1>Privacy and fair play</h1>
+      <p class="lede">The game is local-first. Nothing identifies you, and the page loads nothing from third parties.</p>
+
+      <ul>
+        <li><b>Local save:</b> your progress is saved in your browser every few seconds. Fonts and scripts are self-hosted; the only outside script is Cloudflare's cookieless page-view counter.</li>
+        <li><b>Cloud save (optional):</b> create an account code (<code>R2R-XXXX-…</code>) and enter it on another device. No email and no password; the server stores your save and a hash of the code. Delete both any time under Settings → Save.</li>
+        <li><b>Anonymous gameplay stats:</b> events like "a session lasted 25 minutes in prod", with no identifiers, to help balance the game. Turn them off under Settings → Save. Browsers sending Global Privacy Control or Do Not Track start with them off.</li>
+        <li><b>Notifications (optional):</b> a push when your offline storage is full, or 10 minutes before a running challenge times out. The server stores only your browser's push address and the times, until they are sent.</li>
+        <li><b>Leaderboards (optional):</b> fastest Catalog Everything, most rows, most Big Bangs and most Catalogs. You appear under a generated name like "Idempotent Grumpy Walrus" and can remove yourself any time.</li>
+      </ul>
+      <h2>Fair play</h2>
+      <p>Saves are encoded and sealed, so a save edited by hand still plays but is marked as modified and never ranked. The server re-checks every uploaded save against the game's own rules: currencies must match the rows earned, and rows cannot grow faster than the save could produce them in real time. Leaderboard times come from the server's clock, from a ticket signed when the game starts.</p>
+      <h2>Source</h2>
+      <p>The code is public at <a href="https://github.com/drumandbytes/rows-to-riches">github.com/drumandbytes/rows-to-riches</a> under the PolyForm Noncommercial license.</p>
+      <p><a class="cta" href="/">Play Rows to Riches</a></p>
+    </main>
+    <footer>
+      <p>Rows to Riches is free, has no ads and plays offline. Part of <a href="https://drumandbytes.com/projects/">Drumandbytes Projects</a> · <a href="https://github.com/drumandbytes/rows-to-riches">Source on GitHub</a></p>
+    </footer>
+  </body>
+</html>

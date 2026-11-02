@@ -1,0 +1,14 @@
+# Rows to Riches
+
+> A free browser idle (incremental) game about data engineering and corporate life. Click INSERT, buy data sources, survive OKRs and all-hands, and prestige through four layers from a CSV on localhost to cataloging the universe. No ads, no account needed, plays offline. By Drumandbytes.
+
+## Pages
+
+- [Play the game](https://rowstoriches.drumandbytes.dev/): the game itself (requires JavaScript)
+- [How to play](https://rowstoriches.drumandbytes.dev/how-to-play/): the loop, upgrades, schema, OKRs, shortcuts, FAQ
+- [Privacy and fair play](https://rowstoriches.drumandbytes.dev/privacy/): saves, cloud account codes, anonymous stats, leaderboards
+
+## Optional
+
+- [Source code](https://github.com/drumandbytes/rows-to-riches): PolyForm Noncommercial 1.0.0
+- [Drumandbytes Projects](https://drumandbytes.com/projects/)
