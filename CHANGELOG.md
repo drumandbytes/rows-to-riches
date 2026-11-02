@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.1...v0.6.2) (2026-11-02)
+
+
+### Bug Fixes
+
+* fit the header to narrow screens ([7760208](https://github.com/drumandbytes/rows-to-riches/commit/7760208936cb1c13ceda5f8b46071e924bb430b9))
+
 ## [0.6.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.0...v0.6.1) (2026-11-02)
 
 
