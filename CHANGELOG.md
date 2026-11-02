@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.0...v0.7.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* pass fmtDuration, prefs and setPref to the prestige module so Challenges opens ([308cbb2](https://github.com/drumandbytes/rows-to-riches/commit/308cbb23ba99b93e083a4fc5a90014cb5441dac8))
+
 ## [0.7.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.7...v0.7.0) (2026-11-02)
 
 
