@@ -6,7 +6,8 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 
 - `public/` — the whole client, served as static assets with no build step. `index.html` + `style.css` + ES modules in `public/js/`.
 - `public/js/economy.js` — **all game rules**, as pure functions with no DOM access. The Worker imports this same file to validate uploaded saves, so a balance change here also changes what the server accepts. Keep it free of browser APIs.
-- `public/js/main.js` — state, game loop (200ms tick), rendering, incidents, cloud reconcile. Lists rebuild their DOM only when `visibleKey()` changes; everything else updates text in place.
+- `public/js/main.js` — state, game loop (200ms tick), rendering, inbox, cloud reconcile. Lists rebuild their DOM only when `visibleKey()` changes; everything else updates text in place. Features live in their own modules, each a `createX(ctx)` factory that takes the shared `ctx` object built in main.js (state is `ctx.state()`, never a global `S`; add a helper to `ctx` if a module needs one). `prestige.js` (layers, shops, challenges) loads at startup; `feedback`, `whatsnew`, `completion`, `walkthrough`, `stats`, `settings` and `incidents` load on first use through `lazy(() => import(...), ...)`. Every module goes in `SHELL` in `public/sw.js` (a test checks it).
+- `public/js/frames.js` — the one `requestAnimationFrame` loop (frame-rate cap, 30 fps when unfocused, 1 fps when hidden); use `onFrame()` instead of your own rAF.
 - `public/js/scene.js` (pipeline canvas: one station per owned source, backdrop per environment `scene`), `widgets.js` (query log, throughput sparkline, sparks/confetti/banners), `flavor.js` (ticker jokes per environment, finale text). All cosmetic.
 - `tools/sim.js` — greedy balance simulator. `TWEAK='E.BOARD_BY_ID.rnd.base=9' node tools/sim.js 48` tries a variant without editing the economy.
 - `worker/index.js` — `/api/code/new`, `/api/code/login`, `/api/code/rotate` (account codes → session; there is no email sign-in), `/api/save` GET/PUT, `/api/logout`, `/api/account` DELETE. Everything else goes to `env.ASSETS`.
@@ -30,5 +31,6 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 npm run dev              # wrangler dev, local D1
 npm run db:migrate:local
 npm test
-npm run test:a11y        # axe + keyboard checks in a real browser (CHROMIUM=1 locally); CI runs it too
+npm run test:a11y        # axe (WCAG 2.2 AA) + keyboard checks in a real browser (CHROMIUM=1 locally); CI runs it too
+npm run test:browser     # smoke tests: play, incidents, re-platform + challenges
 ```
