@@ -682,86 +682,6 @@ function scheduleIncident(now) {
   nextIncidentAt = now + E.incidentEvery(S) * 1000 * (0.55 + Math.random() * 0.9);
 }
 
-function spawnIncident() {
-  const pool = E.incidentsFor(S);
-  const total = pool.reduce((s, x) => s + x.weight, 0);
-  let r = Math.random() * total;
-  const inc = pool.find((x) => (r -= x.weight) < 0) ?? pool[0];
-  const btn = document.createElement("button");
-  btn.className = "incident";
-  btn.type = "button";
-  btn.textContent = inc.labels ? inc.labels[Math.floor(Math.random() * inc.labels.length)] : inc.label;
-  btn.style.left = `${8 + Math.random() * (innerWidth - 220)}px`;
-  btn.style.top = `${90 + Math.random() * Math.max(80, innerHeight - 260)}px`;
-  const gone = setTimeout(() => {
-    btn.remove();
-    if (inc.trap) passedPhish();
-    if (inc.rescue) lostTable();
-  }, 13_000);
-  const resolve = () => {
-    clearTimeout(gone);
-    btn.remove();
-    resolveIncident(inc);
-  };
-  btn.addEventListener("click", resolve);
-  // Self-healing pipelines fix incidents; they don't click suspicious links.
-  if (E.archOn(S, "selfheal") && !inc.trap) setTimeout(() => btn.isConnected && resolve(), 3000);
-  $("incident-layer").append(btn);
-  audio.sfx("incident");
-}
-
-function lostTable() {
-  E.tick(S, Date.now());
-  const lost = S.rows.mul(0.1);
-  S.rows = S.rows.sub(lost);
-  toast(`💀 <b>Table lost.</b> Nobody restored it in time: −${fmt(lost)} rows. The intern has been promoted to manager.`);
-  audio.sfx("deny");
-}
-
-function passedPhish() {
-  S.stats.phishPassed++;
-  E.tick(S, Date.now());
-  const amount = E.baseRate(S).mul(120).add(13);
-  E.earn(S, amount);
-  toast(`✅ <b>Phishing test passed.</b> IT is proud of you: +${fmt(amount)} rows.`, "info");
-  audio.sfx("achievement");
-}
-
-function resolveIncident(inc) {
-  const now = Date.now();
-  E.tick(S, now);
-  scene.shake();
-  // A clicked phishing test isn't a resolved incident.
-  if (!inc.trap) {
-    S.incidents++;
-    audio.sfx("resolve");
-  }
-  if (inc.rescue) {
-    S.stats.rescues++;
-    const amount = E.baseRate(S).mul(60).add(13);
-    E.earn(S, amount);
-    toast(`🧯 <b>${inc.title}</b>: ${esc(inc.desc)} +${fmt(amount)} rows.`);
-  } else if (inc.trap) {
-    S.buffs.push({ kind: "prod", mult: inc.buff.mult, until: now + inc.buff.secs * 1000, name: "Security training" });
-    grantSecret("phished");
-    toast(`🎣 <b>${inc.title}</b>: you clicked it. Production ×${inc.buff.mult} for ${inc.buff.secs}s while you do the training.`);
-    audio.sfx("deny");
-  } else if (inc.buff) {
-    const secs = inc.buff.secs * (E.archOn(S, "slo") ? 2 : 1);
-    const mult = Math.round(inc.buff.mult * E.incidentMult(S) * 100) / 100;
-    S.buffs.push({ kind: inc.buff.kind, mult, until: now + secs * 1000, name: inc.title });
-    toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: ×${mult} for ${secs}s.`, "info");
-  } else if (inc.lump) {
-    const amount = E.baseRate(S).mul(900).min(S.rows.mul(E.backfillCap(S))).add(13);
-    E.earn(S, amount);
-    scene.floatText(`+${fmt(amount)}`, "#ffb547");
-    scene.burst(12);
-    toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: +${fmt(amount)} rows.`, "info");
-  }
-  saveLocal();
-  render(true);
-}
-
 // ---- rendering ---------------------------------------------------------------
 
 function render(force = false) {
@@ -1334,6 +1254,7 @@ let stats; // set once the Stats tab has been opened
 const statsFeature = lazy(() => import("./stats.js"), (m) => m.createStats({ E, state: () => S, fmt, fmtDuration, esc, $ }));
 let settings; // set once the Settings tab has been opened
 const settingsFeature = lazy(() => import("./settings.js"), (m) => m.createSettings({ state: () => S, prefs, setPref, $, esc, modal, toast, saveLocal, render, pushCloud, codeSignIn, replaceState, fromSave, autoBuyerOwned, gitopsOwned, grantSecret }));
+const incidents = lazy(() => import("./incidents.js"), (m) => m.createIncidents({ E, state: () => S, scene, audio, toast, esc, fmt, $, grantSecret, saveLocal, render }));
 const openFeedback = () => feedback().then((f) => f.open());
 const showWhatsNew = (version, opts) => whatsNew().then((w) => w.show(version, opts));
 const showCompletion = (ms) => completion().then((c) => c.show(ms));
@@ -1767,7 +1688,7 @@ function loop() {
   active.tick();
   if (new Date().getHours() === 3) grantSecret("nightowl");
   if (now >= nextIncidentAt && !document.hidden && E.incidentsAllowed(S)) {
-    spawnIncident();
+    incidents().then((m) => m.spawn());
     scheduleIncident(now);
   }
   // Nobody is looking when the tab is hidden: redraw once a second instead of five times.
