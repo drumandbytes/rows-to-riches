@@ -987,8 +987,8 @@ function buildSources() {
         key: `p${p.i}`,
         html: `<li class="node" data-i="${p.i}" style="--h:${producerHue(p.i)}">
         <div class="ico" aria-hidden="true">${p.icon}</div>
-        <div><div class="name">${esc(p.name)}<span class="count"></span><span class="chip"></span><button type="button" class="auto-chip" data-auto-src="${p.id}" title="Include in the auto-buyer" hidden>🤖</button></div><div class="sub"></div><div class="run-bar"><i></i></div></div>
-        <button class="buy" type="button" data-buy-producer="${p.i}"></button></li>`,
+        <div><div class="name"><span id="pn${p.i}">${esc(p.name)}</span><span class="count"></span><span class="chip"></span><button type="button" class="auto-chip" data-auto-src="${p.id}" title="Include in the auto-buyer" hidden>🤖</button></div><div class="sub"></div><div class="run-bar" aria-hidden="true"><i></i></div></div>
+        <button class="buy" type="button" data-buy-producer="${p.i}" aria-describedby="pn${p.i}"></button></li>`,
       });
     } else if (!teased) {
       teased = true;
@@ -997,7 +997,11 @@ function buildSources() {
     }
   }
   syncList($("sources"), items);
-  document.querySelectorAll(".buy-amount button[data-buy]").forEach((b) => b.classList.toggle("on", String(S.settings.buy) === b.dataset.buy));
+  document.querySelectorAll(".buy-amount button[data-buy]").forEach((b) => {
+    const on = String(S.settings.buy) === b.dataset.buy;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", String(on));
+  });
   $("sell-mode").classList.toggle("on", selling);
   $("sell-mode").setAttribute("aria-pressed", selling);
   $("sources").classList.toggle("selling", selling);
@@ -1472,6 +1476,7 @@ function floatText(text, x, y) {
   }
   const el = document.createElement("div");
   el.className = "float";
+  el.setAttribute("aria-hidden", "true");
   el.textContent = text;
   el.style.left = `${x - 20 + (Math.random() - 0.5) * 30}px`;
   el.style.top = `${y - 20}px`;
@@ -1549,7 +1554,11 @@ function dynamicTicker() {
 
 function selectTab(name) {
   tab = name;
-  for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  for (const b of document.querySelectorAll(".tabs button")) {
+    const on = b.dataset.tab === name;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+  }
   for (const p of document.querySelectorAll(".pane")) p.hidden = p.id !== `pane-${name}`;
   if (name === "stats") {
     buildAch();
@@ -1561,6 +1570,22 @@ function selectTab(name) {
 document.querySelector(".tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tab]");
   if (b) selectTab(b.dataset.tab);
+});
+// Tabs wire themselves to their panels, and the arrow keys move between them (roving tabindex).
+for (const b of document.querySelectorAll(".tabs button")) {
+  b.id = `tab-${b.dataset.tab}`;
+  b.setAttribute("aria-controls", `pane-${b.dataset.tab}`);
+  $(`pane-${b.dataset.tab}`).setAttribute("aria-labelledby", b.id);
+}
+document.querySelector(".tabs").addEventListener("keydown", (e) => {
+  const tabs = [...document.querySelectorAll(".tabs button")];
+  const at = tabs.indexOf(document.activeElement);
+  const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[e.key];
+  if (at < 0 || to === undefined) return;
+  e.preventDefault();
+  const next = tabs[(to + tabs.length) % tabs.length];
+  next.focus();
+  selectTab(next.dataset.tab);
 });
 
 const insertBtn = $("insert");
@@ -1739,11 +1764,12 @@ function showPrefs() {
   }
   document.body.classList.toggle("low", prefs.quality === "low");
   document.body.classList.toggle("no-motion", prefs.motion === "reduced");
+  document.documentElement.classList.toggle("hc", prefs.contrast === "high");
   document.body.classList.toggle("no-particles", !prefs.particles);
   scene.setQuality(prefs.quality);
   scene.setMotion({ reduced: prefs.motion === "reduced", shake: prefs.shake, mode: prefs.sceneMode });
   document.querySelector(".stage").hidden = prefs.sceneMode === "hidden";
-  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) $(id).value = prefs[key];
+  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-contrast", "contrast"]]) $(id).value = prefs[key];
   for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]]) $(id).checked = prefs[key];
   $("fullscreen").textContent = document.fullscreenElement ? "⛶ Exit full screen" : "⛶ Full screen";
 }
@@ -1753,7 +1779,7 @@ $("opt-notation").addEventListener("change", (e) => {
   setNotation(prefs.notation);
   render(true);
 });
-for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"]]) {
+for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-contrast", "contrast"]]) {
   $(id).addEventListener("change", (e) => {
     setPref(key, e.target.value);
     showPrefs();
@@ -1805,7 +1831,10 @@ $("schema-seg").addEventListener("click", (e) => {
 $("settings-seg").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-section]");
   if (!b) return;
-  for (const x of $("settings-seg").children) x.classList.toggle("on", x === b);
+  for (const x of $("settings-seg").children) {
+    x.classList.toggle("on", x === b);
+    x.setAttribute("aria-pressed", String(x === b));
+  }
   for (const sec of document.querySelectorAll("#pane-settings .section")) sec.hidden = sec.dataset.section !== b.dataset.section;
 });
 
@@ -2093,6 +2122,10 @@ setInterval(loop, 200);
 setInterval(() => spark.sample(E.rate(S, Date.now())), 1000);
 setInterval(autoBuy, 1000);
 setInterval(rotateTicker, 9000);
+// Screen readers get a short summary now and then instead of the counter ticking every frame.
+setInterval(() => {
+  if (!document.hidden) $("sr-status").textContent = `${fmt(S.rows)} rows, ${fmt(E.rate(S, Date.now()))} per second.`;
+}, 30_000);
 setInterval(saveLocal, 5000);
 setInterval(() => {
   if (cloudDirty && Date.now() - lastCloudPush > 60_000) pushCloud();
