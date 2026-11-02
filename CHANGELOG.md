@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.4](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.3...v0.6.4) (2026-11-02)
+
+
+### Bug Fixes
+
+* drop the header backdrop blur, it fades the top edge in the PWA ([d2451eb](https://github.com/drumandbytes/rows-to-riches/commit/d2451ebd30a40eef0246523e14e2e2d8bbca1165))
+* drop the header backdrop blur, it fades the top edge in the PWA ([61888f8](https://github.com/drumandbytes/rows-to-riches/commit/61888f8dc71ef61f5b5c3c0e6a55be6cb1515b06))
+* stop scaling the rows counter, it rasterizes blurry on iOS ([845aafc](https://github.com/drumandbytes/rows-to-riches/commit/845aafc436e796bc567b07e892eaa3711b628c73))
+* stop the rate pulse drawing a dark halo on iOS ([aff9e48](https://github.com/drumandbytes/rows-to-riches/commit/aff9e48a7c09aecaeba5dbbe33e2cc432d4c2434))
+
 ## [0.6.3](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.2...v0.6.3) (2026-11-02)
 
 
