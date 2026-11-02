@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
-          node-version: "24" # matches mise.toml
+          node-version: "26" # matches mise.toml
           cache: npm
       - run: npm ci
       - run: node --test

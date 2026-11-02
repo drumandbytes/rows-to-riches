@@ -70,7 +70,7 @@ Big numbers use [break_infinity.js](https://github.com/Patashu/break_infinity.js
 
 ## Running it locally
 
-Needs Node 24 (see `mise.toml`).
+Needs Node 26 (see `mise.toml`).
 
 ```bash
 npm install
