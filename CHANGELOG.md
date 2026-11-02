@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.3](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.2...v0.6.3) (2026-11-02)
+
+
+### Bug Fixes
+
+* make the header opaque so scrolled content doesn't bleed through ([bd4f732](https://github.com/drumandbytes/rows-to-riches/commit/bd4f73284426c1a1488b7771d72bb097376de8e5))
+* make the header opaque so scrolled content doesn't bleed through ([bff238d](https://github.com/drumandbytes/rows-to-riches/commit/bff238dcc776bb0f88d3adc21526fdacf56a00c4))
+
 ## [0.6.2](https://github.com/drumandbytes/rows-to-riches/compare/v0.6.1...v0.6.2) (2026-11-02)
 
 
