@@ -42,7 +42,7 @@ export function createCompletion({ E, state, fmtDuration, confetti, audio, modal
       `<h2>🗂️ Catalog Everything?</h2><p>Everything resets: rows, sources, every prestige layer, Axioms and Big Bangs. You start over with New Game+: production ×${E.NG_PROD ** (state().completions + 1)} and prestige gains ×${(E.NG_GAIN ** (state().completions + 1)).toFixed(2)} for the whole playthrough.</p><p class="muted">Achievements, the Data Catalog, lifetime stats and your company name stay.</p>`,
       [["Cancel"], ["Catalog Everything", "primary", () => {
         if (!E.catalogEverything(state(), Date.now())) return;
-        track("catalog", state());
+        track("catalog");
         toast(`🗂️ <b>Everything cataloged.</b> New Game+ ${state().completions}. Back to one CSV on localhost.`);
         afterPurchase();
         selectTab("sources");

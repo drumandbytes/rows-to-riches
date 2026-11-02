@@ -1186,7 +1186,7 @@ async function codeSignIn(code, status) {
 function checkWhatsNew() {
   const seen = prefs.seenVersion;
   setPref("seenVersion", VERSION);
-  if (seen && seen !== VERSION) setTimeout(() => showWhatsNew(VERSION, { quiet: true }), 1500);
+  if (seen && seen !== VERSION) setTimeout(() => whatsNew().then((w) => w.show(VERSION, { quiet: true })), 1500);
 }
 
 // ---- small UI helpers --------------------------------------------------------
@@ -1247,18 +1247,22 @@ const lazy = (load, make) => {
   let ready;
   return () => (ready ??= load().then(make).catch((e) => ((ready = undefined), Promise.reject(e))));
 };
-const feedback = lazy(() => import("./feedback.js"), (m) => m.createFeedback({ E, state: () => S, version: VERSION, prefs, modal, toast, esc, $ }));
-const whatsNew = lazy(() => import("./whatsnew.js"), (m) => m.createWhatsNew({ esc, toast, modal }));
-const completion = lazy(() => import("./completion.js"), (m) => m.createCompletion({ E, state: () => S, fmtDuration, confetti, audio, modal, toast, $, grantSecret, track: (e) => track(e, S), afterPurchase, selectTab }));
+// What the lazily loaded features share: each factory takes this one object and uses what it needs.
+const ctx = {
+  E, prefs, setPref, scene, audio, lb, $, esc, fmt, fmtDuration, toast, modal, confetti, grantSecret, saveLocal, render, selectTab, afterPurchase,
+  pushCloud, codeSignIn, replaceState, fromSave, autoBuyerOwned, gitopsOwned,
+  state: () => S,
+  version: VERSION,
+  track: (event, extra) => track(event, S, extra),
+};
+const feedback = lazy(() => import("./feedback.js"), (m) => m.createFeedback(ctx));
+const whatsNew = lazy(() => import("./whatsnew.js"), (m) => m.createWhatsNew(ctx));
+const completion = lazy(() => import("./completion.js"), (m) => m.createCompletion(ctx));
 let stats; // set once the Stats tab has been opened
-const statsFeature = lazy(() => import("./stats.js"), (m) => m.createStats({ E, state: () => S, fmt, fmtDuration, esc, $ }));
+const statsFeature = lazy(() => import("./stats.js"), (m) => m.createStats(ctx));
 let settings; // set once the Settings tab has been opened
-const settingsFeature = lazy(() => import("./settings.js"), (m) => m.createSettings({ state: () => S, prefs, setPref, $, esc, modal, toast, saveLocal, render, pushCloud, codeSignIn, replaceState, fromSave, autoBuyerOwned, gitopsOwned, grantSecret }));
-const incidents = lazy(() => import("./incidents.js"), (m) => m.createIncidents({ E, state: () => S, scene, audio, toast, esc, fmt, $, grantSecret, saveLocal, render }));
-const openFeedback = () => feedback().then((f) => f.open());
-const showWhatsNew = (version, opts) => whatsNew().then((w) => w.show(version, opts));
-const showCompletion = (ms) => completion().then((c) => c.show(ms));
-const confirmCatalog = () => completion().then((c) => c.confirmCatalog());
+const settingsFeature = lazy(() => import("./settings.js"), (m) => m.createSettings(ctx));
+const incidents = lazy(() => import("./incidents.js"), (m) => m.createIncidents(ctx));
 
 // Shuffle bag: every line shows once before any repeats. The current environment's lines
 // go in three times, older ones once, plus a few that mention your own numbers.
@@ -1366,7 +1370,7 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.challenge) onStartChallenge(t.dataset.challenge, Number(t.dataset.tier ?? 1));
   else if (t.closest("[data-request]")) active.answer(t.closest("[data-request]").dataset.request);
   else if (t.dataset.okrToggle) $("okr-strip").classList.toggle("open");
-  else if (t.dataset.feedback) openFeedback();
+  else if (t.dataset.feedback) feedback().then((f) => f.open());
   else if (t.dataset.autoSrc) {
     const skip = S.settings.autoSkip;
     const id = t.dataset.autoSrc;
@@ -1399,8 +1403,8 @@ document.addEventListener("click", (e) => {
     else toast(`🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
-  else if (t.id === "catalog-btn") confirmCatalog();
-  else if (t.id === "whats-new") showWhatsNew(VERSION);
+  else if (t.id === "catalog-btn") completion().then((c) => c.confirmCatalog());
+  else if (t.id === "whats-new") whatsNew().then((w) => w.show(VERSION));
   else if (t.id === "create-code") {
     t.disabled = true;
     sync
@@ -1683,7 +1687,7 @@ function loop() {
   autoPrestige();
   checkFinale();
   const completed = E.markCompletion(S, now);
-  if (completed) showCompletion(completed);
+  if (completed) completion().then((c) => c.show(completed));
   checkInbox();
   active.tick();
   if (new Date().getHours() === 3) grantSecret("nightowl");
@@ -1701,7 +1705,7 @@ let lastRenderAt = 0;
 
 // ---- walkthrough -------------------------------------------------------------
 
-const walkthrough = lazy(() => import("./walkthrough.js"), (m) => m.createWalkthrough({ $, state: () => S, selectTab, lb, setPref }));
+const walkthrough = lazy(() => import("./walkthrough.js"), (m) => m.createWalkthrough(ctx));
 $("replay-tour").addEventListener("click", () => {
   selectTab("sources");
   walkthrough().then((t) => t.start());

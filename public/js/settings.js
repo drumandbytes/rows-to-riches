@@ -5,7 +5,7 @@ import * as sync from "./sync.js";
 import { encodeSave, decodeSave } from "./seal.js";
 import { pushAvailable, initPush, enablePush, disablePush } from "./push.js";
 
-export function createSettings({ state, prefs, setPref, $, esc, modal, toast, saveLocal, render, pushCloud, codeSignIn, replaceState, fromSave, autoBuyerOwned, gitopsOwned, grantSecret }) {
+export function createSettings({ state, prefs, $, esc, modal, toast, saveLocal, render, pushCloud, codeSignIn, replaceState, fromSave, autoBuyerOwned, gitopsOwned, grantSecret }) {
   function update() {
     if (document.activeElement !== $("opt-company")) $("opt-company").value = state().company;
     const bots = { radar: (state().board.radarbot ?? 0) > 0, board: (state().xeno_tech.boardbot ?? 0) > 0, xeno: state().bangs >= 1, bang: state().bangs >= 100 };
