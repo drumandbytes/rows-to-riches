@@ -14,9 +14,70 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Rows to Riches" />
-    <meta property="og:title" content="Rows to Riches" />
-    <meta property="og:description" content="An idle game about data and the company around it. From one CSV on localhost to OKRs, all-hands, aliens and the point where everything is data." />
+    <link rel="canonical" href="https://rowstoriches.drumandbytes.dev/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="Drumandbytes" />
+    <meta property="og:site_name" content="Rows to Riches" />
+    <meta property="og:title" content="Rows to Riches — an idle game about data engineering" />
+    <meta property="og:description" content="An idle game about data and the company around it. From one CSV on localhost to OKRs, all-hands, aliens and the point where everything is data. Free, no ads." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rowstoriches.drumandbytes.dev/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://rowstoriches.drumandbytes.dev/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Rows to Riches: the data pipeline scene next to the Data Sources list" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Rows to Riches — an idle game about data engineering" />
+    <meta name="twitter:description" content="Start with one CSV on localhost, end up cataloging the universe. Free, no ads, plays offline." />
+    <meta name="twitter:image" content="https://rowstoriches.drumandbytes.dev/og.png" />
+    <meta name="twitter:image:alt" content="Rows to Riches: the data pipeline scene next to the Data Sources list" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://rowstoriches.drumandbytes.dev/#website",
+            "url": "https://rowstoriches.drumandbytes.dev/",
+            "name": "Rows to Riches",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://drumandbytes.com/#org" }
+          },
+          {
+            "@type": ["VideoGame", "SoftwareApplication", "WebApplication"],
+            "@id": "https://rowstoriches.drumandbytes.dev/#game",
+            "name": "Rows to Riches",
+            "alternateName": "Rows to Riches idle game",
+            "url": "https://rowstoriches.drumandbytes.dev/",
+            "image": "https://rowstoriches.drumandbytes.dev/og.png",
+            "description": "An idle (incremental) game about data engineering and corporate life. Click INSERT, buy data sources, survive OKRs and all-hands, and prestige through four layers from a CSV on localhost to cataloging the universe.",
+            "applicationCategory": "GameApplication",
+            "genre": ["Idle", "Incremental", "Clicker", "Satire"],
+            "gamePlatform": "Web browser",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript",
+            "playMode": "SinglePlayer",
+            "inLanguage": "en",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "license": "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+            "sameAs": ["https://github.com/drumandbytes/rows-to-riches"],
+            "author": { "@id": "https://drumandbytes.com/#org" },
+            "publisher": { "@id": "https://drumandbytes.com/#org" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://drumandbytes.com/#org",
+            "name": "Drumandbytes",
+            "url": "https://drumandbytes.com/",
+            "sameAs": ["https://github.com/drumandbytes"]
+          }
+        ]
+      }
+    </script>
     <link rel="preload" href="/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/style.css" />
@@ -313,7 +374,7 @@
               <img src="/icon.svg" alt="" width="48" height="48" />
               <div>
                 <p class="about-title"><b>Rows to Riches</b> <span class="pill" id="about-version"></span></p>
-                <p class="muted">Free to play · no ads · nothing to buy · part of <a href="https://drumandbytes.com/projects/">Drumandbytes Projects</a> · <button type="button" class="linkish" id="whats-new">What's new</button></p>
+                <p class="muted">Free to play · no ads · nothing to buy · part of <a href="https://drumandbytes.com/projects/">Drumandbytes Projects</a> · <a href="/how-to-play/">How to play</a> · <a href="/privacy/">Privacy</a> · <button type="button" class="linkish" id="whats-new">What's new</button></p>
               </div>
             </div>
             <p>An idle game about data engineering and the company around it. You start with one CSV on localhost and a job title nobody understands, and end up at the point where everything is data. In between: OKRs, all-hands, reorgs, vendors and aliens.</p>
@@ -347,6 +408,13 @@
       <span id="sb-env">env: localhost</span>
       <span id="sb-sync">☁ local only</span>
     </footer>
+
+    <noscript>
+      <section style="max-width: 40rem; margin: 2rem auto; padding: 0 1rem">
+        <h1>Rows to Riches</h1>
+        <p>An idle game about data engineering and the corporate world around it. It needs JavaScript to run.</p>
+      </section>
+    </noscript>
 
     <div id="incident-layer"></div>
     <div id="toasts" aria-live="polite"><button type="button" id="toasts-clear" class="toasts-clear">✕ Clear all</button></div>

@@ -10,6 +10,7 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 - `public/js/scene.js` (pipeline canvas: one station per owned source, backdrop per environment `scene`), `widgets.js` (query log, throughput sparkline, sparks/confetti/banners), `flavor.js` (ticker jokes per environment, finale text). All cosmetic.
 - `tools/sim.js` — greedy balance simulator. `TWEAK='E.BOARD_BY_ID.rnd.base=9' node tools/sim.js 48` tries a variant without editing the economy.
 - `worker/index.js` — `/api/code/new`, `/api/code/login`, `/api/code/rotate` (account codes → session; there is no email sign-in), `/api/save` GET/PUT, `/api/logout`, `/api/account` DELETE. Everything else goes to `env.ASSETS`.
+- SEO: `public/{how-to-play,privacy}/index.html` are hand-written static pages sharing `docs.css`; `sitemap.xml`, `robots.txt`, `llms.txt` and the JSON-LD/OG tags in `index.html` list them. Adding a page means updating the sitemap, `llms.txt` and the nav in the other pages. `public/og.png` comes from `tools/og-image.js`.
 - `migrations/` — D1 schema. Tokens and account codes are stored only as SHA-256 hashes. D1 always enforces foreign keys: never drop or rebuild `users` while it has rows, it cascade-deletes every session and save (0003 only did it because the table was empty).
 
 ## Rules of thumb

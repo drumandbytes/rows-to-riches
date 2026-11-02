@@ -96,6 +96,7 @@ echo "LEADERBOARD_KEY=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n')" >
 | `node tools/sim.js 72` | Plays greedily for 72 simulated hours and prints prestige milestones. `SUMMARY=1` prints one pacing line, `TWEAK='…'` tries a balance change without editing the code |
 | `node tools/pace.js` | Regenerates `worker/pace.json`, the simulator's milestone times that leaderboard runs are compared against |
 | `node tools/screenshots.js` | Regenerates the screenshots in `docs/listing/` |
+| `node tools/og-image.js` | Regenerates `public/og.png`, the 1200×630 share card (uses `docs/listing/4-multiverse.png`) |
 | `node tools/music-audit.js` | Plays every music mood "on paper" and checks the composer's rules |
 | `node tools/check-live.js` | Checks that every file in `public/` loads from the live site |
 
