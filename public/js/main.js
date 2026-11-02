@@ -1794,7 +1794,23 @@ $("opt-mood").addEventListener("change", (e) => {
 $("opt-notation").innerHTML = Object.entries(NOTATIONS).map(([k, label]) => `<option value="${k}">${label}</option>`).join("");
 $("about-version").textContent = `v${VERSION}`;
 // Installable app: offline shell via the service worker.
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  // The service worker swaps itself in as soon as a new version installs, but this page keeps
+  // running the code it already loaded, so offer a reload. Installed apps rarely look for
+  // updates on their own, so check whenever the app comes back to the foreground.
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hadController) $("update-bar").hidden = false;
+  });
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then((reg) => document.addEventListener("visibilitychange", () => !document.hidden && reg.update().catch(() => {})))
+    .catch(() => {});
+  $("update-reload").addEventListener("click", () => {
+    saveLocal();
+    location.reload();
+  });
+}
 let installPrompt = null;
 addEventListener("beforeinstallprompt", (e) => {
   // Keep the browser's prompt for our own button instead of a surprise banner.
