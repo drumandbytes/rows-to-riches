@@ -1831,6 +1831,9 @@ $("install").addEventListener("click", async () => {
   $("install-wrap").hidden = true;
 });
 
+// Settings → Display/Game controls that map straight onto a preference: [element id, pref key].
+const SELECT_PREFS = [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"], ["opt-contrast", "contrast"]];
+const TOGGLE_PREFS = [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]];
 function showPrefs() {
   $("opt-notation").value = prefs.notation;
   $("opt-quality").value = prefs.quality;
@@ -1851,8 +1854,8 @@ function showPrefs() {
   setFrameCap(Number(prefs.fps));
   scene.setMotion({ reduced: prefs.motion === "reduced", shake: prefs.shake, mode: prefs.sceneMode });
   document.querySelector(".stage").hidden = prefs.sceneMode === "hidden";
-  for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"], ["opt-contrast", "contrast"]]) $(id).value = prefs[key];
-  for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]]) $(id).checked = prefs[key];
+  for (const [id, key] of SELECT_PREFS) $(id).value = prefs[key];
+  for (const [id, key] of TOGGLE_PREFS) $(id).checked = prefs[key];
   $("fullscreen").textContent = document.fullscreenElement ? "⛶ Exit full screen" : "⛶ Full screen";
 }
 
@@ -1861,13 +1864,13 @@ $("opt-notation").addEventListener("change", (e) => {
   setNotation(prefs.notation);
   render(true);
 });
-for (const [id, key] of [["opt-motion", "motion"], ["opt-scene", "sceneMode"], ["opt-toasts", "toasts"], ["opt-clock", "clock"], ["opt-fps", "fps"], ["opt-contrast", "contrast"]]) {
+for (const [id, key] of SELECT_PREFS) {
   $(id).addEventListener("change", (e) => {
     setPref(key, e.target.value);
     showPrefs();
   });
 }
-for (const [id, key] of [["opt-particles", "particles"], ["opt-shake", "shake"], ["opt-querylog", "querylog"]]) {
+for (const [id, key] of TOGGLE_PREFS) {
   $(id).addEventListener("change", (e) => {
     setPref(key, e.target.checked);
     showPrefs();
