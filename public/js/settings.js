@@ -112,7 +112,7 @@ export function createSettings({ state, prefs, $, esc, modal, toast, saveLocal, 
     $(id).addEventListener("change", (e) => {
       state().settings[key] = kind === "check" ? e.target.checked : e.target.value;
       saveLocal();
-      updateSettings();
+      update();
     });
   }
 

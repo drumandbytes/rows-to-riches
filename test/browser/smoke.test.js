@@ -73,3 +73,33 @@ test("re-platforming works, the shop sells, and a challenge can be started", { s
   await page.waitForSelector("#chal-banner:not([hidden])");
   assert.deepEqual(errors, []);
 }));
+
+test("the Settings tab's auto-buyer and company options work", { skip: !process.env.BROWSER_SMOKE }, () => withBrowser(8797, async (browser) => {
+  const first = await browser.newPage();
+  await first.goto("http://localhost:8797/");
+  const save = await first.evaluate(async () => {
+    const E = await import("/js/economy.js");
+    const { encodeSave } = await import("/js/seal.js");
+    const s = E.newState();
+    s.arch = ["terraform"]; // owns the auto-buyer
+    return encodeSave(s);
+  });
+  await first.close();
+
+  const page = await browser.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript((text) => {
+    localStorage.setItem("r2r.save", text);
+    localStorage.setItem("r2r.sealed", "1");
+    localStorage.setItem("r2r.prefs", JSON.stringify({ tourDone: true }));
+  }, save);
+  await page.goto("http://localhost:8797/");
+  await page.click('.tabs button[data-tab="settings"]');
+  await page.fill("#opt-company", "Acme");
+  await page.press("#opt-company", "Enter");
+  await page.locator("#opt-auto-sources").check();
+  await page.selectOption("#opt-auto-strategy", { index: 1 });
+  assert.equal(await page.locator("#opt-auto-sources").isChecked(), true);
+  assert.deepEqual(errors, []);
+}));
