@@ -2,6 +2,7 @@
 // pipe into the storage sink. Backdrop follows the environment. Cosmetic only.
 
 import { PRODUCERS } from "./economy.js";
+import { onFrame } from "./frames.js";
 
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const SINKS = ["📄", "📋", "🗂️", "🗄️", "🖥️", "🏢", "🗺️", "🌍", "☀️", "🌌", "🫧", "🪞", "🫠"];
@@ -53,7 +54,8 @@ export function createScene(canvas) {
   let floaters = [];
   let stars = [];
   let shake = 0;
-  let raf = 0;
+  let stopFrames = null;
+  let onscreen = true;
   let low = false;
   let skip = false;
   let last = performance.now();
@@ -287,10 +289,7 @@ export function createScene(canvas) {
   function frame(t) {
     // Low quality draws at half the frame rate.
     skip = low && !skip;
-    if (skip) {
-      raf = requestAnimationFrame(frame);
-      return;
-    }
+    if (skip) return;
     const dt = Math.min(0.1, (t - last) / 1000);
     last = t;
     time += dt;
@@ -353,19 +352,19 @@ export function createScene(canvas) {
       return f.t < 1.2;
     });
 
-    raf = requestAnimationFrame(frame);
   }
 
   function start() {
-    if (raf) return;
+    if (stopFrames) return;
     last = performance.now();
-    raf = requestAnimationFrame(frame);
+    stopFrames = onFrame(frame, { when: () => onscreen });
   }
   function stop() {
-    cancelAnimationFrame(raf);
-    raf = 0;
+    stopFrames?.();
+    stopFrames = null;
   }
   document.addEventListener("visibilitychange", () => (document.hidden || mode !== "animated" ? stop() : start()));
+  new IntersectionObserver(([e]) => (onscreen = e.isIntersecting)).observe(canvas);
   new ResizeObserver(resize).observe(canvas);
   resize();
   start();
@@ -399,7 +398,7 @@ export function createScene(canvas) {
       if (mode === "animated") start();
       else {
         stop();
-        if (mode === "paused") requestAnimationFrame(() => frame(performance.now()) || stop());
+        if (mode === "paused") requestAnimationFrame(() => frame(performance.now()));
       }
     },
     setQuality(q) {

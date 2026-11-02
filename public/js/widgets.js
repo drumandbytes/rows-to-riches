@@ -112,6 +112,7 @@ export function sparks(x, y, hue, n = 14) {
   for (let k = 0; k < n; k++) {
     const el = document.createElement("i");
     el.className = "spark";
+    el.setAttribute("aria-hidden", "true");
     const a = Math.random() * Math.PI * 2;
     const d = 30 + Math.random() * 60;
     el.style.cssText = `left:${x}px;top:${y}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 20}px;--h:${hue + Math.random() * 40}`;
@@ -125,6 +126,7 @@ export function confetti(n = 36) {
   for (let k = 0; k < n; k++) {
     const el = document.createElement("i");
     el.className = "confetti";
+    el.setAttribute("aria-hidden", "true");
     el.style.cssText = `left:${Math.random() * 100}vw;--h:${Math.random() * 360};--r:${Math.random() * 720 - 360}deg;--d:${1.6 + Math.random() * 1.6}s;--x:${(Math.random() - 0.5) * 120}px`;
     document.body.append(el);
     setTimeout(() => el.remove(), 3400);
