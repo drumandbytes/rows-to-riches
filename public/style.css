@@ -90,6 +90,18 @@ h3 { font: 600 12px var(--mono); margin: 22px 0 8px; text-transform: uppercase; 
 a { color: var(--accent); }
 
 /* ---- header ---- */
+/* iOS 26 blurs the top ~40pt of an installed app unless a full-width fixed box sits at the edge and paints one
+   solid colour. The sticky header alone doesn't count while it's unstuck, so cover the status bar with this. */
+.status-edge {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  background: var(--bg);
+  z-index: 6;
+  pointer-events: none;
+}
 .top {
   position: sticky;
   top: 0;
