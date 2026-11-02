@@ -188,6 +188,10 @@
         <div class="pane" id="pane-stats" role="tabpanel" hidden>
           <div class="pane-head"><h2><span class="cm">In [1]:</span> Stats</h2></div>
           <dl class="stats" id="stats"></dl>
+          <h3>Run history</h3>
+          <canvas id="hist" class="hist" role="img" aria-label="Production over time"></canvas>
+          <p class="muted" id="hist-note">Production every few minutes, with a dashed line at each prestige. It builds up as you play.</p>
+          <ol class="runs" id="runs"></ol>
           <section id="lb" hidden>
             <h3>Leaderboards</h3>
             <label class="toggle"><input type="checkbox" id="lb-join" /> Join the leaderboards</label>

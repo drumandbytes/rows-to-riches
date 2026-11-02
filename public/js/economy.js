@@ -612,6 +612,8 @@ export function newState(now = Date.now()) {
     // Carried over for free by retention rewards; the server subtracts these from "spent".
     kept: { upg: [], cols: 0, prod: [] }, insCarry: ZERO, eqCarry: ZERO, xenoCarry: ZERO, xenoFree: ZERO,
     stats: { upgBought: 0, colsBought: 0, sold: 0, bestSell: 0, momentumSecs: 0, rescues: 0, phishPassed: 0, okrs: 0, quarters: 0, requests: 0, meetings: 0, maxMomentum: 0, bestRate: ZERO, bestClick: ZERO, bestCombo: 0, fastestReplat: 0, fastestAcq: 0, longestAway: 0, onlineMs: 0, runClicks: 0, companyStartedAt: now, firstCompletionMs: 0 },
+    // Stats → Run history: log10 of the production rate every few minutes, and one entry per prestige.
+    hist: { pts: [], runs: [] },
     ach: [], clicks: 0, incidents: 0, replat: 0, acq: 0, contact: 0, bangs: 0, completions: 0,
     // playthroughStartedAt: since the last Catalog Everything (or the start); firstCompletionMs
     // in stats is the time of the very first playthrough, the one that counts.
@@ -707,6 +709,12 @@ export function normalize(raw, now = Date.now()) {
         }
       : null;
   s.company = cleanCompany(raw.company);
+  const hist = raw.hist ?? {};
+  const fin = (x) => Number.isFinite(x) && x >= 0;
+  s.hist = {
+    pts: (Array.isArray(hist.pts) ? hist.pts : []).filter((p) => Array.isArray(p) && fin(p[0]) && fin(p[1])).slice(-HIST_MAX_PTS).map((p) => [Math.floor(p[0]), Math.round(Math.min(p[1], 1e16) * 100) / 100]),
+    runs: (Array.isArray(hist.runs) ? hist.runs : []).filter((r) => r && RUN_LAYERS.includes(r.layer) && fin(r.at) && fin(r.ms)).slice(-HIST_MAX_RUNS).map((r) => ({ layer: r.layer, at: Math.floor(r.at), ms: Math.floor(r.ms) })),
+  };
   const secretIds = new Set(["clickme", ...SECRETS.map(([id]) => id)]);
   s.secrets = [...new Set(Array.isArray(raw.secrets) ? raw.secrets : [])].filter((id) => secretIds.has(id));
   // Inbox: [{id, at, read}] (flavor only; ids are validated by the client's INBOX list).
@@ -1122,8 +1130,9 @@ export function markCompletion(s, now = Date.now()) {
 }
 export function catalogEverything(s, now = Date.now()) {
   if (!canCatalog(s)) return false;
+  logRun(s, "catalog", now - s.playthroughStartedAt, now);
   const keep = {
-    ach: s.ach, secrets: s.secrets, stats: { ...s.stats, companyStartedAt: now }, company: s.company, inbox: s.inbox,
+    hist: s.hist, ach: s.ach, secrets: s.secrets, stats: { ...s.stats, companyStartedAt: now }, company: s.company, inbox: s.inbox,
     settings: { ...s.settings, catalogSeen: false, env: undefined, finaleSeen: false },
     everRows: s.everRows, startedAt: s.startedAt, clicks: s.clicks, incidents: s.incidents, completions: s.completions + 1,
     modified: s.modified, lb: s.lb,
@@ -1202,10 +1211,32 @@ function resetCivilization(s, now, keepBoard = false) {
   resetCompany(s, now, { keepArch: vault, keepRadar: vault });
 }
 
+// ---- run history ----------------------------------------------------------------
+const HIST_EVERY_MS = 5 * 60_000;
+const HIST_MAX_PTS = 240;
+const HIST_MAX_RUNS = 60;
+export const RUN_LAYERS = ["replat", "acq", "contact", "bang", "catalog"];
+
+/** Adds a point to the production curve every few minutes. Older points thin out instead of being dropped. */
+export function sampleHistory(s, now = Date.now()) {
+  const pts = s.hist.pts;
+  if (pts.length && now - pts.at(-1)[0] < HIST_EVERY_MS) return;
+  pts.push([now, Math.round(rate(s, now).add(1).log10() * 100) / 100]);
+  if (pts.length > HIST_MAX_PTS) {
+    const half = pts.length >> 1;
+    s.hist.pts = [...pts.slice(0, half).filter((_, i) => i % 2 === 0), ...pts.slice(half)];
+  }
+}
+function logRun(s, layer, ms, now) {
+  s.hist.runs.push({ layer, at: now, ms: Math.max(0, Math.round(ms)) });
+  if (s.hist.runs.length > HIST_MAX_RUNS) s.hist.runs.shift();
+}
+
 export function replatform(s, now = Date.now()) {
   const gain = pendingInsights(s);
   if (gain.lt(1)) return ZERO;
   const took = now - s.runStartedAt;
+  logRun(s, "replat", took, now);
   if (took > 0 && (!s.stats.fastestReplat || took < s.stats.fastestReplat)) s.stats.fastestReplat = took;
   s.ins = s.ins.add(gain);
   s.replat += 1;
@@ -1240,6 +1271,7 @@ export function acquire(s, now = Date.now()) {
   const gain = pendingEquity(s);
   if (gain.lt(1) || !gateOpen(s, "acq")) return ZERO;
   const took = now - s.stats.companyStartedAt;
+  logRun(s, "acq", took, now);
   if (took > 0 && (!s.stats.fastestAcq || took < s.stats.fastestAcq)) s.stats.fastestAcq = took;
   s.stats.companyStartedAt = now;
   if (!s.board.memory && !permanent(s, "replat")) dropRewards(s, ["replat"]);
@@ -1253,6 +1285,7 @@ export function firstContact(s, now = Date.now()) {
   const gain = pendingXeno(s);
   if (gain.lt(1) || !gateOpen(s, "contact")) return ZERO;
   dropRewards(s, [...(s.board.memory || permanent(s, "replat") ? [] : ["replat"]), ...(s.xeno_tech.archive || permanent(s, "acq") ? [] : ["acq"])]);
+  logRun(s, "contact", now - s.stats.companyStartedAt, now);
   s.stats.companyStartedAt = now;
   s.xeno = s.xeno.add(gain);
   s.contact += 1;
@@ -1266,6 +1299,7 @@ export function bigBang(s, now = Date.now()) {
   const keepXeno = won(s, "keepxeno") || permanent(s, "contact");
   const keepBoard = won(s, "keepboard") || permanent(s, "acq");
   dropRewards(s, ["replat", "acq", "contact"].filter((l) => !permanent(s, l)));
+  logRun(s, "bang", now - s.stats.companyStartedAt, now);
   s.stats.companyStartedAt = now;
   s.axioms += gain;
   s.bangs += 1;

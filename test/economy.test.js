@@ -429,3 +429,24 @@ test("Catalog Everything wipes the playthrough for a stronger New Game+", () => 
   assert.equal(E.globalMultiplier(s) / before, E.NG_PROD);
   assert.ok(E.ACH_BY_ID.catalog_1.test(s));
 });
+
+test("run history samples every few minutes, thins old points, logs prestiges and survives a save", () => {
+  const s = E.newState(T0);
+  E.sampleHistory(s, T0);
+  E.sampleHistory(s, T0 + 60e3); // too soon
+  assert.equal(s.hist.pts.length, 1);
+  for (let k = 1; k <= 400; k++) E.sampleHistory(s, T0 + k * 5 * 60e3);
+  assert.ok(s.hist.pts.length <= 240, `${s.hist.pts.length} points`);
+  assert.ok(s.hist.pts.at(-1)[0] > s.hist.pts[0][0]);
+  s.hist.pts.forEach((p, i) => i && assert.ok(p[0] > s.hist.pts[i - 1][0], "time stays in order"));
+
+  E.earn(s, 1e12);
+  assert.ok(E.replatform(s, T0 + 3600e3).gt(0));
+  assert.deepEqual(s.hist.runs.map((r) => [r.layer, r.ms]), [["replat", 3600e3]]);
+  const back = E.normalize(JSON.parse(JSON.stringify(s)));
+  assert.deepEqual(back.hist, s.hist);
+  // Junk is dropped.
+  const junk = E.normalize({ hist: { pts: [[1, 2], "x", [NaN, 1], [5, -3]], runs: [{ layer: "nope", at: 1, ms: 1 }, { layer: "bang", at: 2, ms: 3 }] } });
+  assert.deepEqual(junk.hist, { pts: [[1, 2]], runs: [{ layer: "bang", at: 2, ms: 3 }] });
+  assert.deepEqual(E.normalize({}).hist, { pts: [], runs: [] });
+});
