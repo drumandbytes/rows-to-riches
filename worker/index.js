@@ -1,12 +1,10 @@
-import { implausible, normalize, ACHIEVEMENTS, big } from "../public/js/economy.js";
+import { normalize, ACHIEVEMENTS, big } from "../public/js/economy.js";
 import { validEndpoint, publicKey, sendPush } from "./push.js";
 import { handleTicket, handleCheckpoint, handleBoard, handleRemove, checkNameSpace } from "./leaderboard.js";
 
 const SESSION_IDLE_MS = 180 * 86_400_000;
 const MIN_SAVE_INTERVAL_MS = 10_000;
 const MAX_SAVE_BYTES = 64 * 1024;
-// Floor for a first upload's claimed start time: nobody has played longer than the game existed.
-const LAUNCH_MS = Date.UTC(2026, 9, 30);
 
 const json = (data, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 const isEmail = (v) => typeof v === "string" && v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -134,13 +132,8 @@ async function handlePutSave(request, user, env) {
   if (stored && now - stored.updatedAt < MIN_SAVE_INTERVAL_MS && !body.force) return json({ error: "Saving too often." }, 429);
   if (stored && next.everRows.lt(big(stored.save.everRows ?? stored.save.allRows ?? 0)) && !body.force) return json({ error: "Cloud save is ahead.", save: stored.save }, 409);
 
-  // Two ways a save can be plausible: grown from the stored one since its upload, or grown
-  // from nothing since the save says it started (another device may have been far ahead
-  // all along, e.g. offline play on both).
-  const sinceStart = (now - Math.max(LAUNCH_MS, Math.min(next.startedAt, now))) / 1000;
-  let reason = implausible(null, next, sinceStart);
-  if (reason && stored) reason = implausible(normalize(stored.save, now), next, (now - stored.updatedAt) / 1000) && reason;
-  if (reason) return json({ error: reason }, 422);
+  // No plausibility check here: a cloud save only ever belongs to its owner, and the leaderboard
+  // validates the save it is given on its own, so a doctored one gains nothing from being synced.
 
   await env.DB.prepare(
     "INSERT INTO saves (user_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",

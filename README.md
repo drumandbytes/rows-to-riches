@@ -52,7 +52,7 @@ The game is local-first: it saves in your browser every few seconds. Nothing ide
 - **Leaderboards (optional)**: fastest Catalog Everything, most rows, most Big Bangs and most Catalogs. You appear under a generated name like "Idempotent Grumpy Walrus" and can remove yourself any time.
 - **Export / import** moves a save by hand.
 
-Saves are encoded and sealed, so a save edited by hand still plays but is marked as modified and never ranked. The server re-checks every uploaded save against the game's own rules: currencies must match the rows earned, and rows can't grow faster than the save could produce them in real time. Leaderboard times come from the server's clock, from a ticket signed when the game starts.
+Saves are encoded and sealed, so a save edited by hand still plays but is marked as modified and never ranked. The leaderboard re-checks every save it ranks against the game's own rules (cloud saves are stored as sent, since they only ever belong to their owner): currencies must match the rows earned, and rows can't grow faster than the save could produce them in real time. Leaderboard times come from the server's clock, from a ticket signed when the game starts.
 
 ## How it's built
 
