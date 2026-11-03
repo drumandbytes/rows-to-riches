@@ -332,7 +332,7 @@ export const CHALLENGES = [
     restriction: "Data Sources cost ×10 and no columns.", reward: "Upgrades are kept when you re-platform." },
   { id: "keepcols", req: (s) => s.chalWins >= 2, reqText: "Complete 2 challenges.", layer: "replat", name: "Schema-on-Write", goals: [2e5, 4e23, 1.5e35, 6e38], rule: { maxTier: 6 },
     restriction: "Only the first 6 Data Sources.", reward: "Columns are kept when you re-platform." },
-  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [1.5e3, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10] },
+  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [250, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10] },
     restriction: "No INSERT, and production ÷10. A department of interns keeps the LTS branch alive.", reward: "10% of every Data Source is kept when you re-platform." },
   // layer "acq": unlocked after the first Acquisition
   { id: "takeover", req: (s) => s.acq >= 1, reqText: "Get acquired once.", layer: "acq", name: "Hostile Takeover", goals: [3e24, 1.5e40, 8e46], rule: { prodDiv: 1e4 },
@@ -389,20 +389,34 @@ export function parseTier(key) {
 export const tierGoal = (c, t) => c.goals[t - 1];
 
 // The goals are fixed numbers, but the strength you bring isn't: Insights, challenge rewards, Axioms and
-// New Game+ keep growing, so late on a goal tuned for an hour of play falls in seconds. A goal therefore
-// grows with the production multiplier you start the run with, beyond what its tier was tuned for
-// (log10 of that multiplier per unlock layer, measured with `PROBE=1 node tools/sim.js`), at about
-// 0.75 decades of goal per decade of multiplier: a run's rows grow a little slower than its multiplier.
-const GOAL_REF = { replat: 1, acq: 8, contact: 24, bang: 32 };
-const GOAL_SLOPE = 0.75;
+// New Game+ keep growing, so late on a goal tuned for an hour of play falls in seconds, while a goal that
+// grows too fast with strength stalls a whole run (a simulated player that scaled with the multiplier
+// alone failed every Acquisition challenge past 60 h). So a goal follows YOUR OWN last time on that tier:
+// finish in 2 minutes and next time the goal is higher, run out of time and it comes down, always
+// aiming for GOAL_TARGET_MS. `chalScale[key]` (log10 of the goal's change, down to -4) holds it; a tier you haven't
+// played starts from a mild guess based on the production multiplier you start with.
+const GOAL_TARGET_MS = 12 * 60e3;
+export const GOAL_TUNING = { ref: { replat: 1, acq: 8, contact: 24, bang: 32 }, slope: 0.4 }; // exported so the simulator can try other values
 /** log10 of how much a challenge's goal is raised for this save (0 until you outgrow the tier). */
 export function goalBoost(s, key) {
   const t = parseTier(key);
   if (!t) return 0;
+  if (s.chalScale?.[key] !== undefined) return s.chalScale[key];
   // The run as it would begin: no upgrades or columns, the tier's rule in force.
   const start = { ...s, chal: key, upg: [], cols: 0, kept: { upg: [], cols: 0, prod: [] }, buffs: [] };
   const m = globalMultiplier(start).mul(rule(start).prodDiv ?? 1).log10();
-  return Math.round(Math.max(0, GOAL_SLOPE * (m - GOAL_REF[t.layer])) * 100) / 100;
+  return Math.round(Math.max(0, GOAL_TUNING.slope * (m - GOAL_TUNING.ref[t.layer])) * 100) / 100;
+}
+/**
+ * After a run: what the next goal for this tier should be. Finished in `ms`: raise it towards the target time
+ * (rows grow roughly with time^1.3, damped). Timed out (ms = null): drop it to what you actually reached in
+ * the hour, minus 0.4 decades (about the 30-minute mark), so one failure is enough to bring it back in reach.
+ */
+function adaptGoal(s, key, ms, goal) {
+  const used = s.chalBoost ?? 0;
+  const short = ms === null ? Math.max(0, goal.log10() - s.runRows.max(1).log10()) : 0;
+  const next = ms === null ? used - short - 0.4 : used + Math.min(3, Math.max(-1, Math.log10(GOAL_TARGET_MS / Math.max(ms, 5000))));
+  s.chalScale[key] = Math.round(Math.min(400, Math.max(-4, next)) * 100) / 100;
 }
 /** The goal you face: the one fixed when the run started, or what it would be if you started now. */
 export function goalFor(s, c, t) {
@@ -629,7 +643,7 @@ export function newState(now = Date.now()) {
     modified: false,
     // Leaderboard: signed start ticket, opt-in and the generated name (worker/leaderboard.js).
     lb: { ticket: "", optIn: false, name: "", locked: false },
-    chal: null, chalBoost: 0, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
+    chal: null, chalBoost: 0, chalScale: {}, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
     momentum: 0,
     okr: null, // quarterly OKRs: { quarter, endsAt (online ms), items: [{ kind, label, base, target, done }] }
     inbox: [],
@@ -722,7 +736,9 @@ export function normalize(raw, now = Date.now()) {
   s.settings.autoSkip = (Array.isArray(s.settings.autoSkip) ? s.settings.autoSkip : []).filter((id) => PRODUCERS.some((p) => p.id === id));
   s.finale = !!s.finale;
   s.chal = parseTier(raw.chal) ? raw.chal : null;
-  s.chalBoost = s.chal && Number.isFinite(raw.chalBoost) ? Math.min(Math.max(raw.chalBoost, 0), 1e6) : 0;
+  s.chalBoost = s.chal && Number.isFinite(raw.chalBoost) ? Math.min(Math.max(raw.chalBoost, -4), 400) : 0;
+  s.chalScale = {};
+  for (const [k, v] of Object.entries(raw.chalScale && typeof raw.chalScale === "object" ? raw.chalScale : {})) if (parseTier(k) && Number.isFinite(v)) s.chalScale[k] = Math.round(Math.min(400, Math.max(-4, v)) * 100) / 100;
   s.chalWins = Math.floor(num(raw.chalWins));
   s.momentum = Math.min(1, num(raw.momentum));
   const okr = raw.okr;
@@ -1394,11 +1410,14 @@ export function checkChallenge(s, now = Date.now()) {
   const { challenge: c, tier } = t;
   const key = s.chal;
   const ms = challengeElapsed(s, now);
-  if (s.runRows.lt(goalFor(s, c, tier))) {
+  const goal = goalFor(s, c, tier);
+  if (s.runRows.lt(goal)) {
     if (ms <= CHALLENGE_LIMIT_MS) return null;
+    adaptGoal(s, key, null, goal);
     s.chal = null;
     return { challenge: c, tier, key, failed: true };
   }
+  adaptGoal(s, key, ms, goal);
   s.chal = null;
   if (!s.chalDone.includes(key)) {
     s.chalDone.push(key);
