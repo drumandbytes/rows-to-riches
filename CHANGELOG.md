@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.3](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.2...v0.7.3) (2026-11-03)
+
+
+### Bug Fixes
+
+* give every source row the same shape so the list lines up ([58841cd](https://github.com/drumandbytes/rows-to-riches/commit/58841cdb52a7bf5121ce092a57545bea560ab6d0))
+* judge currencies against the full multiplier set during a challenge, and relax the pace flag ([0d16a73](https://github.com/drumandbytes/rows-to-riches/commit/0d16a73e64bb9fbed3636edd3bd7c57136eb0a32))
+* skip the growth check in the rules-only validation ([fce98b4](https://github.com/drumandbytes/rows-to-riches/commit/fce98b4410c473c0660dfe709176dbe5aa40944f))
+* stop checking and announcing cloud saves; show no refusal messages to players ([fe77582](https://github.com/drumandbytes/rows-to-riches/commit/fe77582c3c212f6f0bb53e343f63facf869a389d))
+
 ## [0.7.2](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.1...v0.7.2) (2026-11-02)
 
 
