@@ -450,3 +450,29 @@ test("run history samples every few minutes, thins old points, logs prestiges an
   assert.deepEqual(junk.hist, { pts: [[1, 2]], runs: [{ layer: "bang", at: 2, ms: 3 }] });
   assert.deepEqual(E.normalize({}).hist, { pts: [], runs: [] });
 });
+
+test("a save is still plausible while a challenge switches the Tech Radar off", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e18);
+  E.replatform(s, T0);
+  s.radar = { literacy: 5 }; // +75% Insights while it's on
+  s.ins = s.ins.add(E.spentOnInsights(s));
+  s.insSpent = E.spentOnInsights(s);
+  E.earn(s, 1e18);
+  E.replatform(s, T0);
+  assert.equal(E.implausible(null, s, 1e15), null);
+  const c = E.CHALLENGES.find((x) => x.layer === "replat");
+  assert.ok(E.startChallenge(s, c.id, T0));
+  assert.equal(E.implausible(null, s, 1e15), null, "mid-challenge");
+});
+
+test("the rules-only check doesn't judge growth, so a freshly acquired company passes", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e40); // lifetime rows far beyond what the new company's rate could make in any finite time
+  s.rows = E.big(0);
+  s.runRows = E.big(0);
+  s.coRows = E.big(0);
+  s.civRows = E.big(0);
+  assert.match(E.implausible(null, s, 3600), /grew faster/, "with a time to measure against it is still caught");
+  assert.equal(E.implausible(null, s, Infinity), null);
+});
