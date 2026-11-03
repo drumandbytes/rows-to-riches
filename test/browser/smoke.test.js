@@ -103,3 +103,39 @@ test("the Settings tab's auto-buyer and company options work", { skip: !process.
   assert.equal(await page.locator("#opt-auto-sources").isChecked(), true);
   assert.deepEqual(errors, []);
 }));
+
+test("buttons that update every tick stay the same element, so a tap can't be lost mid-press", { skip: !process.env.BROWSER_SMOKE }, () => withBrowser(8798, async (browser) => {
+  // iOS drops a tap when the touched element is replaced between touch-down and touch-up.
+  const first = await browser.newPage();
+  await first.goto("http://localhost:8798/");
+  const save = await first.evaluate(async () => {
+    const E = await import("/js/economy.js");
+    const { encodeSave } = await import("/js/seal.js");
+    const s = E.newState();
+    E.earn(s, 2e8); // just enough company rows for a first re-platform, so the next ticks move the pending Insights
+    for (let i = 0; i < 10; i++) s.prod[i] = 300; // production big enough that the pending Insights move every tick
+    s.settings.buy = "max"; // the label ("Buy 12") changes as rows grow
+    return encodeSave(s);
+  });
+  await first.close();
+  const page = await browser.newPage();
+  await page.addInitScript((text) => {
+    localStorage.setItem("r2r.save", text);
+    localStorage.setItem("r2r.sealed", "1");
+    localStorage.setItem("r2r.prefs", JSON.stringify({ tourDone: true }));
+  }, save);
+  await page.goto("http://localhost:8798/");
+  const tag = (sel) => page.evaluate((q) => { const el = document.querySelector(q); el.__kept = true; return el.textContent; }, sel);
+  const kept = (sel) => page.evaluate((q) => document.querySelector(q)?.__kept === true, sel);
+  const buy = '#sources li[data-i="0"] .buy';
+  await tag(buy);
+  await page.click('.tabs button[data-tab="prestige"]');
+  const card = 'button[data-prestige="replat"]';
+  const cardBefore = await page.evaluate(() => document.querySelector("#prestige-card").textContent);
+  await page.evaluate((q) => (document.querySelector(q).__kept = true), card);
+  await page.waitForTimeout(1500); // several game ticks while rows grow
+  assert.ok(await kept(card), "the Re-platform button is the same element after re-rendering");
+  assert.notEqual(await page.evaluate(() => document.querySelector("#prestige-card").textContent), cardBefore, "the card did re-render");
+  await page.click('.tabs button[data-tab="sources"]');
+  assert.ok(await kept(buy), "the Buy button is the same element after re-rendering");
+}));

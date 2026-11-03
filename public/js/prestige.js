@@ -1,6 +1,8 @@
 // The prestige layers: Re-platform, Acquisition, First Contact and Big Bang, their shops, the
 // challenges and the challenge banner. The game loop's auto-prestige and the per-tick tab dot use it too.
 
+import { morph } from "./morph.js";
+
 export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, audio, track, afterPurchase, render, setHtml, ROMAN, getTab, fmtDuration, prefs, setPref }) {
   let prestigeTab = "replat";
 
@@ -149,7 +151,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
       (next ? `<button type="button" disabled title="${esc(next.teaser)}">🔒 ???</button>` : "");
     if ($("prestige-seg").dataset.html !== seg) {
       $("prestige-seg").dataset.html = seg;
-      $("prestige-seg").innerHTML = seg;
+      morph($("prestige-seg"), seg);
     }
     if (prestigeTab === "chal") {
       setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${state().chalDone.length}</b> active · ${fmt(state().chalWins)} all-time</div></div>`);
@@ -172,7 +174,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
       <button class="big ${can ? "affordable" : ""}" type="button" data-prestige="${l.id}" ${can ? "" : "disabled"}>${l.verb}</button></div>`;
     if ($("prestige-card").dataset.html !== card) {
       $("prestige-card").dataset.html = card;
-      $("prestige-card").innerHTML = card;
+      morph($("prestige-card"), card);
     }
     const shops =
       l.shops.map(renderShop).join("") ||
@@ -183,7 +185,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
       }).join("")}</ul>${E.canCatalog(state()) ? `<div class="replat-card catalog"><div class="num">🗂️ Catalog Everything</div><div class="muted">The real end. Everything resets, Axioms and Big Bangs included, and you start a New Game+ ×${E.NG_PROD} stronger (production) and ×${E.NG_GAIN} faster (prestige gains) per completion. Achievements, the Data Catalog and lifetime stats stay. Completions so far: ${state().completions}.</div><button class="big affordable" type="button" id="catalog-btn">Catalog Everything</button></div>` : ""}`;
     if ($("prestige-shops").dataset.html !== shops) {
       $("prestige-shops").dataset.html = shops;
-      $("prestige-shops").innerHTML = shops;
+      morph($("prestige-shops"), shops);
     }
   }
 
