@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.6](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.5...v0.7.6) (2026-11-03)
+
+
+### Bug Fixes
+
+* fixed challenge goals for everyone (a fair leaderboard); Long-Term Support is winnable with the interns-only kit; refresh the pace table ([ca58ac3](https://github.com/drumandbytes/rows-to-riches/commit/ca58ac34bddc2cd2c03ab4828ee29d93b17ac4eb))
+
 ## [0.7.5](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.4...v0.7.5) (2026-11-03)
 
 
