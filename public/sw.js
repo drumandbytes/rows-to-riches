@@ -1,11 +1,16 @@
-// Service worker: makes the game installable and playable offline. The game is local-first
+// Service worker: makes the game installable, playable offline, and quick to open. The game is local-first
 // already, so caching the app shell is all it takes.
 //
-// Network-first for everything same-origin: online you always get the latest deploy (the
-// server sends no-cache anyway); offline the last good copy is served. /api/* is never
-// cached, and cross-origin requests (fonts, analytics) are left to the browser.
+// Cache-first from a cache named for the release: reopening the app answers from the cache and never waits
+// on the network (a network-first worker made every launch cost as much as a first visit: all the round
+// trips of the module chain, every time). A release changes this file (the version below), which is what
+// makes the browser install the new shell in the background and the page offer a reload (main.js). /api/*
+// and cross-origin requests are left to the browser, and so are requests that ask for no-store (the changelog).
+// On localhost (dev, tests; 127.0.0.1 behaves like production) it always uses the network, so edits never meet a stale copy.
 
-const CACHE = "r2r-shell-v6";
+const VERSION = "0.7.6"; // x-release-please-version
+const CACHE = `r2r-shell-${VERSION}`;
+const DEV = self.location.hostname === "localhost";
 const SHELL = [
   "/",
   "/style.css",
@@ -33,42 +38,21 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (DEV || req.method !== "GET" || req.cache === "no-store" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        // Only cache clean URLs, so one page never ends up cached under many query strings.
-        if (res.ok && !url.search) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-        }
-        return res;
-      })
-      .catch(async () => (await caches.match(req, { ignoreSearch: true })) ?? (req.mode === "navigate" ? caches.match("/") : Response.error())),
-  );
-});
-
-// Scheduled notifications (opt-in). Pushes have no payload: the page left the plan in Cache
-// Storage when it was hidden. Everything due goes into one notification, and the shared tag
-// makes a later one replace it rather than stack.
-self.addEventListener("push", (event) => {
-  event.waitUntil(
-    (async () => {
-      const cache = await caches.open("r2r-push");
-      const res = await cache.match("/push-plan");
-      const plan = res ? await res.json() : [];
-      const due = plan.filter((e) => e.at <= Date.now() + 60_000);
-      // Shown ones leave the plan, so a later push (the server spaces them out) doesn't repeat them.
-      await cache.put("/push-plan", Response.json(plan.filter((e) => !due.includes(e))));
-      const body = due.length ? due.map((e) => e.body).join("\n") : "Your pipelines miss you.";
-      await self.registration.showNotification("Rows to Riches", { body, icon: "/icon-192.png", tag: "r2r" });
-    })(),
-  );
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  event.waitUntil(
-    self.clients.matchAll({ type: "window" }).then((list) => list.find((c) => new URL(c.url).origin === self.location.origin)?.focus() ?? self.clients.openWindow("/")),
+    caches.match(req, { ignoreSearch: true }).then(
+      (hit) =>
+        hit ??
+        fetch(req)
+          .then((res) => {
+            // Only cache clean URLs, so one page never ends up cached under many query strings.
+            if (res.ok && !url.search) {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(req, copy));
+            }
+            return res;
+          })
+          .catch(() => (req.mode === "navigate" ? caches.match("/") : Response.error())),
+    ),
   );
 });

@@ -139,3 +139,25 @@ test("buttons that update every tick stay the same element, so a tap can't be lo
   await page.click('.tabs button[data-tab="sources"]');
   assert.ok(await kept(buy), "the Buy button is the same element after re-rendering");
 }));
+
+// 127.0.0.1 behaves like production for the service worker (localhost always uses the network, so dev edits are never stale).
+test("the app reopens from the cache with no network at all", { skip: !process.env.BROWSER_SMOKE || process.env.ENGINE === "webkit" }, () => withBrowser(8800, async (browser, server) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem("r2r.prefs", JSON.stringify({ tourDone: true })));
+  await page.goto("http://127.0.0.1:8800/");
+  await page.waitForSelector("#sources li");
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(async () => (await caches.keys()).some((k) => k.startsWith("r2r-shell-")) && (await (await caches.open((await caches.keys())[0])).keys()).length > 20);
+  const asked = [];
+  server.on("request", (req) => asked.push(req.url));
+  await page.reload();
+  await page.waitForSelector("#sources li");
+  await page.waitForTimeout(300);
+  assert.deepEqual(asked.filter((u) => /\/js\/|\.css|\.woff2/.test(u)), [], "a reopen asks the server for none of the shell");
+  await context.setOffline(true);
+  await page.reload();
+  await page.waitForSelector("#sources li");
+  assert.match(await page.textContent("#rows"), /^\d/);
+  assert.match(await page.evaluate(async () => (await caches.keys()).join()), /^r2r-shell-\d+\.\d+\.\d+$/);
+}));

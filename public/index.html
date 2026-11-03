@@ -81,6 +81,29 @@
     <link rel="preload" href="/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/style.css" />
+    <!-- main.js's static imports, fetched in parallel instead of one level at a time (test/offline.test.js keeps this list in step) -->
+    <link rel="modulepreload" href="/js/economy.js" />
+    <link rel="modulepreload" href="/js/big.js" />
+    <link rel="modulepreload" href="/js/lib/break_infinity.js" />
+    <link rel="modulepreload" href="/js/format.js" />
+    <link rel="modulepreload" href="/js/prefs.js" />
+    <link rel="modulepreload" href="/js/audio.js" />
+    <link rel="modulepreload" href="/js/music.js" />
+    <link rel="modulepreload" href="/js/flavor.js" />
+    <link rel="modulepreload" href="/js/scene.js" />
+    <link rel="modulepreload" href="/js/frames.js" />
+    <link rel="modulepreload" href="/js/morph.js" />
+    <link rel="modulepreload" href="/js/widgets.js" />
+    <link rel="modulepreload" href="/js/sync.js" />
+    <link rel="modulepreload" href="/js/erd.js" />
+    <link rel="modulepreload" href="/js/active.js" />
+    <link rel="modulepreload" href="/js/prestige.js" />
+    <link rel="modulepreload" href="/js/analytics.js" />
+    <link rel="modulepreload" href="/js/seal.js" />
+    <link rel="modulepreload" href="/js/b64.js" />
+    <link rel="modulepreload" href="/js/leaderboard.js" />
+    <link rel="modulepreload" href="/js/names.js" />
+    <link rel="modulepreload" href="/js/push.js" />
     <script type="module" src="/js/main.js"></script>
   </head>
   <body>
