@@ -31,7 +31,7 @@ Data engineering idle game at rowstoriches.drumandbytes.dev. See README.md for t
 npm run dev              # wrangler dev, local D1
 npm run db:migrate:local
 npm test
-npm run test:a11y        # axe (WCAG 2.2 AA) + keyboard checks in a real browser (CHROMIUM=1 locally); CI runs it too
+npm run test:a11y        # axe (WCAG 2.2 AA) + keyboard checks in a real browser (CHROMIUM=1 locally); CI runs it too, and the browser tests also run on WebKit in CI (`ENGINE=webkit`, after `npx playwright-core install webkit`)
 npm run test:browser     # smoke tests: play, incidents, re-platform + challenges
 npm run test:sweep       # clicks every control on every screen at four game stages, fails on any page error (~30 s)
 ```
