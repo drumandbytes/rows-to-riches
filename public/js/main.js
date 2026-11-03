@@ -5,6 +5,7 @@ import * as audio from "./audio.js";
 import { TICKER, OFFLINE_JOKES, FINALE, INBOX } from "./flavor.js";
 import { createScene, producerHue } from "./scene.js";
 import { onFrame, setFrameCap } from "./frames.js";
+import { morph } from "./morph.js";
 import { createQueryLog, createSparkline, sparks, banner, confetti } from "./widgets.js";
 import * as sync from "./sync.js";
 import { renderErd, erdKey } from "./erd.js";
@@ -291,7 +292,7 @@ function setHtml(id, html) {
   const el = $(id);
   if (el.dataset.html === html) return;
   el.dataset.html = html;
-  el.innerHTML = html;
+  morph(el, html);
 }
 
 const ROMAN = ["", "I", "II", "III", "IV"];
@@ -709,13 +710,13 @@ function updateSources() {
     const btn = li.querySelector(".buy");
     if (selling) {
       const html = n ? `Sell ${n}<small>+${fmt(E.sellValue(S, i, n))}</small>` : `Sell<small>${owned ? "starter units" : "none"}</small>`;
-      if (btn.innerHTML !== html) btn.innerHTML = html;
+      morph(btn, html);
       btn.disabled = !n;
       li.classList.remove("affordable");
       continue;
     }
     const html = `Buy ${n}<small>${fmt(cost)}</small>`;
-    if (btn.innerHTML !== html) btn.innerHTML = html;
+    morph(btn, html);
     btn.disabled = cost.gt(S.rows);
     li.classList.toggle("affordable", cost.lte(S.rows));
   }
@@ -1461,7 +1462,7 @@ document.addEventListener("change", (e) => {
 rotateTicker();
 shownRows = S.rows;
 onFrame(animateCounter);
-setInterval(loop, 200);
+setInterval(loop, 100);
 setInterval(() => spark.sample(E.rate(S, Date.now())), 1000);
 setInterval(autoBuy, 1000);
 setInterval(rotateTicker, 9000);
