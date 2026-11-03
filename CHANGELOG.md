@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.5](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.4...v0.7.5) (2026-11-03)
+
+
+### Bug Fixes
+
+* challenge goals follow your own last time, keep the interns-only kit winnable, refresh the pace table ([6e553f2](https://github.com/drumandbytes/rows-to-riches/commit/6e553f261494aa8557a31abe6f61f56844d49ac7))
+
 ## [0.7.4](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.3...v0.7.4) (2026-11-03)
 
 
