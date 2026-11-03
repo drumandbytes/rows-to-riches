@@ -393,7 +393,7 @@ export const tierGoal = (c, t) => c.goals[t - 1];
 // grows with the production multiplier you start the run with, beyond what its tier was tuned for
 // (log10 of that multiplier per unlock layer, measured with `PROBE=1 node tools/sim.js`), at about
 // 0.75 decades of goal per decade of multiplier: a run's rows grow a little slower than its multiplier.
-const GOAL_REF = { replat: 1, acq: 10, contact: 24, bang: 32 };
+const GOAL_REF = { replat: 1, acq: 8, contact: 24, bang: 32 };
 const GOAL_SLOPE = 0.75;
 /** log10 of how much a challenge's goal is raised for this save (0 until you outgrow the tier). */
 export function goalBoost(s, key) {
