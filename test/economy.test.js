@@ -374,7 +374,7 @@ test("no-INSERT challenges start with a free starter kit the server accepts", ()
   s.incidents = 10;
   s.replat = 2;
   assert.ok(E.startChallenge(s, "friday", T0));
-  assert.ok(s.prod[0] >= 10 && s.prod[1] >= 5);
+  assert.ok(s.prod[0] >= 10 && s.prod[1] === 0, "a department of interns, nothing else");
   // The kit is free: owning it with zero rows this run isn't "spent more than earned".
   const reason = E.implausible(null, E.normalize(JSON.parse(JSON.stringify(s))), 3600);
   assert.ok(reason === null || /faster than possible/.test(reason), reason);
@@ -475,4 +475,59 @@ test("the rules-only check doesn't judge growth, so a freshly acquired company p
   s.civRows = E.big(0);
   assert.match(E.implausible(null, s, 3600), /grew faster/, "with a time to measure against it is still caught");
   assert.equal(E.implausible(null, s, Infinity), null);
+});
+
+test("a challenge's goal grows once you outgrow its tier, and is fixed when the run starts", () => {
+  const fresh = E.newState(T0);
+  const c = E.CHALLENGE_BY_ID.takeover; // an Acquisition challenge
+  assert.ok(E.goalFor(fresh, c, 1).eq(E.tierGoal(c, 1)), "a fresh save faces the base goal");
+  const strong = E.newState(T0);
+  strong.acq = 1;
+  strong.completions = 60; // New Game+ multiplies production every time
+  const boosted = E.goalFor(strong, c, 1);
+  assert.ok(boosted.gt(E.big(E.tierGoal(c, 1)).mul(1e3)), "a much stronger save faces a much bigger goal");
+  assert.ok(E.startChallenge(strong, "takeover", T0));
+  assert.ok(strong.chalBoost > 0);
+  const fixed = E.goalFor(strong, c, 1);
+  strong.completions += 5; // growing stronger mid-run doesn't move the goalposts
+  assert.ok(E.goalFor(strong, c, 1).eq(fixed));
+  // the boost survives a save, and a save claiming a huge one is clamped
+  const back = E.normalize(JSON.parse(JSON.stringify(strong)));
+  assert.equal(back.chalBoost, strong.chalBoost);
+  assert.equal(E.normalize({ chal: "takeover", chalBoost: 1e99 }).chalBoost, 1e6);
+});
+
+test("inside a challenge, boosts are capped and bonus rows are not granted", () => {
+  const s = E.newState(T0);
+  s.prod[0] = 100;
+  const plain = E.rate(s, T0);
+  s.buffs = [{ kind: "prod", mult: 77, until: T0 + 1e6, name: "Abduction" }];
+  assert.ok(E.rate(s, T0).div(plain).gt(70), "uncapped outside a challenge");
+  assert.ok(E.bonusRows(s, 1000).gt(0));
+  E.earn(s, 1e12);
+  assert.ok(E.replatform(s, T0).gt(0));
+  s.replat = 2; // Legacy Migration's requirement
+  assert.ok(E.startChallenge(s, "legacy", T0));
+  s.buffs = [{ kind: "prod", mult: 77, until: T0 + 1e6, name: "Abduction" }];
+  s.prod[0] = 100;
+  const capped = E.rate(s, T0).div(E.rate({ ...s, buffs: [] }, T0)).toNumber();
+  assert.ok(capped <= 3 + 1e-9, `capped at ×3, got ×${capped}`);
+  const before = s.rows;
+  assert.ok(E.bonusRows(s, 1e9).eq(0));
+  assert.ok(s.rows.eq(before));
+  assert.ok(!E.incidentsFor(s).some((x) => x.lump), "no backfill incidents mid-challenge");
+});
+
+test("click upgrades aren't offered in a challenge without INSERT", () => {
+  const s = E.newState(T0);
+  E.earn(s, 1e9);
+  const click = E.UPGRADES.find((u) => u.kind === "click");
+  assert.ok(E.upgradeUnlocked(s, click));
+  E.earn(s, 1e30);
+  E.replatform(s, T0);
+  s.incidents = 10;
+  assert.ok(E.startChallenge(s, "friday", T0));
+  E.earn(s, 1e9);
+  assert.ok(!E.upgradeUnlocked(s, click));
+  assert.ok(!E.buyUpgrade(s, click.id));
 });

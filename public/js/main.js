@@ -553,7 +553,7 @@ function checkEnvironment(env) {
   S.settings.env = env.id;
   // No fanfare for the starting environment or for saves loaded mid-game.
   if (first || env.at === 0) return;
-  banner(env.name, env.desc);
+  if (prefs.toasts !== "off") banner(env.name, env.desc);
   audio.sfx("promote");
   scene.shake();
 }

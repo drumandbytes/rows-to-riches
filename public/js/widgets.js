@@ -134,14 +134,22 @@ export function confetti(n = 36) {
   }
 }
 
+/** A new environment: a small card under the header that blocks nothing; click to dismiss, or it fades. */
 export function banner(title, sub) {
+  document.querySelector(".banner")?.remove();
   const el = document.createElement("div");
   el.className = "banner";
-  el.innerHTML = `<div class="banner-in"><small>git push origin</small><b>${title}</b><span>${sub}</span></div>`;
+  el.setAttribute("role", "status");
+  el.title = "Click to dismiss";
+  el.innerHTML = `<small>git push origin</small><b>${title}</b><span>${sub}</span>`;
+  const close = () => {
+    el.classList.add("out");
+    setTimeout(() => el.remove(), 400);
+  };
+  el.addEventListener("click", close);
   document.body.append(el);
-  confetti();
-  setTimeout(() => el.classList.add("out"), 2600);
-  setTimeout(() => el.remove(), 3200);
+  confetti(12);
+  setTimeout(close, 5000);
 }
 
 const RUN_COLORS = { replat: "#e0a84a", acq: "#6aab73", contact: "#b07cd8", bang: "#d9574f", catalog: "#e3e5e8" };

@@ -160,7 +160,7 @@ export function createActive(ctx) {
       apply(s, won ? win : lose, name);
       return won ? "It worked out." : "It did not work out.";
     }
-    if (fx.rows > 0) E.earn(s, E.baseRate(s).mul(fx.rows).add(13));
+    if (fx.rows > 0) E.bonusRows(s, E.baseRate(s).mul(fx.rows).add(13));
     if (fx.rows < 0) s.rows = s.rows.mul(1 + fx.rows);
     if (fx.prod) buff(s, "prod", fx.prod[0], fx.prod[1], name);
     if (fx.click) buff(s, "click", fx.click[0], fx.click[1], `${name} (INSERT)`);

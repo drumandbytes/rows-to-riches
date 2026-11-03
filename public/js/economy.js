@@ -322,8 +322,8 @@ export const CHALLENGES = [
     restriction: "Data Sources cost ×100.", reward: "Data Sources cost 25% less." },
   { id: "hiring", req: (s) => s.ins.gte(25), reqText: "Have 25 Insights.", layer: "replat", name: "Hiring Freeze", goals: [1.5e4, 8e27, 3e43, 1e50], rule: { minTier: 3 },
     restriction: "No Interns, Cron Jobs or Python Scripts.", reward: "Everything ×5." },
-  { id: "friday", req: (s) => s.incidents >= 10, reqText: "Resolve 10 incidents.", layer: "replat", name: "Friday Deploy", goals: [6e4, 4e24, 1e38, 1.5e44], rule: { noClick: true, noUpgrades: true, starter: [10, 5] },
-    restriction: "No INSERT and no upgrades. Just vibes and hope.", reward: "Incidents are twice as strong and twice as frequent." },
+  { id: "friday", req: (s) => s.incidents >= 10, reqText: "Resolve 10 incidents.", layer: "replat", name: "Friday Deploy", goals: [6e4, 4e24, 1e38, 1.5e44], rule: { noClick: true, noUpgrades: true, starter: [10] },
+    restriction: "No INSERT and no upgrades. A department of interns has the deploy. Just vibes and hope.", reward: "Incidents are twice as strong and twice as frequent." },
   { id: "compliance", req: (s) => s.ins.gte(50), reqText: "Have 50 Insights.", layer: "replat", name: "Compliance Audit", goals: [6e3, 2e26, 1e42, 2.5e48], rule: { prodDiv: 100 },
     restriction: "Production ÷100 while auditors watch.", reward: "Insights from re-platforming ×3." },
   { id: "monorepo", req: (s) => s.ins.gte(100), reqText: "Have 100 Insights.", layer: "replat", name: "Monorepo", goals: [2e5, 8e24, 4e36, 6e43], rule: { noInsights: true },
@@ -332,15 +332,15 @@ export const CHALLENGES = [
     restriction: "Data Sources cost ×10 and no columns.", reward: "Upgrades are kept when you re-platform." },
   { id: "keepcols", req: (s) => s.chalWins >= 2, reqText: "Complete 2 challenges.", layer: "replat", name: "Schema-on-Write", goals: [2e5, 4e23, 1.5e35, 6e38], rule: { maxTier: 6 },
     restriction: "Only the first 6 Data Sources.", reward: "Columns are kept when you re-platform." },
-  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [1.5e3, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10, 5] },
-    restriction: "No INSERT, and production ÷10.", reward: "10% of every Data Source is kept when you re-platform." },
+  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [1.5e3, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10] },
+    restriction: "No INSERT, and production ÷10. A department of interns keeps the LTS branch alive.", reward: "10% of every Data Source is kept when you re-platform." },
   // layer "acq": unlocked after the first Acquisition
   { id: "takeover", req: (s) => s.acq >= 1, reqText: "Get acquired once.", layer: "acq", name: "Hostile Takeover", goals: [3e24, 1.5e40, 8e46], rule: { prodDiv: 1e4 },
     restriction: "Production ÷10,000. The new owners are 'reviewing costs'.", reward: "Equity from acquisitions ×3." },
   { id: "lockin", req: (s) => s.acq >= 2, reqText: "Get acquired 2 times.", layer: "acq", name: "Vendor Lock-in", goals: [2.5e24, 1.5e36, 4e39], rule: { maxTier: 8 },
     restriction: "Only the first 8 Data Sources.", reward: "Everything ×100." },
-  { id: "busfactor", req: (s) => s.eq.gte(20), reqText: "Have 20 Equity.", layer: "acq", name: "Bus Factor 1", goals: [6e27, 2.5e43, 8e49], rule: { noAuto: true, noClick: true, starter: [10, 5] },
-    restriction: "No automation, no INSERT. One engineer, on holiday.", reward: "R&D Lab sources ×10." },
+  { id: "busfactor", req: (s) => s.eq.gte(20), reqText: "Have 20 Equity.", layer: "acq", name: "Bus Factor 1", goals: [6e27, 2.5e43, 8e49], rule: { noAuto: true, noClick: true, starter: [10] },
+    restriction: "No automation, no INSERT. One engineer, on holiday; a department of interns covers.", reward: "R&D Lab sources ×10." },
   { id: "zerotrust", req: (s) => s.acq >= 3, reqText: "Get acquired 3 times.", layer: "acq", name: "Zero Trust", goals: [5e24, 1.5e38, 2e44], rule: { noIncidents: true, noUpgrades: true },
     restriction: "No incidents and no upgrades.", reward: "Synergy upgrades give +3% per source instead of +1%." },
   { id: "keepradar", req: (s) => s.chalWins >= 8, reqText: "Complete 8 challenges.", layer: "acq", name: "Technical Debt", goals: [1.5e25, 5e40, 4e47], rule: { prodDiv: 1e3, costMult: 10 },
@@ -387,6 +387,28 @@ export function parseTier(key) {
   return { challenge: c, tier, layer: LAYER_ORDER[layerIdx(c.layer) + tier - 1] };
 }
 export const tierGoal = (c, t) => c.goals[t - 1];
+
+// The goals are fixed numbers, but the strength you bring isn't: Insights, challenge rewards, Axioms and
+// New Game+ keep growing, so late on a goal tuned for an hour of play falls in seconds. A goal therefore
+// grows with the production multiplier you start the run with, beyond what its tier was tuned for
+// (log10 of that multiplier per unlock layer, measured with `PROBE=1 node tools/sim.js`), at about
+// 0.75 decades of goal per decade of multiplier: a run's rows grow a little slower than its multiplier.
+const GOAL_REF = { replat: 1, acq: 8, contact: 24, bang: 32 };
+const GOAL_SLOPE = 0.75;
+/** log10 of how much a challenge's goal is raised for this save (0 until you outgrow the tier). */
+export function goalBoost(s, key) {
+  const t = parseTier(key);
+  if (!t) return 0;
+  // The run as it would begin: no upgrades or columns, the tier's rule in force.
+  const start = { ...s, chal: key, upg: [], cols: 0, kept: { upg: [], cols: 0, prod: [] }, buffs: [] };
+  const m = globalMultiplier(start).mul(rule(start).prodDiv ?? 1).log10();
+  return Math.round(Math.max(0, GOAL_SLOPE * (m - GOAL_REF[t.layer])) * 100) / 100;
+}
+/** The goal you face: the one fixed when the run started, or what it would be if you started now. */
+export function goalFor(s, c, t) {
+  const key = tierKey(c, t);
+  return big(tierGoal(c, t)).mul(big(10).pow(s.chal === key ? (s.chalBoost ?? 0) : goalBoost(s, key)));
+}
 export const CHALLENGE_LAYERS = [
   { id: "replat", name: "Re-platform challenges", until: "next Acquisition", unlocked: (s) => s.ins.gte(10) || s.acq + s.contact + s.bangs > 0, hint: "Unlocks at 10 Insights." },
   { id: "acq", name: "Acquisition challenges", until: "next First Contact", unlocked: (s) => s.acq + s.contact + s.bangs > 0, hint: "Unlocks after your first Acquisition." },
@@ -607,7 +629,7 @@ export function newState(now = Date.now()) {
     modified: false,
     // Leaderboard: signed start ticket, opt-in and the generated name (worker/leaderboard.js).
     lb: { ticket: "", optIn: false, name: "", locked: false },
-    chal: null, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
+    chal: null, chalBoost: 0, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
     momentum: 0,
     okr: null, // quarterly OKRs: { quarter, endsAt (online ms), items: [{ kind, label, base, target, done }] }
     inbox: [],
@@ -700,6 +722,7 @@ export function normalize(raw, now = Date.now()) {
   s.settings.autoSkip = (Array.isArray(s.settings.autoSkip) ? s.settings.autoSkip : []).filter((id) => PRODUCERS.some((p) => p.id === id));
   s.finale = !!s.finale;
   s.chal = parseTier(raw.chal) ? raw.chal : null;
+  s.chalBoost = s.chal && Number.isFinite(raw.chalBoost) ? Math.min(Math.max(raw.chalBoost, 0), 1e6) : 0;
   s.chalWins = Math.floor(num(raw.chalWins));
   s.momentum = Math.min(1, num(raw.momentum));
   const okr = raw.okr;
@@ -878,10 +901,21 @@ export function rawRate(s) {
 
 export const baseRate = (s) => bigMin(gravity(rawRate(s)), MAX_ROWS);
 
+// Inside a challenge, boosts from incidents and requests are capped, so a ×50 spike or an abduction
+// can't finish a run in seconds. Slowdowns are not capped.
+const CHALLENGE_BUFF_CAP = 3;
 function buffMult(s, kind, now) {
   let m = 1;
   for (const b of s.buffs) if (b.kind === kind && b.until > now) m *= b.mult;
-  return m;
+  return s.chal ? Math.min(m, CHALLENGE_BUFF_CAP) : m;
+}
+
+/** Bonus rows from incidents and requests. A challenge is about the run itself: none are granted. Returns what was granted. */
+export function bonusRows(s, amount) {
+  if (s.chal) return ZERO;
+  const before = s.rows;
+  earn(s, amount);
+  return s.rows.sub(before);
 }
 
 // Momentum: clicking INSERT builds "hands on keyboard" (0..1), which decays with a 3s
@@ -911,9 +945,10 @@ export const incidentMult = (s) => (1 + 0.25 * radarLevel(s, "chaos")) * (won(s,
 /** Average seconds between incidents. */
 export const incidentEvery = (s) => (105 / (archOn(s, "observability") ? 2 : 1) / (won(s, "friday") ? 2 : 1)) / (1 + 0.1 * radarLevel(s, "tribal"));
 export const backfillCap = (s) => (archOn(s, "eventsourcing") ? 0.4 : 0.15);
-export const incidentsFor = (s) => INCIDENTS.filter((x) => !x.needs || x.needs(s));
+export const incidentsFor = (s) => INCIDENTS.filter((x) => (!x.needs || x.needs(s)) && !(s.chal && x.lump));
 
 export function upgradeUnlocked(s, u) {
+  if (u.kind === "click" && rule(s).noClick) return false; // nothing to upgrade without INSERT
   if (u.need.producer !== undefined) return s.prod[u.need.producer] >= u.need.count;
   return s.runRows.gte(u.need.rows);
 }
@@ -1335,6 +1370,7 @@ export function startChallenge(s, id, now = Date.now(), tier = 1) {
   // Starter sources are granted with the challenge's rules in force: Golden Images is a
   // Tech Radar item (off in re-platform challenges), and locked tiers get none.
   s.prod = starterProducers(s).map((n, i) => (producerUnlocked(s, i) ? n : 0));
+  s.chalBoost = goalBoost(s, s.chal);
   return true;
 }
 
@@ -1358,7 +1394,7 @@ export function checkChallenge(s, now = Date.now()) {
   const { challenge: c, tier } = t;
   const key = s.chal;
   const ms = challengeElapsed(s, now);
-  if (s.runRows.lt(tierGoal(c, tier))) {
+  if (s.runRows.lt(goalFor(s, c, tier))) {
     if (ms <= CHALLENGE_LIMIT_MS) return null;
     s.chal = null;
     return { challenge: c, tier, key, failed: true };
