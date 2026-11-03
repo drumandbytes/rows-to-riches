@@ -1462,7 +1462,7 @@ document.addEventListener("change", (e) => {
 rotateTicker();
 shownRows = S.rows;
 onFrame(animateCounter);
-setInterval(loop, 200);
+setInterval(loop, 100);
 setInterval(() => spark.sample(E.rate(S, Date.now())), 1000);
 setInterval(autoBuy, 1000);
 setInterval(rotateTicker, 9000);
