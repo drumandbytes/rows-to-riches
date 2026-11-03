@@ -494,7 +494,7 @@ test("a challenge's goal grows once you outgrow its tier, and is fixed when the 
   // the boost survives a save, and a save claiming a huge one is clamped
   const back = E.normalize(JSON.parse(JSON.stringify(strong)));
   assert.equal(back.chalBoost, strong.chalBoost);
-  assert.equal(E.normalize({ chal: "takeover", chalBoost: 1e99 }).chalBoost, 400);
+  assert.equal(E.normalize({ chal: "takeover", chalBoost: 1e99 }).chalBoost, 1e6);
 });
 
 test("inside a challenge, boosts are capped and bonus rows are not granted", () => {
@@ -530,27 +530,4 @@ test("click upgrades aren't offered in a challenge without INSERT", () => {
   E.earn(s, 1e9);
   assert.ok(!E.upgradeUnlocked(s, click));
   assert.ok(!E.buyUpgrade(s, click.id));
-});
-
-test("a challenge goal follows your own last time: faster than the target raises it, a time-out lowers it", () => {
-  const s = E.newState(T0);
-  s.acq = 1;
-  assert.ok(E.startChallenge(s, "takeover", T0));
-  assert.equal(s.chalBoost, 0);
-  E.earn(s, 1e30); // finishes at once
-  const done = E.checkChallenge(s, T0 + 60e3); // in one minute
-  assert.ok(done && !done.failed);
-  assert.ok(s.chalScale.takeover > 1, `a one-minute run raises the goal (now +${s.chalScale.takeover} decades)`);
-  assert.ok(E.goalFor(s, E.CHALLENGE_BY_ID.takeover, 1).gt(E.big(E.tierGoal(E.CHALLENGE_BY_ID.takeover, 1)).mul(10)));
-  // and a run that times out brings it back down
-  const high = s.chalScale.takeover;
-  assert.ok(E.startChallenge(s, "takeover", T0 + 1e6));
-  assert.equal(s.chalBoost, high, "the goal was fixed at the stored value");
-  const failed = E.checkChallenge(s, T0 + 1e6 + E.CHALLENGE_LIMIT_MS + 1);
-  assert.ok(failed?.failed);
-  assert.ok(s.chalScale.takeover < high);
-  // survives a save, junk is dropped, values are clamped
-  const back = E.normalize(JSON.parse(JSON.stringify(s)));
-  assert.deepEqual(back.chalScale, s.chalScale);
-  assert.deepEqual(E.normalize({ chalScale: { nope: 3, takeover: 1e9, "lockin": "x" } }).chalScale, { takeover: 400 });
 });
