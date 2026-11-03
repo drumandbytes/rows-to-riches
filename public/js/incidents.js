@@ -42,8 +42,8 @@ export function createIncidents({ E, state, scene, audio, toast, esc, fmt, $, gr
     state().stats.phishPassed++;
     E.tick(state(), Date.now());
     const amount = E.baseRate(state()).mul(120).add(13);
-    E.earn(state(), amount);
-    toast(`✅ <b>Phishing test passed.</b> IT is proud of you: +${fmt(amount)} rows.`, "info");
+    const gained = E.bonusRows(state(), amount);
+    toast(`✅ <b>Phishing test passed.</b> IT is proud of you${gained.gt(0) ? `: +${fmt(gained)} rows` : ""}.`, "info");
     audio.sfx("achievement");
   }
 
@@ -59,8 +59,8 @@ export function createIncidents({ E, state, scene, audio, toast, esc, fmt, $, gr
     if (inc.rescue) {
       state().stats.rescues++;
       const amount = E.baseRate(state()).mul(60).add(13);
-      E.earn(state(), amount);
-      toast(`🧯 <b>${inc.title}</b>: ${esc(inc.desc)} +${fmt(amount)} rows.`);
+      const gained = E.bonusRows(state(), amount);
+      toast(`🧯 <b>${inc.title}</b>: ${esc(inc.desc)}${gained.gt(0) ? ` +${fmt(gained)} rows.` : ""}`);
     } else if (inc.trap) {
       state().buffs.push({ kind: "prod", mult: inc.buff.mult, until: now + inc.buff.secs * 1000, name: "Security training" });
       grantSecret("phished");
@@ -70,13 +70,13 @@ export function createIncidents({ E, state, scene, audio, toast, esc, fmt, $, gr
       const secs = inc.buff.secs * (E.archOn(state(), "slo") ? 2 : 1);
       const mult = Math.round(inc.buff.mult * E.incidentMult(state()) * 100) / 100;
       state().buffs.push({ kind: inc.buff.kind, mult, until: now + secs * 1000, name: inc.title });
-      toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: ×${mult} for ${secs}s.`, "info");
+      toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: ×${mult} for ${secs}s${state().chal && mult > 3 ? " (capped at ×3 in a challenge)" : ""}.`, "info");
     } else if (inc.lump) {
       const amount = E.baseRate(state()).mul(900).min(state().rows.mul(E.backfillCap(state()))).add(13);
-      E.earn(state(), amount);
-      scene.floatText(`+${fmt(amount)}`, "#ffb547");
+      const gained = E.bonusRows(state(), amount);
+      scene.floatText(gained.gt(0) ? `+${fmt(gained)}` : "no bonus in a challenge", "#ffb547");
       scene.burst(12);
-      toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>: +${fmt(amount)} rows.`, "info");
+      toast(`${inc.label.split(" ")[0]} <b>${inc.title}</b>${gained.gt(0) ? `: +${fmt(gained)} rows` : ": no bonus rows during a challenge"}.`, "info");
     }
     saveLocal();
     render(true);
