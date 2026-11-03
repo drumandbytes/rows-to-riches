@@ -862,7 +862,6 @@ async function pushCloud({ force = false, keepalive = false } = {}) {
   }
   if (r.ok) setSyncStatus(`Synced ${clockTime(true)}.`);
   else if (r.status === 409) offerCloud(r.data.save);
-  else if (r.status === 422) setSyncStatus(`Cloud rejected this save: ${r.data.error}.`);
   else if (r.status === 429) cloudDirty = true;
   else setSyncStatus(`Sync failed (${r.status}).`);
 }

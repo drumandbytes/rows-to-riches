@@ -14,7 +14,7 @@ export function createLeaderboard({ state, encodeSave, fmt, fmtDuration, esc, to
   let board = "fastest";
   let lastSent = 0;
   let lastMilestones = -1;
-  let stopped = ""; // why checkpoints stopped this session (a refused save), if they did
+  let stopped = false; // set once the server refuses a save: no more checkpoints this session, and nothing is shown
   let asking = false;
 
   const post = (path, body) =>
@@ -59,9 +59,7 @@ export function createLeaderboard({ state, encodeSave, fmt, fmtDuration, esc, to
       boardCache.key = ""; // our own entry just changed
       if (!$("pane-stats").hidden) render(true);
     } else if (r.status === 422 || r.status === 400) {
-      stopped = r.data.error ?? "The server refused this save.";
-      toast(`🏁 ${esc(stopped)}`, "info");
-      render();
+      stopped = true;
     }
   }
 
@@ -86,7 +84,6 @@ export function createLeaderboard({ state, encodeSave, fmt, fmtDuration, esc, to
     const late = ticketInfo(s.lb.ticket).late;
     const notes = [
       s.modified && "This save was modified, so it can't be ranked.",
-      stopped,
       s.lb.optIn && late && "This game was already underway when it got its ticket, so it isn't on the Fastest Catalog board. A new game is.",
     ].filter(Boolean);
     $("lb-join").checked = s.lb.optIn;
