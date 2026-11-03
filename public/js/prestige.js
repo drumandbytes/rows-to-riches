@@ -259,7 +259,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     const goal = E.tierGoal(c, tier);
     const pct = Math.min(100, (state().runRows.max(1).log10() / Math.log10(goal)) * 100);
     const left = Math.max(0, E.CHALLENGE_LIMIT_MS - E.challengeElapsed(state())) / 1000;
-    setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><span>${fmt(state().runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
+    setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><button type="button" data-abandon="1">Abandon</button></div><div class="chal-stats"><span>${fmt(state().runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
   }
 
   return { LAYER_BY_ID, onPrestige, doPrestige, render: renderPrestige, renderChallengeBanner, onStartChallenge, selectLayer: (id) => (prestigeTab = id) };
