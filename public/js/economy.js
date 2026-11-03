@@ -387,28 +387,6 @@ export function parseTier(key) {
   return { challenge: c, tier, layer: LAYER_ORDER[layerIdx(c.layer) + tier - 1] };
 }
 export const tierGoal = (c, t) => c.goals[t - 1];
-
-// The goals are fixed numbers, but the strength you bring isn't: Insights, challenge rewards, Axioms and
-// New Game+ keep growing, so late on a goal tuned for an hour of play falls in seconds. A goal therefore
-// grows with the production multiplier you start the run with, beyond what its tier was tuned for
-// (log10 of that multiplier per unlock layer, measured with `PROBE=1 node tools/sim.js`), at about
-// 0.75 decades of goal per decade of multiplier: a run's rows grow a little slower than its multiplier.
-const GOAL_REF = { replat: 1, acq: 8, contact: 24, bang: 32 };
-const GOAL_SLOPE = 0.75;
-/** log10 of how much a challenge's goal is raised for this save (0 until you outgrow the tier). */
-export function goalBoost(s, key) {
-  const t = parseTier(key);
-  if (!t) return 0;
-  // The run as it would begin: no upgrades or columns, the tier's rule in force.
-  const start = { ...s, chal: key, upg: [], cols: 0, kept: { upg: [], cols: 0, prod: [] }, buffs: [] };
-  const m = globalMultiplier(start).mul(rule(start).prodDiv ?? 1).log10();
-  return Math.round(Math.max(0, GOAL_SLOPE * (m - GOAL_REF[t.layer])) * 100) / 100;
-}
-/** The goal you face: the one fixed when the run started, or what it would be if you started now. */
-export function goalFor(s, c, t) {
-  const key = tierKey(c, t);
-  return big(tierGoal(c, t)).mul(big(10).pow(s.chal === key ? (s.chalBoost ?? 0) : goalBoost(s, key)));
-}
 export const CHALLENGE_LAYERS = [
   { id: "replat", name: "Re-platform challenges", until: "next Acquisition", unlocked: (s) => s.ins.gte(10) || s.acq + s.contact + s.bangs > 0, hint: "Unlocks at 10 Insights." },
   { id: "acq", name: "Acquisition challenges", until: "next First Contact", unlocked: (s) => s.acq + s.contact + s.bangs > 0, hint: "Unlocks after your first Acquisition." },
@@ -629,7 +607,7 @@ export function newState(now = Date.now()) {
     modified: false,
     // Leaderboard: signed start ticket, opt-in and the generated name (worker/leaderboard.js).
     lb: { ticket: "", optIn: false, name: "", locked: false },
-    chal: null, chalBoost: 0, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
+    chal: null, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
     momentum: 0,
     okr: null, // quarterly OKRs: { quarter, endsAt (online ms), items: [{ kind, label, base, target, done }] }
     inbox: [],
@@ -722,7 +700,6 @@ export function normalize(raw, now = Date.now()) {
   s.settings.autoSkip = (Array.isArray(s.settings.autoSkip) ? s.settings.autoSkip : []).filter((id) => PRODUCERS.some((p) => p.id === id));
   s.finale = !!s.finale;
   s.chal = parseTier(raw.chal) ? raw.chal : null;
-  s.chalBoost = s.chal && Number.isFinite(raw.chalBoost) ? Math.min(Math.max(raw.chalBoost, 0), 1e6) : 0;
   s.chalWins = Math.floor(num(raw.chalWins));
   s.momentum = Math.min(1, num(raw.momentum));
   const okr = raw.okr;
@@ -1370,7 +1347,6 @@ export function startChallenge(s, id, now = Date.now(), tier = 1) {
   // Starter sources are granted with the challenge's rules in force: Golden Images is a
   // Tech Radar item (off in re-platform challenges), and locked tiers get none.
   s.prod = starterProducers(s).map((n, i) => (producerUnlocked(s, i) ? n : 0));
-  s.chalBoost = goalBoost(s, s.chal);
   return true;
 }
 
@@ -1394,7 +1370,7 @@ export function checkChallenge(s, now = Date.now()) {
   const { challenge: c, tier } = t;
   const key = s.chal;
   const ms = challengeElapsed(s, now);
-  if (s.runRows.lt(goalFor(s, c, tier))) {
+  if (s.runRows.lt(tierGoal(c, tier))) {
     if (ms <= CHALLENGE_LIMIT_MS) return null;
     s.chal = null;
     return { challenge: c, tier, key, failed: true };

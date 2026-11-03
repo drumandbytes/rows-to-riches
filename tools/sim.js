@@ -67,12 +67,12 @@ function probeEra(layer) {
     for (let t = 1; t <= E.tierCount(c); t++) {
       const key = E.tierKey(c, t);
       if (E.parseTier(key).layer !== layer) continue;
-      s = E.normalize(JSON.parse(JSON.stringify(saved)), now); // normalize revives the Decimals
+      s = structuredClone(saved);
       // Open the tier for the probe (requirements and lower tiers are not what's measured).
       s.chalEver.push(...Array.from({ length: t - 1 }, (_, k) => E.tierKey(c, k + 1)));
       // Tier I requirements (counts, currencies) only; a tier's own layer and above are off
       // in the probe anyway, so inflating them doesn't change what's measured.
-      if (t === 1) Object.assign(s, { replat: Math.max(s.replat, 10), incidents: Math.max(s.incidents, 99), chalWins: Math.max(s.chalWins, 99), ins: E.big(s.ins).max(500), eq: E.big(s.eq).max(100), xeno: E.big(s.xeno).max(500), bangs: Math.max(s.bangs, 2) });
+      if (t === 1) Object.assign(s, { replat: Math.max(s.replat, 10), incidents: Math.max(s.incidents, 99), chalWins: Math.max(s.chalWins, 99), ins: Math.max(s.ins, 500), eq: Math.max(s.eq, 100), xeno: Math.max(s.xeno, 500), bangs: Math.max(s.bangs, 2) });
       const start = now;
       if (!E.startChallenge(s, c.id, start, t)) {
         out.push(`${key}:?`);
@@ -88,11 +88,11 @@ function probeEra(layer) {
           E.tick(s, at);
           if (E.clickAllowed(s)) E.earn(s, E.clickValue(s, at).mul(cps * DT));
           buyStuff();
-          if (hit === null && s.runRows.gte(E.goalFor(s, c, t))) hit = (at - start) / 6e4;
+          if (hit === null && s.runRows.gte(E.tierGoal(c, t))) hit = (at - start) / 6e4;
         }
         marks.push(E.big(s.runRows).max(1).log10().toFixed(1));
       }
-      out.push(`${key}: ${marks.join("/")} goal=${Math.log10(E.goalFor(s, c, t)).toFixed(1)} ${hit === null ? "✗" : `✓${hit.toFixed(0)}m`}`);
+      out.push(`${key}: ${marks.join("/")} goal=${Math.log10(E.tierGoal(c, t)).toFixed(1)} ${hit === null ? "✗" : `✓${hit.toFixed(0)}m`}`);
     }
   }
   s = saved;
