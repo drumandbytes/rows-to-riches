@@ -332,7 +332,7 @@ export const CHALLENGES = [
     restriction: "Data Sources cost ×10 and no columns.", reward: "Upgrades are kept when you re-platform." },
   { id: "keepcols", req: (s) => s.chalWins >= 2, reqText: "Complete 2 challenges.", layer: "replat", name: "Schema-on-Write", goals: [2e5, 4e23, 1.5e35, 6e38], rule: { maxTier: 6 },
     restriction: "Only the first 6 Data Sources.", reward: "Columns are kept when you re-platform." },
-  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [1.5e3, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10] },
+  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [250, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10] },
     restriction: "No INSERT, and production ÷10. A department of interns keeps the LTS branch alive.", reward: "10% of every Data Source is kept when you re-platform." },
   // layer "acq": unlocked after the first Acquisition
   { id: "takeover", req: (s) => s.acq >= 1, reqText: "Get acquired once.", layer: "acq", name: "Hostile Takeover", goals: [3e24, 1.5e40, 8e46], rule: { prodDiv: 1e4 },

@@ -40,7 +40,7 @@ Each layer resets everything below it in exchange for a currency that makes the 
 
 **Big Bang milestones** (at 1, 10, 20, 50, … 500 Big Bangs) automate the game and make earlier layers permanent. At 50, **Catalog Everything** completes the game and starts New Game+, with production ×2 per completion.
 
-A simulated optimal player reaches the first acquisition after about 9 hours, First Contact after about 58, the first Big Bang after about 85 and Catalog Everything after about 370. Real players take longer: the game is meant to be left running.
+A simulated optimal player reaches the first acquisition after about 9 hours, First Contact after about 86, the first Big Bang after about 114 and Catalog Everything after about 350. Real players take longer: the game is meant to be left running.
 
 ## Saves, privacy and fair play
 
