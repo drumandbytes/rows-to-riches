@@ -563,22 +563,31 @@ a { color: var(--accent); }
   animation: fall var(--d) cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
 }
 @keyframes fall { to { transform: translate(var(--x), 105vh) rotate(var(--r)); } }
+/* New environment: a small card under the header, click to dismiss. It never covers the game. */
 .banner {
   position: fixed;
-  inset: 0;
   z-index: 35;
+  top: calc(env(safe-area-inset-top) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 380px);
   display: grid;
-  place-items: center;
-  background: radial-gradient(circle, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75));
-  animation: fadein 0.3s;
-  pointer-events: none;
-  transition: opacity 0.5s;
+  gap: 2px;
+  padding: 8px 14px;
+  text-align: center;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  animation: bannerIn 0.35s ease-out;
+  transition: opacity 0.4s;
 }
 .banner.out { opacity: 0; }
-.banner-in { display: grid; gap: 6px; text-align: center; padding: 26px 36px; border-radius: 18px; background: var(--panel); border: 2px solid var(--accent); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); animation: zoomIn 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
-.banner-in small { font: 12px var(--mono); color: var(--muted); }
-.banner-in b { font: 800 34px var(--mono); color: var(--accent); }
-.banner-in span { color: var(--fg); }
+.banner small { font: 11px var(--mono); color: var(--muted); }
+.banner b { font: 800 18px var(--mono); color: var(--accent); }
+.banner span { font-size: 12.5px; color: var(--fg); }
+@keyframes bannerIn { from { opacity: 0; transform: translate(-50%, -10px); } }
 @keyframes zoomIn { from { transform: scale(0.4); opacity: 0; } }
 
 .incident {
@@ -785,3 +794,10 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); b
 .lb-list li.muted { display: block; }
 .lb-rank { opacity: 0.7; }
 .lb-value { text-align: right; }
+
+/* iOS zooms in when a field under 16px takes focus and then stays zoomed, which makes the page look wider than the
+   screen. Fields are 16px on touch devices, and double-tap zoom is off; pinch-zoom stays available. */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+}
+html { touch-action: manipulation; }
