@@ -154,7 +154,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
       morph($("prestige-seg"), seg);
     }
     if (prestigeTab === "chal") {
-      setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${state().chalDone.length}</b> active · ${fmt(state().chalWins)} all-time</div></div>`);
+      setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A goal is set when you start: what a simple bot would reach in about 12 minutes from the same start, so the hour is plenty. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${state().chalDone.length}</b> active · ${fmt(state().chalWins)} all-time</div></div>`);
       setHtml("prestige-shops", renderChallenges());
       return;
     }
@@ -224,7 +224,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
               : unlocked
                 ? `<button type="button" data-challenge="${c.id}" data-tier="${t}" ${state().chal ? "disabled" : ""}>${done ? "Retry" : "Start"}</button>`
                 : `<button type="button" disabled>🔒</button>`;
-            tiers.push(`<div class="tier ${done ? "done" : ""} ${active ? "active" : ""} ${unlocked ? "" : "locked"}"><b>${done ? "✓ " : ""}${ROMAN[t]}</b><span>${unlocked || done ? `goal ${fmt(E.goalFor(state(), c, t))}` : esc(lock)}</span><span class="muted">${status}</span>${btn}</div>`);
+            tiers.push(`<div class="tier ${done ? "done" : ""} ${active ? "active" : ""} ${unlocked ? "" : "locked"}"><b>${done ? "✓ " : ""}${ROMAN[t]}</b><span>${unlocked || done ? `goal ${active ? fmt(E.goalFor(state(), c, t)) : "~12 min of play"}` : esc(lock)}</span><span class="muted">${status}</span>${btn}</div>`);
           }
           return `<li class="item chal ${anyDone ? "owned" : ""} ${activeHere ? "active" : ""} ${!open && !anyDone ? "locked" : ""}"><div class="ico" aria-hidden="true">${anyDone ? "🏆" : open ? "🏁" : "🔒"}</div>
             <div><div class="name">${esc(c.name)}</div>
@@ -249,7 +249,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     if (prefs.skipChalConfirm) return startChallengeNow(c, tier);
     const layer = E.parseTier(E.tierKey(c, tier)).layer;
     modal(
-      `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p>${kitNote(c, "p")}<p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.goalFor(state(), c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.${E.goalBoost(state(), E.tierKey(c, tier)) > 0 ? " <span class=\"muted\">Raised to match how strong you are.</span>" : ""}</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
+      `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p>${kitNote(c, "p")}<p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.goalFor(state(), c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
        ${state().chalEver.length ? `<label class="toggle"><input type="checkbox" id="skip-chal-confirm" /> Don't ask again (Settings → Game turns it back on)</label>` : ""}`,
       [["Cancel"], ["Start challenge", "primary", () => {
         if ($("skip-chal-confirm")?.checked) setPref("skipChalConfirm", true);

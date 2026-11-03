@@ -388,35 +388,39 @@ export function parseTier(key) {
 }
 export const tierGoal = (c, t) => c.goals[t - 1];
 
-// The goals are fixed numbers, but the strength you bring isn't: Insights, challenge rewards, Axioms and
-// New Game+ keep growing, so late on a goal tuned for an hour of play falls in seconds, while a goal that
-// grows too fast with strength stalls a whole run (a simulated player that scaled with the multiplier
-// alone failed every Acquisition challenge past 60 h). So a goal follows YOUR OWN last time on that tier:
-// finish in 2 minutes and next time the goal is higher, run out of time and it comes down, always
-// aiming for GOAL_TARGET_MS. `chalScale[key]` (log10 of the goal's change, down to -4) holds it; a tier you haven't
-// played starts from a mild guess based on the production multiplier you start with.
-const GOAL_TARGET_MS = 12 * 60e3;
-export const GOAL_TUNING = { ref: { replat: 1, acq: 8, contact: 24, bang: 32 }, slope: 0.4 }; // exported so the simulator can try other values
-/** log10 of how much a challenge's goal is raised for this save (0 until you outgrow the tier). */
+// A challenge's goal is what a simple bot reaches in BENCH_MS under the same rules from the same start: it
+// buys the cheapest upgrade, a column when one is cheap and then sources from the top, clicking twice a
+// second where INSERT is allowed. So a goal is the same short run whether you are early or deep into the game
+// (fixed numbers fell in seconds once Insights, rewards and Axioms stacked up) and it depends only on your
+// state: it can't be lowered by failing, or by playing slowly. The base goals on each tier are the floor of
+// the idea (a tier's difficulty is its restriction), not the target. Real players are slower than the bot, which
+// leaves the hour of the time limit as slack.
+const BENCH_MS = 12 * 60e3;
+const BENCH_STEP_MS = 5000;
+function benchmarkRows(s, key) {
+  const b = normalize(JSON.parse(JSON.stringify(s)), 0);
+  const t = parseTier(key);
+  if (pendingInsights(b) >= 1) replatform(b, 0);
+  resetRun(b, 0);
+  b.chal = key;
+  b.prod = starterProducers(b).map((n, i) => (producerUnlocked(b, i) ? n : 0));
+  b.lastTick = 0;
+  b.momentum = 0;
+  for (let at = BENCH_STEP_MS; at <= BENCH_MS; at += BENCH_STEP_MS) {
+    tick(b, at);
+    if (clickAllowed(b)) earn(b, clickValue(b, at).mul((2 * BENCH_STEP_MS) / 1000));
+    for (const u of UPGRADES.filter((u) => !b.upg.includes(u.id) && upgradeUnlocked(b, u)).sort((x, y) => x.cost - y.cost)) if (!buyUpgrade(b, u.id)) break;
+    if (columnCost(b.cols, b).lt(b.rows.mul(0.5))) buyColumn(b);
+    for (let i = PRODUCERS.length - 1; i >= 0; i--) buyProducer(b, i, maxAffordable(b, i));
+  }
+  return b.runRows;
+}
+/** log10(goal / the tier's base goal) for this save and tier: what the bot reaches in BENCH_MS, from the base goal's point of view. */
 export function goalBoost(s, key) {
   const t = parseTier(key);
   if (!t) return 0;
-  if (s.chalScale?.[key] !== undefined) return s.chalScale[key];
-  // The run as it would begin: no upgrades or columns, the tier's rule in force.
-  const start = { ...s, chal: key, upg: [], cols: 0, kept: { upg: [], cols: 0, prod: [] }, buffs: [] };
-  const m = globalMultiplier(start).mul(rule(start).prodDiv ?? 1).log10();
-  return Math.round(Math.max(0, GOAL_TUNING.slope * (m - GOAL_TUNING.ref[t.layer])) * 100) / 100;
-}
-/**
- * After a run: what the next goal for this tier should be. Finished in `ms`: raise it towards the target time
- * (rows grow roughly with time^1.3, damped). Timed out (ms = null): drop it to what you actually reached in
- * the hour, minus 0.4 decades (about the 30-minute mark), so one failure is enough to bring it back in reach.
- */
-function adaptGoal(s, key, ms, goal) {
-  const used = s.chalBoost ?? 0;
-  const short = ms === null ? Math.max(0, goal.log10() - s.runRows.max(1).log10()) : 0;
-  const next = ms === null ? used - short - 0.4 : used + Math.min(3, Math.max(-1, Math.log10(GOAL_TARGET_MS / Math.max(ms, 5000))));
-  s.chalScale[key] = Math.round(Math.min(400, Math.max(-4, next)) * 100) / 100;
+  const reached = benchmarkRows(s, key).max(1);
+  return Math.round(Math.min(400, Math.max(-400, reached.div(tierGoal(t.challenge, t.tier)).log10())) * 100) / 100;
 }
 /** The goal you face: the one fixed when the run started, or what it would be if you started now. */
 export function goalFor(s, c, t) {
@@ -643,7 +647,7 @@ export function newState(now = Date.now()) {
     modified: false,
     // Leaderboard: signed start ticket, opt-in and the generated name (worker/leaderboard.js).
     lb: { ticket: "", optIn: false, name: "", locked: false },
-    chal: null, chalBoost: 0, chalScale: {}, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
+    chal: null, chalBoost: 0, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
     momentum: 0,
     okr: null, // quarterly OKRs: { quarter, endsAt (online ms), items: [{ kind, label, base, target, done }] }
     inbox: [],
@@ -736,9 +740,7 @@ export function normalize(raw, now = Date.now()) {
   s.settings.autoSkip = (Array.isArray(s.settings.autoSkip) ? s.settings.autoSkip : []).filter((id) => PRODUCERS.some((p) => p.id === id));
   s.finale = !!s.finale;
   s.chal = parseTier(raw.chal) ? raw.chal : null;
-  s.chalBoost = s.chal && Number.isFinite(raw.chalBoost) ? Math.min(Math.max(raw.chalBoost, -4), 400) : 0;
-  s.chalScale = {};
-  for (const [k, v] of Object.entries(raw.chalScale && typeof raw.chalScale === "object" ? raw.chalScale : {})) if (parseTier(k) && Number.isFinite(v)) s.chalScale[k] = Math.round(Math.min(400, Math.max(-4, v)) * 100) / 100;
+  s.chalBoost = s.chal && Number.isFinite(raw.chalBoost) ? Math.min(Math.max(raw.chalBoost, -400), 400) : 0;
   s.chalWins = Math.floor(num(raw.chalWins));
   s.momentum = Math.min(1, num(raw.momentum));
   const okr = raw.okr;
@@ -1413,11 +1415,9 @@ export function checkChallenge(s, now = Date.now()) {
   const goal = goalFor(s, c, tier);
   if (s.runRows.lt(goal)) {
     if (ms <= CHALLENGE_LIMIT_MS) return null;
-    adaptGoal(s, key, null, goal);
     s.chal = null;
     return { challenge: c, tier, key, failed: true };
   }
-  adaptGoal(s, key, ms, goal);
   s.chal = null;
   if (!s.chalDone.includes(key)) {
     s.chalDone.push(key);

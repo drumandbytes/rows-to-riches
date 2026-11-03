@@ -477,26 +477,6 @@ test("the rules-only check doesn't judge growth, so a freshly acquired company p
   assert.equal(E.implausible(null, s, Infinity), null);
 });
 
-test("a challenge's goal grows once you outgrow its tier, and is fixed when the run starts", () => {
-  const fresh = E.newState(T0);
-  const c = E.CHALLENGE_BY_ID.takeover; // an Acquisition challenge
-  assert.ok(E.goalFor(fresh, c, 1).eq(E.tierGoal(c, 1)), "a fresh save faces the base goal");
-  const strong = E.newState(T0);
-  strong.acq = 1;
-  strong.completions = 60; // New Game+ multiplies production every time
-  const boosted = E.goalFor(strong, c, 1);
-  assert.ok(boosted.gt(E.big(E.tierGoal(c, 1)).mul(1e3)), "a much stronger save faces a much bigger goal");
-  assert.ok(E.startChallenge(strong, "takeover", T0));
-  assert.ok(strong.chalBoost > 0);
-  const fixed = E.goalFor(strong, c, 1);
-  strong.completions += 5; // growing stronger mid-run doesn't move the goalposts
-  assert.ok(E.goalFor(strong, c, 1).eq(fixed));
-  // the boost survives a save, and a save claiming a huge one is clamped
-  const back = E.normalize(JSON.parse(JSON.stringify(strong)));
-  assert.equal(back.chalBoost, strong.chalBoost);
-  assert.equal(E.normalize({ chal: "takeover", chalBoost: 1e99 }).chalBoost, 400);
-});
-
 test("inside a challenge, boosts are capped and bonus rows are not granted", () => {
   const s = E.newState(T0);
   s.prod[0] = 100;
@@ -532,25 +512,26 @@ test("click upgrades aren't offered in a challenge without INSERT", () => {
   assert.ok(!E.buyUpgrade(s, click.id));
 });
 
-test("a challenge goal follows your own last time: faster than the target raises it, a time-out lowers it", () => {
+test("a challenge's goal depends only on your state: it is the bot's 12 minutes, and failing can't lower it", () => {
   const s = E.newState(T0);
   s.acq = 1;
+  const goal = () => E.goalFor(s, E.CHALLENGE_BY_ID.takeover, 1);
+  const first = goal();
+  assert.ok(first.gt(0), "a goal exists for a fresh save");
+  assert.ok(goal().eq(first), "the same state gives the same goal");
   assert.ok(E.startChallenge(s, "takeover", T0));
-  assert.equal(s.chalBoost, 0);
-  E.earn(s, 1e30); // finishes at once
-  const done = E.checkChallenge(s, T0 + 60e3); // in one minute
-  assert.ok(done && !done.failed);
-  assert.ok(s.chalScale.takeover > 1, `a one-minute run raises the goal (now +${s.chalScale.takeover} decades)`);
-  assert.ok(E.goalFor(s, E.CHALLENGE_BY_ID.takeover, 1).gt(E.big(E.tierGoal(E.CHALLENGE_BY_ID.takeover, 1)).mul(10)));
-  // and a run that times out brings it back down
-  const high = s.chalScale.takeover;
-  assert.ok(E.startChallenge(s, "takeover", T0 + 1e6));
-  assert.equal(s.chalBoost, high, "the goal was fixed at the stored value");
-  const failed = E.checkChallenge(s, T0 + 1e6 + E.CHALLENGE_LIMIT_MS + 1);
+  assert.ok(goal().eq(first), "the goal shown is the goal fixed at the start");
+  // failing, or running slowly, doesn't change the next goal for the same state
+  const failed = E.checkChallenge(s, T0 + E.CHALLENGE_LIMIT_MS + 1);
   assert.ok(failed?.failed);
-  assert.ok(s.chalScale.takeover < high);
-  // survives a save, junk is dropped, values are clamped
-  const back = E.normalize(JSON.parse(JSON.stringify(s)));
-  assert.deepEqual(back.chalScale, s.chalScale);
-  assert.deepEqual(E.normalize({ chalScale: { nope: 3, takeover: 1e9, "lockin": "x" } }).chalScale, { takeover: 400 });
+  const after = E.newState(T0);
+  after.acq = 1;
+  assert.ok(E.goalFor(after, E.CHALLENGE_BY_ID.takeover, 1).eq(first));
+  // a much stronger save faces a much bigger goal
+  const strong = E.newState(T0);
+  strong.acq = 1;
+  strong.completions = 30;
+  assert.ok(E.goalFor(strong, E.CHALLENGE_BY_ID.takeover, 1).gt(first.mul(1e3)));
+  // a save claiming an absurd stored boost is clamped
+  assert.equal(E.normalize({ chal: "takeover", chalBoost: 1e99 }).chalBoost, 400);
 });
