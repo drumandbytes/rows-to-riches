@@ -20,3 +20,17 @@ test("the service worker precaches every JS module", () => {
   assert.deepEqual(modules.filter((m) => !listed.has(m)), []);
   assert.deepEqual([...listed].filter((m) => !modules.includes(m)), []);
 });
+
+test("index.html preloads exactly the modules main.js imports statically", () => {
+  const seen = [];
+  const walk = (f) => {
+    if (seen.includes(f)) return;
+    seen.push(f);
+    const src = fs.readFileSync(path.join("public/js", f), "utf8");
+    for (const m of src.matchAll(/^(?:import|export)[^;]*?from\s+"(\.[^"]+)"/gm)) walk(path.normalize(path.join(path.dirname(f), m[1])));
+  };
+  walk("main.js");
+  const html = fs.readFileSync("public/index.html", "utf8");
+  const preloaded = [...html.matchAll(/<link rel="modulepreload" href="\/js\/([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual([...preloaded].sort(), seen.filter((f) => f !== "main.js").sort());
+});

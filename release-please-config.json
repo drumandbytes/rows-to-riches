@@ -4,7 +4,10 @@
   "include-component-in-tag": false,
   "packages": {
     ".": {
-      "extra-files": [{ "type": "generic", "path": "public/js/main.js" }]
+      "extra-files": [
+        { "type": "generic", "path": "public/js/main.js" },
+        { "type": "generic", "path": "public/sw.js" }
+      ]
     }
   }
 }
