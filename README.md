@@ -36,11 +36,11 @@ Each layer resets everything below it in exchange for a currency that makes the 
 | 👽 **First Contact** | Xenobytes | **Xenotech**: alien sources, alien data types, automation |
 | 🌀 **Big Bang** | Axioms | Never spent: every Axiom boosts production and every prestige gain |
 
-**Challenges** are runs under a restriction (no columns, no INSERT, sources ×100 cost, …), in up to four tiers with a one-hour limit. Each tier has a base goal, and the goal you face follows your own last time on that tier (raised if you finished in minutes, lowered if you ran out of the hour), so a challenge stays a short run at every stage, never an instant one and never a wall. Finishing faster earns a bigger speed bonus. They aren't optional: each prestige needs three completed challenges of the layer below.
+**Challenges** are runs under a restriction (no columns, no INSERT, sources ×100 cost, …), in up to four tiers with fixed goals and a one-hour limit. Finishing faster earns a bigger speed bonus. They aren't optional: each prestige needs three completed challenges of the layer below.
 
 **Big Bang milestones** (at 1, 10, 20, 50, … 500 Big Bangs) automate the game and make earlier layers permanent. At 50, **Catalog Everything** completes the game and starts New Game+, with production ×2 per completion.
 
-A simulated optimal player reaches the first acquisition after about 9 hours, First Contact after about 68, the first Big Bang after about 90 and Catalog Everything after about 280. Real players take longer: the game is meant to be left running.
+A simulated optimal player reaches the first acquisition after about 9 hours, First Contact after about 86, the first Big Bang after about 114 and Catalog Everything after about 350. Real players take longer: the game is meant to be left running.
 
 ## Saves, privacy and fair play
 
