@@ -652,13 +652,13 @@ function buildSources() {
         key: `p${p.i}`,
         html: `<li class="node" data-i="${p.i}" style="--h:${producerHue(p.i)}">
         <div class="ico" aria-hidden="true">${p.icon}</div>
-        <div><div class="name"><span id="pn${p.i}">${esc(p.name)}</span><span class="count"></span><span class="chip"></span><button type="button" class="auto-chip" data-auto-src="${p.id}" title="Include in the auto-buyer" hidden>🤖</button></div><div class="sub"></div><div class="run-bar" aria-hidden="true"><i></i></div></div>
+        <div><div class="name"><span id="pn${p.i}">${esc(p.name)}</span><span class="count"></span><button type="button" class="auto-chip" data-auto-src="${p.id}" title="Include in the auto-buyer" hidden>🤖</button></div><div class="sub"><span class="chip"></span><span class="txt"></span></div><div class="run-bar off" aria-hidden="true"><i></i></div></div>
         <button class="buy" type="button" data-buy-producer="${p.i}" aria-describedby="pn${p.i}"></button></li>`,
       });
     } else if (!teased) {
       teased = true;
       // Keyed by its hint too, so the teaser refreshes when the requirement changes.
-      items.push({ key: `lock${p.i}:${lockedHint(p)}`, html: `<li class="node locked"><div class="ico" aria-hidden="true">🔒</div><div><div class="name">???<span class="chip queued">locked</span></div><div class="sub">${esc(lockedHint(p))}</div></div><span></span></li>` });
+      items.push({ key: `lock${p.i}:${lockedHint(p)}`, html: `<li class="node locked"><div class="ico" aria-hidden="true">🔒</div><div><div class="name">???</div><div class="sub"><span class="chip queued">locked</span><span class="txt">${esc(lockedHint(p))}</span></div><div class="run-bar off" aria-hidden="true"><i></i></div></div><span></span></li>` });
     }
   }
   syncList($("sources"), items);
@@ -698,13 +698,13 @@ function updateSources() {
       chip.className = `chip ${owned ? "run" : "queued"}`;
     }
     const total = E.producerRate(S, i, gm, pm);
-    li.querySelector(".sub").textContent = owned
+    li.querySelector(".sub .txt").textContent = owned
       ? `${fmt(each)}/s each · ${fmt(total)}/s total · ${sharePct(total.div(raw).toNumber())} of output`
       : `${fmt(each)}/s each · ${p.flavor}`;
     // Run bar: more units → shorter batch cycle.
     const dur = owned ? `${Math.max(0.35, 4 / (1 + Math.log2(owned))).toFixed(2)}s` : "0s";
     const bar = li.querySelector(".run-bar");
-    bar.hidden = !owned;
+    bar.classList.toggle("off", !owned);
     if (bar.firstChild.style.getPropertyValue("--dur") !== dur) bar.firstChild.style.setProperty("--dur", dur);
     const btn = li.querySelector(".buy");
     if (selling) {

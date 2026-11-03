@@ -380,13 +380,17 @@ a { color: var(--accent); }
 }
 .node.running .ico { animation: bob 2.2s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translateY(-3px) rotate(-3deg); } }
-.node .name { font: 700 15px var(--display); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.node .name { font: 700 15px var(--display); display: flex; align-items: center; gap: 8px; min-width: 0; }
+.node .name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node .count { font: 700 13px var(--mono); color: hsl(var(--h) 50% 68%); }
 .chip { font: 600 10px var(--mono); padding: 1px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.06em; }
 .chip.run { background: color-mix(in srgb, var(--ok) 18%, transparent); color: #8fd09a; }
 .chip.run::before { content: "● "; animation: blink 1.2s steps(2) infinite; }
 .chip.queued { background: rgba(255, 255, 255, 0.07); color: #b4bac2; }
-.node .sub { font-size: 12px; color: var(--muted); }
+/* Every row has the same shape: name, a status line (chip + numbers or hint) and a bar slot, so lists line up. */
+.node .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.node .sub .chip { margin-right: 6px; vertical-align: 1px; }
+.node .run-bar.off { visibility: hidden; } /* keeps its slot so rows stay the same height */
 .node .run-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.06); margin-top: 6px; overflow: hidden; }
 .node .run-bar i { display: block; height: 100%; width: 100%; background: hsl(var(--h) 45% 55%); transform-origin: left; animation: run var(--dur, 3s) linear infinite; }
 @keyframes run { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -518,6 +522,8 @@ a { color: var(--accent); }
   .pane { min-height: calc(100dvh - 140px); }
   .node { grid-template-columns: 42px 1fr auto; gap: 10px; padding: 9px 10px; }
   .node .ico { width: 42px; height: 42px; font-size: 22px; }
+  /* Phones wrap the status onto two lines, so reserve both: every row is the same height. */
+  .node .sub { min-height: 2.9em; }
   .buy { min-width: 84px; padding: 7px 9px; }
 }
 @media (max-width: 340px) { .tabs button b { display: none; } }
