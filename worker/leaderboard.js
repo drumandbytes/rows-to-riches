@@ -77,7 +77,7 @@ export async function handleCheckpoint(body, env, ping) {
   if (!decoded.sealed || s.modified) return { status: 422, data: { error: "This save was modified, so it can't be ranked." } };
   if (s.lb?.ticket !== body.ticket) return { status: 400, data: { error: "The ticket doesn't belong to this save." } };
   // The game's own rules: these can't fail for an honest save, however fast.
-  const broken = implausible(null, s, 1e15); // any amount of time: rules only
+  const broken = implausible(null, s, Infinity); // rules only, no time to measure growth against
   if (broken) return { status: 422, data: { error: `This save breaks the game's rules (${broken}).` } };
 
   const elapsedH = (now - ticket.t) / 3.6e6;

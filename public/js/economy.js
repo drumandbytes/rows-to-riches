@@ -1454,6 +1454,9 @@ export function implausible(prev, next, elapsedSecs) {
   // Per Big Bang at most what the universe's rows allow, ×4 from the Axiom milestones.
   if (next.axioms > next.bangs * axiomsFor(next.everRows) * 4 + 1) return "too many axioms";
   if (next.finale && !next.xeno_tech.contact) return "finale without contact";
+  // Rules only (no time to measure against): lifetime rows can legitimately dwarf the current
+  // rate, e.g. right after an acquisition, so there is nothing to compare the growth with.
+  if (elapsedSecs === Infinity) return null;
   // First upload: measure against an empty save, over the time the caller allows.
   prev ??= newState(0);
   if (next.everRows.add(1).lt(prev.everRows.mul(1 - eps))) return null; // older save; caller decides
