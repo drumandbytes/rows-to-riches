@@ -477,6 +477,26 @@ test("the rules-only check doesn't judge growth, so a freshly acquired company p
   assert.equal(E.implausible(null, s, Infinity), null);
 });
 
+test("a challenge's goal grows once you outgrow its tier, and is fixed when the run starts", () => {
+  const fresh = E.newState(T0);
+  const c = E.CHALLENGE_BY_ID.takeover; // an Acquisition challenge
+  assert.ok(E.goalFor(fresh, c, 1).eq(E.tierGoal(c, 1)), "a fresh save faces the base goal");
+  const strong = E.newState(T0);
+  strong.acq = 1;
+  strong.completions = 60; // New Game+ multiplies production every time
+  const boosted = E.goalFor(strong, c, 1);
+  assert.ok(boosted.gt(E.big(E.tierGoal(c, 1)).mul(1e3)), "a much stronger save faces a much bigger goal");
+  assert.ok(E.startChallenge(strong, "takeover", T0));
+  assert.ok(strong.chalBoost > 0);
+  const fixed = E.goalFor(strong, c, 1);
+  strong.completions += 5; // growing stronger mid-run doesn't move the goalposts
+  assert.ok(E.goalFor(strong, c, 1).eq(fixed));
+  // the boost survives a save, and a save claiming a huge one is clamped
+  const back = E.normalize(JSON.parse(JSON.stringify(strong)));
+  assert.equal(back.chalBoost, strong.chalBoost);
+  assert.equal(E.normalize({ chal: "takeover", chalBoost: 1e99 }).chalBoost, 1e6);
+});
+
 test("inside a challenge, boosts are capped and bonus rows are not granted", () => {
   const s = E.newState(T0);
   s.prod[0] = 100;

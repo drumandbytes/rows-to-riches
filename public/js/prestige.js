@@ -222,7 +222,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
               : unlocked
                 ? `<button type="button" data-challenge="${c.id}" data-tier="${t}" ${state().chal ? "disabled" : ""}>${done ? "Retry" : "Start"}</button>`
                 : `<button type="button" disabled>🔒</button>`;
-            tiers.push(`<div class="tier ${done ? "done" : ""} ${active ? "active" : ""} ${unlocked ? "" : "locked"}"><b>${done ? "✓ " : ""}${ROMAN[t]}</b><span>${unlocked || done ? `goal ${fmt(E.tierGoal(c, t))}` : esc(lock)}</span><span class="muted">${status}</span>${btn}</div>`);
+            tiers.push(`<div class="tier ${done ? "done" : ""} ${active ? "active" : ""} ${unlocked ? "" : "locked"}"><b>${done ? "✓ " : ""}${ROMAN[t]}</b><span>${unlocked || done ? `goal ${fmt(E.goalFor(state(), c, t))}` : esc(lock)}</span><span class="muted">${status}</span>${btn}</div>`);
           }
           return `<li class="item chal ${anyDone ? "owned" : ""} ${activeHere ? "active" : ""} ${!open && !anyDone ? "locked" : ""}"><div class="ico" aria-hidden="true">${anyDone ? "🏆" : open ? "🏁" : "🔒"}</div>
             <div><div class="name">${esc(c.name)}</div>
@@ -247,7 +247,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     if (prefs.skipChalConfirm) return startChallengeNow(c, tier);
     const layer = E.parseTier(E.tierKey(c, tier)).layer;
     modal(
-      `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p>${kitNote(c, "p")}<p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.tierGoal(c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
+      `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p>${kitNote(c, "p")}<p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.goalFor(state(), c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.${E.goalBoost(state(), E.tierKey(c, tier)) > 0 ? " <span class=\"muted\">Raised to match how strong you are.</span>" : ""}</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
        ${state().chalEver.length ? `<label class="toggle"><input type="checkbox" id="skip-chal-confirm" /> Don't ask again (Settings → Game turns it back on)</label>` : ""}`,
       [["Cancel"], ["Start challenge", "primary", () => {
         if ($("skip-chal-confirm")?.checked) setPref("skipChalConfirm", true);
@@ -262,7 +262,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     el.hidden = !t;
     if (!t) return;
     const { challenge: c, tier } = t;
-    const goal = E.tierGoal(c, tier);
+    const goal = E.goalFor(state(), c, tier);
     const pct = Math.min(100, (state().runRows.max(1).log10() / Math.log10(goal)) * 100);
     const left = Math.max(0, E.CHALLENGE_LIMIT_MS - E.challengeElapsed(state())) / 1000;
     setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><button type="button" data-abandon="1">Abandon</button></div><div class="chal-stats"><span>${fmt(state().runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
