@@ -11,7 +11,8 @@
     "db:migrate:remote": "wrangler d1 migrations apply rows-to-riches --remote",
     "deploy": "wrangler deploy",
     "test:browser": "BROWSER_SMOKE=1 node --test test/browser/smoke.test.js",
-    "test:a11y": "BROWSER_SMOKE=1 node --test test/browser/a11y.test.js"
+    "test:a11y": "BROWSER_SMOKE=1 node --test test/browser/a11y.test.js",
+    "test:sweep": "BROWSER_SMOKE=1 node --test test/browser/sweep.test.js"
   },
   "devDependencies": {
     "axe-core": "^4.14.0",
