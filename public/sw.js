@@ -8,7 +8,7 @@
 // and cross-origin requests are left to the browser, and so are requests that ask for no-store (the changelog).
 // On localhost (dev, tests; 127.0.0.1 behaves like production) it always uses the network, so edits never meet a stale copy.
 
-const VERSION = "0.7.6"; // x-release-please-version
+const VERSION = "0.7.7"; // x-release-please-version
 const CACHE = `r2r-shell-${VERSION}`;
 const DEV = self.location.hostname === "localhost";
 const SHELL = [

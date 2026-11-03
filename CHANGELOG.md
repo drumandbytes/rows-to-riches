@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.7](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.6...v0.7.7) (2026-11-03)
+
+
+### Performance Improvements
+
+* the service worker answers from a release-versioned cache first, and the module chain is preloaded ([62e2308](https://github.com/drumandbytes/rows-to-riches/commit/62e2308b06b98123e81f78e3ac7a89dc2c0d30e9))
+
 ## [0.7.6](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.5...v0.7.6) (2026-11-03)
 
 
