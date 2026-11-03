@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.7.4](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.3...v0.7.4) (2026-11-03)
+
+
+### Bug Fixes
+
+* cap boosts and drop bonus rows in challenges, no click upgrades without INSERT, a department of interns as the no-INSERT kit ([0ef7622](https://github.com/drumandbytes/rows-to-riches/commit/0ef7622feaecf277d0b5d4391e51f04c8714c63e))
+* keep the Buy button on screen and tidy the challenge banner on phones ([0963c75](https://github.com/drumandbytes/rows-to-riches/commit/0963c75d44f5ab6a2694c3cd9a2f67ed0c422817))
+* lower the Acquisition goal reference so rewards from earlier challenges count sooner ([cb0c2f6](https://github.com/drumandbytes/rows-to-riches/commit/cb0c2f63ac96635611858fd37a865f1a1e4f9f02))
+* scale challenge goals with the strength you start the run with, and repair the PROBE tool ([616292e](https://github.com/drumandbytes/rows-to-riches/commit/616292ef66fee8a35e2ef357fdacfb7a961354ac))
+* small dismissible new-environment card, 16px fields on touch to stop iOS zoom ([078002a](https://github.com/drumandbytes/rows-to-riches/commit/078002a6554ab90e0822debb50e9039e2555d625))
+* update lists and cards in place so a tap on a button isn't lost to a re-render ([f0f0668](https://github.com/drumandbytes/rows-to-riches/commit/f0f0668475e19541fea4fe39b698f70ae92778ec))
+
+
+### Performance Improvements
+
+* tick every 100 ms; measured cost is under 1% CPU even at 50 ms ([49c98c9](https://github.com/drumandbytes/rows-to-riches/commit/49c98c96ce6d053b85ae71540e48790fa57728c9))
+
 ## [0.7.3](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.2...v0.7.3) (2026-11-03)
 
 
