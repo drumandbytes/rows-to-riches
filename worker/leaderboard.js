@@ -14,8 +14,10 @@ import { validName, ADJECTIVES, MOODS, NOUNS } from "../public/js/names.js";
 import { b64url, unb64url } from "../public/js/b64.js";
 import PACE from "./pace.json" with { type: "json" };
 
-// Flag a run reaching a milestone in under this share of the simulator's time.
-export const PACE_SLACK = 0.5;
+// Flag a run reaching a milestone in under this share of the simulator's time. The simulator is a
+// greedy bot, so a good human with challenges beats it by a lot (a real run hit 1e30 rows in 12.5 h
+// against its 34.6 h, a ratio of 0.36); only something far beyond that is worth a look.
+export const PACE_SLACK = 0.3;
 export const BOARDS = {
   fastest: { col: "fastest_ms", order: "ASC", where: "fastest_ms IS NOT NULL AND late = 0" },
   rows: { col: "rows_log10", order: "DESC", where: "rows_log10 > 0" },

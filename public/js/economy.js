@@ -1442,11 +1442,14 @@ export function implausible(prev, next, elapsedSecs) {
   if (nest.some((v, k) => k && over(nest[k - 1], v))) return "row totals do not nest";
   if (over(spentOnRun(next), next.runRows.sub(next.rows))) return "spent more than earned";
   if (next.prod.some((c, i) => c > 0 && !producerUnlocked(next, i))) return "source not unlocked";
-  if (over(next.ins, insightsFor(next).add(next.insCarry))) return "too many insights";
+  // A challenge switches off Board, Tech Radar and Xenotech multipliers while it runs, but the
+  // currencies were earned before it started, with them on: judge those against the full set.
+  const open = next.chal ? { ...next, chal: null } : next;
+  if (over(next.ins, insightsFor(open).add(next.insCarry))) return "too many insights";
   if (over(spentOnInsights(next), next.insSpent) || over(next.insSpent, next.ins)) return "insight spending does not add up";
-  if (over(next.eq, equityFor(next).add(next.eqCarry))) return "too much equity";
+  if (over(next.eq, equityFor(open).add(next.eqCarry))) return "too much equity";
   if (over(spentOnEquity(next).sub(next.eqFree), next.eqSpent) || over(next.eqSpent, next.eq)) return "equity spending does not add up";
-  if (over(next.xeno, xenoFor(next).add(next.xenoCarry))) return "too many xenobytes";
+  if (over(next.xeno, xenoFor(open).add(next.xenoCarry))) return "too many xenobytes";
   if (over(spentOnXeno(next).sub(next.xenoFree), next.xenoSpent) || over(next.xenoSpent, next.xeno)) return "xenobyte spending does not add up";
   // Per Big Bang at most what the universe's rows allow, ×4 from the Axiom milestones.
   if (next.axioms > next.bangs * axiomsFor(next.everRows) * 4 + 1) return "too many axioms";
