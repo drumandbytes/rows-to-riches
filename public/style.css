@@ -343,7 +343,7 @@ a { color: var(--accent); }
   --h: 150;
   position: relative;
   display: grid;
-  grid-template-columns: 48px 1fr auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto; /* minmax(0, …) lets a long name truncate instead of pushing the Buy button off screen */
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
@@ -520,7 +520,7 @@ a { color: var(--accent); }
   .statusbar { display: none; }
   /* Keep each tab at least screen-tall so the page doesn't jump as lists shrink. */
   .pane { min-height: calc(100dvh - 140px); }
-  .node { grid-template-columns: 42px 1fr auto; gap: 10px; padding: 9px 10px; }
+  .node { grid-template-columns: 42px minmax(0, 1fr) auto; gap: 10px; padding: 9px 10px; }
   .node .ico { width: 42px; height: 42px; font-size: 22px; }
   /* Phones wrap the status onto two lines, so reserve both: every row is the same height. */
   .node .sub { min-height: 2.9em; }
@@ -563,22 +563,31 @@ a { color: var(--accent); }
   animation: fall var(--d) cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
 }
 @keyframes fall { to { transform: translate(var(--x), 105vh) rotate(var(--r)); } }
+/* New environment: a small card under the header, click to dismiss. It never covers the game. */
 .banner {
   position: fixed;
-  inset: 0;
   z-index: 35;
+  top: calc(env(safe-area-inset-top) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(92vw, 380px);
   display: grid;
-  place-items: center;
-  background: radial-gradient(circle, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75));
-  animation: fadein 0.3s;
-  pointer-events: none;
-  transition: opacity 0.5s;
+  gap: 2px;
+  padding: 8px 14px;
+  text-align: center;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  animation: bannerIn 0.35s ease-out;
+  transition: opacity 0.4s;
 }
 .banner.out { opacity: 0; }
-.banner-in { display: grid; gap: 6px; text-align: center; padding: 26px 36px; border-radius: 18px; background: var(--panel); border: 2px solid var(--accent); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); animation: zoomIn 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
-.banner-in small { font: 12px var(--mono); color: var(--muted); }
-.banner-in b { font: 800 34px var(--mono); color: var(--accent); }
-.banner-in span { color: var(--fg); }
+.banner small { font: 11px var(--mono); color: var(--muted); }
+.banner b { font: 800 18px var(--mono); color: var(--accent); }
+.banner span { font-size: 12.5px; color: var(--fg); }
+@keyframes bannerIn { from { opacity: 0; transform: translate(-50%, -10px); } }
 @keyframes zoomIn { from { transform: scale(0.4); opacity: 0; } }
 
 .incident {
@@ -641,8 +650,8 @@ body.low *, body.low *::before, body.low *::after { animation-iteration-count: 1
 
 /* ---- challenges ---- */
 .chal-banner { border: 1px solid var(--warn); border-radius: 10px; padding: 8px 10px; background: color-mix(in srgb, var(--warn) 10%, transparent); display: grid; gap: 4px; font-size: 13px; }
-.chal-row { display: flex; gap: 8px; align-items: center; font-family: var(--mono); }
-.chal-row span { flex: 1; text-align: right; color: var(--muted); }
+.chal-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-family: var(--mono); }
+.chal-stats { display: flex; gap: 8px; justify-content: space-between; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
 .chal-row button { padding: 3px 8px; font-size: 12px; }
 .chal-banner .bar { height: 6px; background: rgba(255, 255, 255, 0.07); border-radius: 3px; overflow: hidden; }
 .chal-banner .bar i { display: block; height: 100%; background: var(--warn); transition: width 0.4s; }
@@ -765,7 +774,7 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); b
 
 .gate { margin-top: 6px; font-size: 13px; color: var(--warn, #d9a441); }
 .gate.ok { color: var(--ok, var(--accent)); }
-.chal-row .warn { color: var(--danger); font-weight: 700; }
+.chal-stats .warn { color: var(--danger); font-weight: 700; }
 
 .tiers { display: grid; gap: 4px; margin-top: 8px; }
 .tier { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 8px; align-items: center; font: 12px var(--mono); padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
@@ -785,3 +794,10 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line); b
 .lb-list li.muted { display: block; }
 .lb-rank { opacity: 0.7; }
 .lb-value { text-align: right; }
+
+/* iOS zooms in when a field under 16px takes focus and then stays zoomed, which makes the page look wider than the
+   screen. Fields are 16px on touch devices, and double-tap zoom is off; pinch-zoom stays available. */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+}
+html { touch-action: manipulation; }

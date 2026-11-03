@@ -192,6 +192,12 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
   const OFF_NAMES = { replat: "Insights, Architecture, Tech Radar", acq: "Board, Equity", contact: "Xenotech, Xenobytes", bang: "Axioms" };
   const tierOff = (layer) => E.LAYER_ORDER.slice(E.LAYER_ORDER.indexOf(layer)).map((l) => OFF_NAMES[l]).join(", ");
 
+  // What a no-INSERT challenge hands you to start with, from the rule itself.
+  function kitNote(c, tag = "div") {
+    const kit = (c.rule.starter ?? []).map((n, i) => n && `${n} ${E.PRODUCERS[i].name}${n > 1 ? "s" : ""}`).filter(Boolean);
+    return kit.length ? `<${tag} class="${tag === "div" ? "sub " : ""}kit">🧑‍💻 You start with ${kit.join(" and ")}.</${tag}>` : "";
+  }
+
   function renderChallenges() {
     return E.CHALLENGE_LAYERS.map((layer) => {
       if (!layer.unlocked(state())) return `<h3>${esc(layer.name)}</h3><p class="muted">🔒 ${esc(layer.hint)}</p>`;
@@ -220,7 +226,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
           }
           return `<li class="item chal ${anyDone ? "owned" : ""} ${activeHere ? "active" : ""} ${!open && !anyDone ? "locked" : ""}"><div class="ico" aria-hidden="true">${anyDone ? "🏆" : open ? "🏁" : "🔒"}</div>
             <div><div class="name">${esc(c.name)}</div>
-            <div class="sub">⛓ ${esc(c.restriction)}</div><div class="sub reward">🎁 ${esc(c.reward)}${E.tierCount(c) > 1 ? ` Higher tiers: production ×${E.TIER_REWARD} each.` : ""}</div>
+            <div class="sub">⛓ ${esc(c.restriction)}</div>${kitNote(c)}<div class="sub reward">🎁 ${esc(c.reward)}${E.tierCount(c) > 1 ? ` Higher tiers: production ×${E.TIER_REWARD} each.` : ""}</div>
             <div class="tiers">${tiers.join("")}</div></div><span></span></li>`;
         })
         .join("");
@@ -241,7 +247,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     if (prefs.skipChalConfirm) return startChallengeNow(c, tier);
     const layer = E.parseTier(E.tierKey(c, tier)).layer;
     modal(
-      `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p><p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.goalFor(state(), c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.${E.goalBoost(state(), E.tierKey(c, tier)) > 0 ? " <span class=\"muted\">Raised to match how strong you are.</span>" : ""}</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
+      `<h2>🏁 ${esc(c.name)} ${ROMAN[tier]}</h2><p>⛓ ${esc(c.restriction)}</p>${kitNote(c, "p")}<p>🚫 Switched off: ${esc(tierOff(layer))}.</p><p>Goal: <b>${fmt(E.goalFor(state(), c, tier))}</b> rows within ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)}.${E.goalBoost(state(), E.tierKey(c, tier)) > 0 ? " <span class=\"muted\">Raised to match how strong you are.</span>" : ""}</p><p>🎁 ${tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}`}, plus a speed bonus.</p><p class="muted">Starting banks your pending Insights and begins a fresh run. Stuck? Abandon any time from the banner: the restriction lifts and you keep playing that run, just without the reward.</p>
        ${state().chalEver.length ? `<label class="toggle"><input type="checkbox" id="skip-chal-confirm" /> Don't ask again (Settings → Game turns it back on)</label>` : ""}`,
       [["Cancel"], ["Start challenge", "primary", () => {
         if ($("skip-chal-confirm")?.checked) setPref("skipChalConfirm", true);
@@ -259,7 +265,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     const goal = E.goalFor(state(), c, tier);
     const pct = Math.min(100, (state().runRows.max(1).log10() / Math.log10(goal)) * 100);
     const left = Math.max(0, E.CHALLENGE_LIMIT_MS - E.challengeElapsed(state())) / 1000;
-    setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><span>${fmt(state().runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span><button type="button" data-abandon="1">Abandon</button></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
+    setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><button type="button" data-abandon="1">Abandon</button></div><div class="chal-stats"><span>${fmt(state().runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
   }
 
   return { LAYER_BY_ID, onPrestige, doPrestige, render: renderPrestige, renderChallengeBanner, onStartChallenge, selectLayer: (id) => (prestigeTab = id) };
