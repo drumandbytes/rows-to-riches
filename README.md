@@ -109,7 +109,7 @@ Maintainer notes (deploys, secrets, moderation) are in [`docs/maintaining.md`](d
 
 ## How it was made
 
-Rows to Riches was developed with an AI coding assistant (Claude), which wrote much of the code: the game, the balance simulator and the tests. The game design, the story and jokes, the balance decisions, and the review and playtesting are mine. The music and sound effects aren't recordings or AI-generated audio: they are synthesized live in the browser by code (Web Audio), and the game ships no audio files.
+The idea for Rows to Riches is mine. Most of the game itself was built by an AI coding assistant (Claude): the code, the balance simulator, the tests and much of the content. I direct it, and I validate and playtest everything. The music and sound effects aren't recordings or AI-generated audio: they are synthesized live in the browser by code (Web Audio), and the game ships no audio files.
 
 ## License
 
