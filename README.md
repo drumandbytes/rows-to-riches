@@ -107,6 +107,10 @@ Commits and PR titles follow [Conventional Commits](https://www.conventionalcomm
 
 Maintainer notes (deploys, secrets, moderation) are in [`docs/maintaining.md`](docs/maintaining.md).
 
+## How it was made
+
+The idea for Rows to Riches is mine. Most of the game itself was built by an AI coding assistant (Claude): the code, the balance simulator, the tests and much of the content. I direct it, and I validate and playtest everything. The music and sound effects aren't recordings or AI-generated audio: they are synthesized live in the browser by code (Web Audio), and the game ships no audio files.
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE.md): you may read, run, modify and share the game for any noncommercial purpose, including personal use, study and hobby projects. Commercial use, such as hosting a copy with ads or selling it, isn't permitted. The vendored [break_infinity.js](public/js/lib/break_infinity.js) keeps its own [MIT license](public/js/lib/break_infinity.LICENSE.txt).
