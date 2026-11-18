@@ -154,7 +154,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
       morph($("prestige-seg"), seg);
     }
     if (prestigeTab === "chal") {
-      setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${state().chalDone.length}</b> active · ${fmt(state().chalWins)} all-time</div></div>`);
+      setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${state().chalDone.length}</b> active · ${fmt(state().chalWins)} all-time</div>${runNextHtml()}</div>`);
       setHtml("prestige-shops", renderChallenges());
       return;
     }
@@ -198,6 +198,14 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
   function kitNote(c, tag = "div") {
     const kit = (c.rule.starter ?? []).map((n, i) => n && `${n} ${E.PRODUCERS[i].name}${n > 1 ? "s" : ""}`).filter(Boolean);
     return kit.length ? `<${tag} class="${tag === "div" ? "sub " : ""}kit">🧑‍💻 You start with ${kit.join(" and ")}.</${tag}>` : "";
+  }
+
+  // One button for the grind: the easiest tier you haven't cleared yet.
+  function runNextHtml() {
+    const next = E.nextChallenge(state());
+    if (!next) return `<div class="muted">Every tier you can start is cleared.</div>`;
+    const { challenge: c, tier } = next;
+    return `<button type="button" class="primary" data-challenge="${c.id}" data-tier="${tier}" ${state().chal ? "disabled" : ""}>▶ Run next: ${esc(c.name)} ${ROMAN[tier]}</button>`;
   }
 
   function renderChallenges() {
