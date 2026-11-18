@@ -26,6 +26,10 @@ export function createSettings({ state, prefs, $, esc, modal, toast, saveLocal, 
       $(`opt-auto-${k}`).checked = set[`auto${k[0].toUpperCase()}${k.slice(1)}`];
     }
     $("chal-confirm-wrap").hidden = !state().chalEver.length;
+    const chalOpen = E.CHALLENGE_LAYERS[0].unlocked(state());
+    $("auto-clear-wrap").hidden = !chalOpen;
+    $("auto-clear-hint").hidden = !chalOpen;
+    $("opt-auto-clear").checked = set.autoClear;
     $("opt-chal-confirm").checked = !prefs.skipChalConfirm;
     if (document.activeElement !== $("opt-autoreplat")) $("opt-autoreplat").value = state().settings.autoReplatAt;
     const box = $("cloud");
@@ -106,7 +110,7 @@ export function createSettings({ state, prefs, $, esc, modal, toast, saveLocal, 
   // Auto-buyer settings live in the save (they're about this game, not this device).
   for (const [id, key, kind] of [
     ["opt-auto-sources", "autoSources", "check"], ["opt-auto-upgrades", "autoUpgrades", "check"], ["opt-auto-columns", "autoColumns", "check"],
-    ["opt-auto-radar", "autoRadar", "check"], ["opt-auto-board", "autoBoard", "check"], ["opt-auto-xeno", "autoXeno", "check"], ["opt-auto-bang", "autoBang", "check"],
+    ["opt-auto-radar", "autoRadar", "check"], ["opt-auto-board", "autoBoard", "check"], ["opt-auto-xeno", "autoXeno", "check"], ["opt-auto-bang", "autoBang", "check"], ["opt-auto-clear", "autoClear", "check"],
     ["opt-auto-strategy", "autoStrategy", "value"], ["opt-upg-strategy", "upgStrategy", "value"],
   ]) {
     $(id).addEventListener("change", (e) => {

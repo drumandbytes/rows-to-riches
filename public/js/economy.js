@@ -630,6 +630,8 @@ export function newState(now = Date.now()) {
       // Auto-buyer, per category (Settings → Game → Automation).
       autoSources: false, autoStrategy: "value", autoSkip: [],
       autoUpgrades: false, upgStrategy: "cheapest", autoColumns: false,
+      // Settings → Game → Challenges: book tiers a simulated run clears within AUTO_CLEAR_MS.
+      autoClear: false,
       // Prestige shop bots, once owned (Radar Bot, Board Bot, 1 Axiom).
       autoRadar: true, autoBoard: true, autoXeno: true, autoBang: true,
       // Set once the completion pop-up has been shown in this playthrough.
@@ -1432,7 +1434,7 @@ function recordClear(s, key, ms) {
 // ---- Simulated clears -------------------------------------------------------
 // A tier your save would clear on its own is a chore: play it on a copy of the save with a
 // greedy auto-buyer and no clicks, and book it if the copy reaches the goal within
-// AUTO_CLEAR_MS. The real run is never touched. A bot is a weaker player than a human, so
+// AUTO_CLEAR_MS (a few seconds: "trivial" means trivial). Off unless the player turns it on. The real run is never touched. A bot is a weaker player than a human, so
 // a miss only means "play it yourself"; it never passes a tier a human couldn't.
 function botBuy(s) {
   for (const u of UPGRADES.filter((u) => !s.upg.includes(u.id) && upgradeUnlocked(s, u)).sort((a, b) => a.cost - b.cost)) {
@@ -1442,7 +1444,7 @@ function botBuy(s) {
   for (let i = PRODUCERS.length - 1; i >= 0; i--) buyProducer(s, i, maxAffordable(s, i));
 }
 
-export const AUTO_CLEAR_MS = 60e3;
+export const AUTO_CLEAR_MS = 5e3;
 /** Milliseconds the bot needs for a tier, or null if it misses AUTO_CLEAR_MS. */
 export function simulateClear(s, key, now = Date.now()) {
   const t = parseTier(key);
@@ -1452,7 +1454,7 @@ export function simulateClear(s, key, now = Date.now()) {
   if (!startChallenge(sim, t.challenge.id, now, t.tier)) return null;
   sim.lastTick = now;
   const goal = tierGoal(t.challenge, t.tier);
-  for (let at = now + 1000; at - now <= AUTO_CLEAR_MS; at += 1000) {
+  for (let at = now + 500; at - now <= AUTO_CLEAR_MS; at += 500) {
     tick(sim, at);
     botBuy(sim);
     if (sim.runRows.gte(goal)) return at - now;

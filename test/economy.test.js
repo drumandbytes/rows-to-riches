@@ -590,7 +590,7 @@ test("a simulated clear books what the save can do alone and leaves the real run
   // Hiring Freeze with a generous kit finishes within the limit; Friday Deploy needs far longer.
   const rule = E.CHALLENGE_BY_ID.hiring.rule;
   const kit = rule.starter;
-  rule.starter = [0, 0, 0, 20];
+  rule.starter = [0, 0, 0, 100];
   assert.ok(E.clearCandidates(s).includes("hiring"));
   assert.equal(E.simulateClear(s, "friday", T0), null);
   assert.equal(JSON.stringify(s), before, "a miss changes nothing");

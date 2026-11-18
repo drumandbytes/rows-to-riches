@@ -1425,7 +1425,7 @@ function loop() {
       structureKey = "";
     }
   }
-  if (!S.chal && !document.hidden && now >= nextAutoClearAt) {
+  if (S.settings.autoClear && !S.chal && !document.hidden && now >= nextAutoClearAt) {
     nextAutoClearAt = now + 4000;
     autoClearStep(now);
   }

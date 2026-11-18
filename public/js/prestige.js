@@ -240,7 +240,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
             <div class="tiers">${tiers.join("")}</div></div><span></span></li>`;
         })
         .join("");
-      return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)} per attempt; the faster you finish, the bigger the speed bonus (up to ×2). Each tier switches off the prestige power of the layer it unlocks at and everything above. Tiers you have finished in under ${fmtDuration(E.QUICK_CLEAR_MS / 1000)} come back by themselves after a reset drops them, and any tier your save can clear on its own inside that time (simulated with an auto-buyer, no clicks) is cleared in the background.</p><ul class="list">${items}</ul>`;
+      return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)} per attempt; the faster you finish, the bigger the speed bonus (up to ×2). Each tier switches off the prestige power of the layer it unlocks at and everything above. Tiers you have finished in under ${fmtDuration(E.QUICK_CLEAR_MS / 1000)} come back by themselves after a reset drops them. Settings → Game can also clear tiers in the background when a simulated run of your save (auto-buyer, no clicks) finishes within ${fmtDuration(E.AUTO_CLEAR_MS / 1000)}; slower ones are left for you to play.</p><ul class="list">${items}</ul>`;
     }).join("");
   }
 
