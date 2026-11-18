@@ -154,7 +154,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
       morph($("prestige-seg"), seg);
     }
     if (prestigeTab === "chal") {
-      setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${state().chalDone.length}</b> active · ${fmt(state().chalWins)} all-time</div>${runNextHtml()}</div>`);
+      setHtml("prestige-card", `<div class="replat-card"><div class="muted">Challenges are runs under a restriction, in tiers. A tier switches off prestige upgrades and currencies from the layer it unlocks at and above; challenge rewards stay on. Reach the goal and the reward switches on. Each prestige needs ${E.GATE_NEED} completed challenges of the layer below. Rewards last until the next reset of the layer above. Starting one banks your pending Insights and begins a fresh run.</div><div class="muted">Completed: <b>${state().chalDone.length}</b> active · ${fmt(state().chalWins)} all-time</div>${runNextHtml()}${simAllHtml()}</div>`);
       setHtml("prestige-shops", renderChallenges());
       return;
     }
@@ -206,6 +206,29 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     if (!next) return `<div class="muted">Every tier you can start is cleared.</div>`;
     const { challenge: c, tier } = next;
     return `<button type="button" class="primary" data-challenge="${c.id}" data-tier="${tier}" ${state().chal ? "disabled" : ""}>▶ Run next: ${esc(c.name)} ${ROMAN[tier]}</button>`;
+  }
+
+  // Trivial tiers: simulate each on a copy of the save and book the ones that pass.
+  function simAllHtml() {
+    if (!E.clearCandidates(state()).length) return "";
+    return `<div class="row-buttons"><button type="button" data-sim-all="1" ${state().chal ? "disabled" : ""}>⚙️ Simulate all</button></div><div class="muted">Plays every tier you haven't cleared on a copy of your save, with an auto-buyer and no clicking. A tier whose simulated run reaches its goal within ${fmtDuration(E.AUTO_CLEAR_MS / 1000)} is cleared for you; a slower one fails and stays for you to play. Your current run is never touched.</div>`;
+  }
+
+  function onSimulateAll() {
+    if (state().chal) return;
+    E.tick(state(), Date.now());
+    const { cleared, missed } = E.simulateAll(state(), Date.now());
+    const name = (key) => {
+      const { challenge: c, tier } = E.parseTier(key);
+      return `${esc(c.name)} ${ROMAN[tier]}`;
+    };
+    modal(
+      `<h2>⚙️ Simulation done</h2>
+       <p>${cleared.length ? `Cleared (reached the goal within ${fmtDuration(E.AUTO_CLEAR_MS / 1000)}): <b>${cleared.map(name).join(", ")}</b>.` : `Nothing cleared: no tier reached its goal within ${fmtDuration(E.AUTO_CLEAR_MS / 1000)} on its own.`}</p>
+       ${missed.length ? `<p class="muted">Too slow, left for you (${missed.length}): ${missed.map(name).join(", ")}.</p>` : ""}`,
+      [["Close", "primary"]],
+    );
+    afterPurchase();
   }
 
   function renderChallenges() {
@@ -278,5 +301,5 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
     setHtml("chal-banner", `<div class="chal-row"><b>🏁 ${esc(c.name)} ${ROMAN[tier]}</b><button type="button" data-abandon="1">Abandon</button></div><div class="chal-stats"><span>${fmt(state().runRows)} / ${fmt(goal)}</span><span class="${left < 300 ? "warn" : ""}">⏱️ ${fmtDuration(left)} left</span></div><div class="muted">⛓ ${esc(c.restriction)}</div><div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>`);
   }
 
-  return { LAYER_BY_ID, onPrestige, doPrestige, render: renderPrestige, renderChallengeBanner, onStartChallenge, selectLayer: (id) => (prestigeTab = id) };
+  return { LAYER_BY_ID, onPrestige, doPrestige, render: renderPrestige, renderChallengeBanner, onStartChallenge, onSimulateAll, selectLayer: (id) => (prestigeTab = id) };
 }

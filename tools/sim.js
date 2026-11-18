@@ -58,6 +58,7 @@ function spendEquity() {
 // Challenges: played only when a gate blocks a prestige that's otherwise ready, easiest
 // (lowest goal) first. One that runs out of time is skipped until the next prestige.
 let chalStart = 0;
+let lastAutoClear = 0;
 const gaveUp = new Set();
 const probedEras = new Set();
 function probeEra(layer) {
@@ -158,6 +159,11 @@ while (now < hours * 3.6e6) {
     if (s.chal) continue;
   } else {
     E.quickClear?.(s);
+    // AUTOCLEAR=1: the game's background clears, tried every 5 simulated minutes.
+    if (process.env.AUTOCLEAR && now - lastAutoClear >= 3e5) {
+      lastAutoClear = now;
+      for (const key of E.clearCandidates(s)) if (E.autoClear(s, key, now)) log(`auto-clear ✓ ${key}`);
+    }
     maybeStartChallenge();
   }
   if (s.chal) continue;

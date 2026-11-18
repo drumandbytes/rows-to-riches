@@ -1102,6 +1102,7 @@ document.addEventListener("click", (e) => {
     prestige.selectLayer(t.dataset.layer);
     render(true);
   } else if (t.dataset.prestige) prestige.onPrestige(prestige.LAYER_BY_ID[t.dataset.prestige]);
+  else if (t.dataset.simAll) prestige.onSimulateAll();
   else if (t.dataset.challenge) prestige.onStartChallenge(t.dataset.challenge, Number(t.dataset.tier ?? 1));
   else if (t.closest("[data-request]")) active.answer(t.closest("[data-request]").dataset.request);
   else if (t.dataset.okrToggle) $("okr-strip").classList.toggle("open");
@@ -1444,6 +1445,7 @@ function loop() {
   }
 }
 let lastRenderAt = 0;
+
 
 // ---- walkthrough -------------------------------------------------------------
 
