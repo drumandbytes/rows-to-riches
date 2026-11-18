@@ -1357,6 +1357,18 @@ export function startChallenge(s, id, now = Date.now(), tier = 1) {
   return true;
 }
 
+/** The easiest tier (lowest goal) you can start and haven't cleared, or null. */
+export function nextChallenge(s) {
+  let best = null;
+  for (const c of CHALLENGES) {
+    for (let tier = 1; tier <= tierCount(c); tier++) {
+      if (s.chalDone.includes(tierKey(c, tier)) || !tierUnlocked(s, c, tier)) continue;
+      if (!best || tierGoal(c, tier) < tierGoal(best.challenge, best.tier)) best = { challenge: c, tier };
+    }
+  }
+  return best;
+}
+
 export const abandonChallenge = (s) => (s.chal = null);
 
 // Every challenge has the same hard time limit; running out fails it. Finishing early earns

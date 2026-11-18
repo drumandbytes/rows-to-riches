@@ -565,3 +565,16 @@ test("a save with quick-cleared tiers restored right after a reset passes the pl
   assert.ok(E.won(next, "legacy"));
   assert.equal(E.implausible(null, next, 7200), null);
 });
+
+test("nextChallenge picks the easiest uncleared tier you can start", () => {
+  const s = E.newState(T0);
+  assert.equal(E.nextChallenge(s), null, "nothing is unlocked at the start");
+  s.ins = E.big(25);
+  s.replat = 3;
+  const first = E.nextChallenge(s);
+  assert.equal(first.challenge.id, "budget", "lowest goal; ties go to the earlier challenge");
+  s.chalDone.push(E.tierKey(first.challenge, first.tier));
+  const second = E.nextChallenge(s);
+  assert.notDeepEqual(second, first);
+  assert.ok(E.tierUnlocked(s, second.challenge, second.tier));
+});
