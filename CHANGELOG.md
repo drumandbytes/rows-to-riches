@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.7...v0.8.0) (2026-11-18)
+
+
+### Features
+
+* add a Run next button to the challenges tab ([249659f](https://github.com/drumandbytes/rows-to-riches/commit/249659fd176c7cfa27c47b510a8f54d50a2d05bd))
+* clear challenges your save can do alone in the background ([79befb8](https://github.com/drumandbytes/rows-to-riches/commit/79befb8576d1ed479a0d3581631cc6cfd7d09f2e))
+* make background challenge clears opt-in with a 5 second limit ([3903fdf](https://github.com/drumandbytes/rows-to-riches/commit/3903fdf5b6e30210220a0c283976e3c3d9269bae))
+* record challenge clear time in stats, test restored tiers pass the server check ([593ef02](https://github.com/drumandbytes/rows-to-riches/commit/593ef021d515d8e4038235db3e17e5655b7bc9bd))
+* replace background clears with a Simulate all button ([77ea1c1](https://github.com/drumandbytes/rows-to-riches/commit/77ea1c1e6661ed92361c7bbc401a29a8c5f62356))
+* starter kits and quick re-clear for challenges ([4c0203c](https://github.com/drumandbytes/rows-to-riches/commit/4c0203c6546082635f5fb994eb5ada37537397c0))
+
 ## [0.7.7](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.6...v0.7.7) (2026-11-03)
 
 
