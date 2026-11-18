@@ -232,7 +232,7 @@ export function createPrestige({ E, state, fmt, esc, $, modal, toast, scene, aud
             <div class="tiers">${tiers.join("")}</div></div><span></span></li>`;
         })
         .join("");
-      return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)} per attempt; the faster you finish, the bigger the speed bonus (up to ×2). Each tier switches off the prestige power of the layer it unlocks at and everything above.</p><ul class="list">${items}</ul>`;
+      return `<h3>${esc(layer.name)}</h3><p class="muted">Rewards last until the ${esc(layer.until)}. Time limit ${fmtDuration(E.CHALLENGE_LIMIT_MS / 1000)} per attempt; the faster you finish, the bigger the speed bonus (up to ×2). Each tier switches off the prestige power of the layer it unlocks at and everything above. Tiers you have finished in under ${fmtDuration(E.QUICK_CLEAR_MS / 1000)} come back by themselves after a reset drops them.</p><ul class="list">${items}</ul>`;
     }).join("");
   }
 

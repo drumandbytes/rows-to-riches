@@ -11,7 +11,7 @@ const startedAt = Date.now();
 export const browserOptOut = () => !!navigator.globalPrivacyControl || navigator.doNotTrack === "1";
 export const allowed = () => prefs.stats !== false && (!browserOptOut() || prefs.statsGpcOptIn);
 
-/** `s` is the save; `extra` may carry { detail } (e.g. which challenge). */
+/** `s` is the save; `extra` may carry { detail } (e.g. which challenge) and { secs } (how long it took). */
 export function track(event, s, extra = {}) {
   if (!allowed()) return;
   const body = {
@@ -32,6 +32,7 @@ export function track(event, s, extra = {}) {
     ach: s.ach.length,
     chalWins: s.chalWins,
     quarters: s.stats.quarters,
+    secs: Math.round(extra.secs ?? 0),
   };
   const blob = new Blob([JSON.stringify(body)], { type: "application/json" });
   // sendBeacon survives the page closing; it sends no cookies because there are none.

@@ -267,6 +267,9 @@ export const TUNING = {
   equityMultCap: 100, xenoMultCap: 100, axiomMultCap: 1e3, axiomBoostCap: 100, multSoftPower: 0.5,
   // Completed challenges each prestige needs from the layer below (0 in sims comparing curves).
   gateNeed: 3,
+  // Inside a challenge the production multiplier is soft-capped (×cap in full, then ** power),
+  // so what a long ascension piles up below the tier can't skip a fixed goal.
+  chalMultCap: 1e20, chalSoftPower: 0.5,
   axiomPower: 0.7,
 };
 
@@ -316,23 +319,23 @@ const XENOTECH_BY_ID = Object.fromEntries(XENOTECH.map((x) => [x.id, x]));
 
 export const CHALLENGES = [
   // layer "replat": unlocked at 10 Insights
-  { id: "legacy", req: (s) => s.replat >= 2, reqText: "Re-platform 2 times.", layer: "replat", name: "Legacy Migration", goals: [1.5e5, 8e24, 4e38, 3e42], rule: { noColumns: true },
+  { id: "legacy", req: (s) => s.replat >= 2, reqText: "Re-platform 2 times.", layer: "replat", name: "Legacy Migration", goals: [1.5e5, 8e24, 4e38, 3e42], rule: { noColumns: true, starter: [80, 30] },
     restriction: "No columns. The schema is frozen; the DBA retired.", reward: "Each column +10% stronger." },
-  { id: "budget", req: (s) => s.replat >= 3, reqText: "Re-platform 3 times.", layer: "replat", name: "Budget Freeze", goals: [1.5e4, 4e27, 1.5e43, 5e49], rule: { costMult: 100 },
+  { id: "budget", req: (s) => s.replat >= 3, reqText: "Re-platform 3 times.", layer: "replat", name: "Budget Freeze", goals: [1.5e4, 4e27, 1.5e43, 5e49], rule: { costMult: 100, starter: [30, 8] },
     restriction: "Data Sources cost ×100.", reward: "Data Sources cost 25% less." },
-  { id: "hiring", req: (s) => s.ins.gte(25), reqText: "Have 25 Insights.", layer: "replat", name: "Hiring Freeze", goals: [1.5e4, 8e27, 3e43, 1e50], rule: { minTier: 3 },
+  { id: "hiring", req: (s) => s.ins.gte(25), reqText: "Have 25 Insights.", layer: "replat", name: "Hiring Freeze", goals: [1.5e4, 8e27, 3e43, 1e50], rule: { minTier: 3, starter: [0, 0, 0, 1] },
     restriction: "No Interns, Cron Jobs or Python Scripts.", reward: "Everything ×5." },
-  { id: "friday", req: (s) => s.incidents >= 10, reqText: "Resolve 10 incidents.", layer: "replat", name: "Friday Deploy", goals: [6e4, 4e24, 1e38, 1.5e44], rule: { noClick: true, noUpgrades: true, starter: [10] },
+  { id: "friday", req: (s) => s.incidents >= 10, reqText: "Resolve 10 incidents.", layer: "replat", name: "Friday Deploy", goals: [6e4, 4e24, 1e38, 1.5e44], rule: { noClick: true, noUpgrades: true, starter: [300] },
     restriction: "No INSERT and no upgrades. A department of interns has the deploy. Just vibes and hope.", reward: "Incidents are twice as strong and twice as frequent." },
-  { id: "compliance", req: (s) => s.ins.gte(50), reqText: "Have 50 Insights.", layer: "replat", name: "Compliance Audit", goals: [6e3, 2e26, 1e42, 2.5e48], rule: { prodDiv: 100 },
+  { id: "compliance", req: (s) => s.ins.gte(50), reqText: "Have 50 Insights.", layer: "replat", name: "Compliance Audit", goals: [6e3, 2e26, 1e42, 2.5e48], rule: { prodDiv: 100, starter: [0, 0, 0, 25] },
     restriction: "Production ÷100 while auditors watch.", reward: "Insights from re-platforming ×3." },
-  { id: "monorepo", req: (s) => s.ins.gte(100), reqText: "Have 100 Insights.", layer: "replat", name: "Monorepo", goals: [2e5, 8e24, 4e36, 6e43], rule: { noInsights: true },
+  { id: "monorepo", req: (s) => s.ins.gte(100), reqText: "Have 100 Insights.", layer: "replat", name: "Monorepo", goals: [2e5, 8e24, 4e36, 6e43], rule: { noInsights: true, starter: [80, 30] },
     restriction: "Insights give no production bonus.", reward: "Insights give twice the production bonus." },
-  { id: "keepupg", req: (s) => s.replat >= 10, reqText: "Re-platform 10 times.", layer: "replat", name: "Immutable Infrastructure", goals: [2e4, 6e24, 3e38, 2.5e42], rule: { costMult: 10, noColumns: true },
+  { id: "keepupg", req: (s) => s.replat >= 10, reqText: "Re-platform 10 times.", layer: "replat", name: "Immutable Infrastructure", goals: [2e4, 6e24, 3e38, 2.5e42], rule: { costMult: 10, noColumns: true, starter: [40, 15] },
     restriction: "Data Sources cost ×10 and no columns.", reward: "Upgrades are kept when you re-platform." },
-  { id: "keepcols", req: (s) => s.chalWins >= 2, reqText: "Complete 2 challenges.", layer: "replat", name: "Schema-on-Write", goals: [2e5, 4e23, 1.5e35, 6e38], rule: { maxTier: 6 },
+  { id: "keepcols", req: (s) => s.chalWins >= 2, reqText: "Complete 2 challenges.", layer: "replat", name: "Schema-on-Write", goals: [2e5, 4e23, 1.5e35, 6e38], rule: { maxTier: 6, starter: [80, 30] },
     restriction: "Only the first 6 Data Sources.", reward: "Columns are kept when you re-platform." },
-  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [250, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [10] },
+  { id: "keepsrc", req: (s) => s.chalWins >= 4, reqText: "Complete 4 challenges.", layer: "replat", name: "Long-Term Support", goals: [250, 8e26, 4e42, 2e49], rule: { noClick: true, prodDiv: 10, starter: [60] },
     restriction: "No INSERT, and production ÷10. A department of interns keeps the LTS branch alive.", reward: "10% of every Data Source is kept when you re-platform." },
   // layer "acq": unlocked after the first Acquisition
   { id: "takeover", req: (s) => s.acq >= 1, reqText: "Get acquired once.", layer: "acq", name: "Hostile Takeover", goals: [3e24, 1.5e40, 8e46], rule: { prodDiv: 1e4 },
@@ -607,7 +610,7 @@ export function newState(now = Date.now()) {
     modified: false,
     // Leaderboard: signed start ticket, opt-in and the generated name (worker/leaderboard.js).
     lb: { ticket: "", optIn: false, name: "", locked: false },
-    chal: null, chalDone: [], chalEver: [], chalWins: 0, chalBest: {},
+    chal: null, chalDone: [], chalEver: [], chalFast: [], chalWins: 0, chalBest: {},
     momentum: 0,
     okr: null, // quarterly OKRs: { quarter, endsAt (online ms), items: [{ kind, label, base, target, done }] }
     inbox: [],
@@ -670,6 +673,8 @@ export function normalize(raw, now = Date.now()) {
   s.chalEver = [...new Set([...(Array.isArray(raw.chalEver) ? raw.chalEver : []), ...s.chalDone])].filter((k) => parseTier(k));
   s.chalBest = {};
   for (const [k, ms] of Object.entries(raw.chalBest ?? {})) if (parseTier(k) && Number.isFinite(ms) && ms > 0) s.chalBest[k] = Math.min(ms, CHALLENGE_LIMIT_MS);
+  // Tiers ever finished within QUICK_CLEAR_MS (older saves: read off the best times).
+  s.chalFast = [...new Set([...(Array.isArray(raw.chalFast) ? raw.chalFast : []), ...Object.keys(s.chalBest).filter((k) => s.chalBest[k] <= QUICK_CLEAR_MS)])].filter((k) => parseTier(k) && s.chalEver.includes(k));
   // What an acquisition carried over for free; bounded by what the Board and rewards allow.
   const keepAll = s.chalDone.includes("keepradar") || s.chalDone.includes("keepcontact") || s.xeno_tech.permaplatform || s.bangs >= 10;
   const keep = keepAll ? 1 : 0.1 * (s.board.parachute ?? 0);
@@ -849,6 +854,7 @@ export function globalMultiplier(s) {
   m = m.mul(challengeMultiplier(s));
   if (bangMilestone(s, "tenfold")) m = m.mul(big(10).pow(bangMilestonesReached(s)));
   m = m.mul(big(NG_PROD).pow(s.completions));
+  if (s.chal) m = bigSoftcap(m, TUNING.chalMultCap, TUNING.chalSoftPower);
   f /= rule(s).prodDiv ?? 1;
   if (!layerOff(s, "bang")) m = m.mul(axiomProdMult(s));
   if (archOn(s, "mesh")) f *= 1 + 0.05 * s.prod.filter((c) => c > 0).length;
@@ -1165,7 +1171,8 @@ export const pendingAxioms = (s) => (canBigBang(s) ? axiomsFor(s.allRows) * axio
 /** Free sources at the start of a run: Golden Images gives 10 per level of the first sources. */
 function starterProducers(s) {
   const l = radarLevel(s, "golden");
-  // No-INSERT challenges hand you a starter kit, or the run could never earn a row.
+  // Early challenges hand you a starter kit so the opening isn't a wall of INSERT clicks
+  // (and no-INSERT ones couldn't earn a row without it). Clicking still finishes faster.
   const kit = rule(s).starter ?? [];
   return PRODUCERS.map((_, k) => Math.max(k < l ? 10 * (l - k) : 0, kit[k] ?? 0));
 }
@@ -1362,6 +1369,24 @@ export const speedBonus = (s, key) => (s.chalBest[key] ? (2 - Math.min(1, s.chal
 const challengeMultiplier = (s) =>
   s.chalDone.reduce((m, key) => (won(s, key) ? m.mul(speedBonus(s, key) * (key.includes("#") ? TIER_REWARD : 1)) : m), big(1));
 
+// A tier you've finished inside QUICK_CLEAR_MS is a chore, not a test: when a reset drops its
+// reward, it comes straight back (see quickClear). The first clear is always played.
+export const QUICK_CLEAR_MS = 5 * 60e3;
+/** Re-grants every dropped reward whose tier was once finished quickly, at the best time on
+ *  record (or the quick-clear time). Returns the keys restored. No-op during a challenge. */
+export function quickClear(s) {
+  if (s.chal) return [];
+  const back = [];
+  for (const key of s.chalFast) {
+    const { challenge: c, tier } = parseTier(key);
+    if (s.chalDone.includes(key) || !tierUnlocked(s, c, tier)) continue;
+    s.chalDone.push(key);
+    s.chalBest[key] = Math.min(s.chalBest[key] ?? QUICK_CLEAR_MS, QUICK_CLEAR_MS);
+    back.push(key);
+  }
+  return back;
+}
+
 /** Completes the active challenge if its goal is met: returns { challenge, ms, record }.
  *  Fails it once the time limit has passed: returns { challenge, failed: true }. */
 export function checkChallenge(s, now = Date.now()) {
@@ -1381,6 +1406,7 @@ export function checkChallenge(s, now = Date.now()) {
     s.chalWins += 1;
   }
   if (!s.chalEver.includes(key)) s.chalEver.push(key);
+  if (ms <= QUICK_CLEAR_MS && !s.chalFast.includes(key)) s.chalFast.push(key);
   const record = !s.chalBest[key] || ms < s.chalBest[key];
   if (record) s.chalBest[key] = Math.max(1, ms);
   return { challenge: c, tier, key, ms, record };
