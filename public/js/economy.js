@@ -1413,6 +1413,11 @@ export function checkChallenge(s, now = Date.now()) {
     return { challenge: c, tier, key, failed: true };
   }
   s.chal = null;
+  return { challenge: c, tier, key, ms, record: recordClear(s, key, ms) };
+}
+
+/** Books a finished challenge: reward on, best time, quick-clear list. Returns whether it is a new best. */
+function recordClear(s, key, ms) {
   if (!s.chalDone.includes(key)) {
     s.chalDone.push(key);
     s.chalWins += 1;
@@ -1421,7 +1426,58 @@ export function checkChallenge(s, now = Date.now()) {
   if (ms <= QUICK_CLEAR_MS && !s.chalFast.includes(key)) s.chalFast.push(key);
   const record = !s.chalBest[key] || ms < s.chalBest[key];
   if (record) s.chalBest[key] = Math.max(1, ms);
-  return { challenge: c, tier, key, ms, record };
+  return record;
+}
+
+// ---- Simulated clears -------------------------------------------------------
+// A tier your save would clear on its own is a chore: play it on a copy of the save with a
+// greedy auto-buyer and no clicks, and book it if the copy reaches the goal within
+// AUTO_CLEAR_MS. The real run is never touched. A bot is a weaker player than a human, so
+// a miss only means "play it yourself"; it never passes a tier a human couldn't.
+function botBuy(s) {
+  for (const u of UPGRADES.filter((u) => !s.upg.includes(u.id) && upgradeUnlocked(s, u)).sort((a, b) => a.cost - b.cost)) {
+    if (!buyUpgrade(s, u.id)) break;
+  }
+  if (columnCost(s.cols, s).lt(s.rows.mul(0.5))) buyColumn(s);
+  for (let i = PRODUCERS.length - 1; i >= 0; i--) buyProducer(s, i, maxAffordable(s, i));
+}
+
+export const AUTO_CLEAR_MS = 60e3;
+/** Milliseconds the bot needs for a tier, or null if it misses AUTO_CLEAR_MS. */
+export function simulateClear(s, key, now = Date.now()) {
+  const t = parseTier(key);
+  if (!t || s.chal || !tierUnlocked(s, t.challenge, t.tier)) return null;
+  const sim = normalize(JSON.parse(JSON.stringify(s)), now);
+  sim.lastTick = now;
+  if (!startChallenge(sim, t.challenge.id, now, t.tier)) return null;
+  sim.lastTick = now;
+  const goal = tierGoal(t.challenge, t.tier);
+  for (let at = now + 1000; at - now <= AUTO_CLEAR_MS; at += 1000) {
+    tick(sim, at);
+    botBuy(sim);
+    if (sim.runRows.gte(goal)) return at - now;
+  }
+  return null;
+}
+
+/** Tiers you could start and haven't cleared, easiest first. */
+export function clearCandidates(s) {
+  const out = [];
+  for (const c of CHALLENGES) {
+    for (let tier = 1; tier <= tierCount(c); tier++) {
+      const key = tierKey(c, tier);
+      if (!s.chalDone.includes(key) && tierUnlocked(s, c, tier)) out.push(key);
+    }
+  }
+  return out.sort((a, b) => tierGoal(parseTier(a).challenge, parseTier(a).tier) - tierGoal(parseTier(b).challenge, parseTier(b).tier));
+}
+
+/** Books a simulated clear; false if the bot can't do it in time. */
+export function autoClear(s, key, now = Date.now()) {
+  const ms = simulateClear(s, key, now);
+  if (ms === null) return false;
+  recordClear(s, key, ms);
+  return true;
 }
 
 /** Newly earned achievement ids (also records them on s). */

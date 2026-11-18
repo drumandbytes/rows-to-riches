@@ -578,3 +578,30 @@ test("nextChallenge picks the easiest uncleared tier you can start", () => {
   assert.notDeepEqual(second, first);
   assert.ok(E.tierUnlocked(s, second.challenge, second.tier));
 });
+
+test("a simulated clear books what the save can do alone and leaves the real run untouched", () => {
+  const s = E.newState(T0);
+  s.ins = E.big(500);
+  s.replat = 12;
+  s.incidents = 99;
+  s.rows = E.big(1234);
+  s.prod[0] = 7;
+  const before = JSON.stringify(s);
+  // Hiring Freeze with a generous kit finishes within the limit; Friday Deploy needs far longer.
+  const rule = E.CHALLENGE_BY_ID.hiring.rule;
+  const kit = rule.starter;
+  rule.starter = [0, 0, 0, 20];
+  assert.ok(E.clearCandidates(s).includes("hiring"));
+  assert.equal(E.simulateClear(s, "friday", T0), null);
+  assert.equal(JSON.stringify(s), before, "a miss changes nothing");
+  assert.ok(E.autoClear(s, "hiring", T0));
+  assert.ok(E.won(s, "hiring") && s.chalBest.hiring <= E.AUTO_CLEAR_MS);
+  assert.equal(s.chal, null);
+  assert.equal(s.rows.toString(), "1234");
+  assert.equal(s.prod[0], 7);
+  assert.ok(!E.clearCandidates(s).includes("hiring"), "cleared tiers stop being candidates");
+  rule.starter = kit;
+  // Not while a challenge is running.
+  s.chal = "legacy";
+  assert.equal(E.simulateClear(s, "budget", T0), null);
+});

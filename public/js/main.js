@@ -1425,6 +1425,10 @@ function loop() {
       structureKey = "";
     }
   }
+  if (!S.chal && !document.hidden && now >= nextAutoClearAt) {
+    nextAutoClearAt = now + 4000;
+    autoClearStep(now);
+  }
   E.sampleHistory(S, now);
   autoPrestige();
   checkFinale();
@@ -1444,6 +1448,22 @@ function loop() {
   }
 }
 let lastRenderAt = 0;
+
+// Challenges the save would clear by itself are booked in the background: one simulated tier
+// every few seconds, and a miss is remembered until the save's prestige power changes.
+let nextAutoClearAt = 0;
+const clearMissed = new Map();
+const sumLevels = (o) => Object.values(o).reduce((a, n) => a + n, 0);
+function autoClearStep(now) {
+  const sig = [S.replat, S.acq, S.contact, S.bangs, S.chalDone.length, S.arch.length, sumLevels(S.radar), sumLevels(S.board), sumLevels(S.xeno_tech)].join();
+  const key = E.clearCandidates(S).find((k) => clearMissed.get(k) !== sig);
+  if (!key) return;
+  if (E.autoClear(S, key, now)) {
+    const { challenge: c, tier } = E.parseTier(key);
+    toast(`⚙️ <b>${esc(c.name)} ${ROMAN[tier]}</b> cleared in the background: a simulated run of your save finished it in ${fmtDuration(S.chalBest[key] / 1000)}.`);
+    structureKey = "";
+  } else clearMissed.set(key, sig);
+}
 
 // ---- walkthrough -------------------------------------------------------------
 
