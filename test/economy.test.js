@@ -511,3 +511,42 @@ test("click upgrades aren't offered in a challenge without INSERT", () => {
   assert.ok(!E.upgradeUnlocked(s, click));
   assert.ok(!E.buyUpgrade(s, click.id));
 });
+
+test("a tier finished quickly comes back after a reset drops it; a slow one doesn't", () => {
+  const s = E.newState(T0);
+  E.earn(s, 2e9);
+  s.ins = E.big(25);
+  s.replat = 3;
+  s.chalEver = ["budget", "hiring"];
+  // Quick: 3 minutes. Slow: 20 minutes.
+  assert.ok(E.startChallenge(s, "hiring", T0));
+  E.earn(s, 1e10);
+  assert.ok(E.checkChallenge(s, T0 + 3 * 60e3));
+  s.chalBest = { hiring: 3 * 60e3 };
+  s.chalDone = [];
+  assert.ok(E.startChallenge(s, "budget", T0));
+  E.earn(s, 1e10);
+  assert.ok(E.checkChallenge(s, T0 + 20 * 60e3));
+  assert.deepEqual(s.chalFast, ["hiring"]);
+  // A reset drops both rewards (and the best times without Speedrun Records).
+  s.chalDone = [];
+  s.chalBest = {};
+  assert.deepEqual(E.quickClear(s), ["hiring"]);
+  assert.ok(E.won(s, "hiring") && !E.won(s, "budget"));
+  assert.ok(E.speedBonus(s, "hiring") > 1, "a restored reward keeps a speed bonus");
+  assert.deepEqual(E.quickClear(s), [], "nothing left to restore");
+  // Never during a challenge, and the save round-trips.
+  s.chalDone = [];
+  assert.ok(E.startChallenge(s, "budget", T0));
+  assert.deepEqual(E.quickClear(s), []);
+  assert.deepEqual(E.normalize(JSON.parse(JSON.stringify(s))).chalFast, ["hiring"]);
+});
+
+test("early challenges start with a free kit, and every kit is for a source the rule allows", () => {
+  for (const c of E.CHALLENGES.filter((c) => c.layer === "replat")) assert.ok(c.rule.starter?.some(Boolean), `${c.id} has a starter kit`);
+  const s = E.newState(T0);
+  E.earn(s, 2e9);
+  s.ins = E.big(25);
+  assert.ok(E.startChallenge(s, "hiring", T0));
+  assert.deepEqual(s.prod.slice(0, 4), [0, 0, 0, 1], "Hiring Freeze starts with one Postgres Box");
+});

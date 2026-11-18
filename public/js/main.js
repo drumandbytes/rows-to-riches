@@ -1418,6 +1418,13 @@ function loop() {
     toast(`🏁 <b>${esc(c.name)} ${ROMAN[result.tier]} complete</b> in ${time}${result.record ? " (new best)" : ""}. ${reward} Speed bonus ×${E.speedBonus(S, result.key).toFixed(2)}.`);
     structureKey = "";
   }
+  if (S.chalFast.length && !S.chal) {
+    const back = E.quickClear(S);
+    if (back.length) {
+      toast(`⚡ ${back.length === 1 ? `<b>${esc(E.parseTier(back[0]).challenge.name)} ${ROMAN[E.parseTier(back[0]).tier]}</b> re-cleared` : `<b>${back.length} challenges</b> re-cleared`}: you've beaten ${back.length === 1 ? "it" : "them"} in under ${E.QUICK_CLEAR_MS / 60e3} minutes before.`);
+      structureKey = "";
+    }
+  }
   E.sampleHistory(S, now);
   autoPrestige();
   checkFinale();

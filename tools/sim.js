@@ -67,12 +67,12 @@ function probeEra(layer) {
     for (let t = 1; t <= E.tierCount(c); t++) {
       const key = E.tierKey(c, t);
       if (E.parseTier(key).layer !== layer) continue;
-      s = structuredClone(saved);
+      s = E.normalize(JSON.parse(JSON.stringify(saved)), now);
       // Open the tier for the probe (requirements and lower tiers are not what's measured).
       s.chalEver.push(...Array.from({ length: t - 1 }, (_, k) => E.tierKey(c, k + 1)));
       // Tier I requirements (counts, currencies) only; a tier's own layer and above are off
       // in the probe anyway, so inflating them doesn't change what's measured.
-      if (t === 1) Object.assign(s, { replat: Math.max(s.replat, 10), incidents: Math.max(s.incidents, 99), chalWins: Math.max(s.chalWins, 99), ins: Math.max(s.ins, 500), eq: Math.max(s.eq, 100), xeno: Math.max(s.xeno, 500), bangs: Math.max(s.bangs, 2) });
+      if (t === 1) Object.assign(s, { replat: Math.max(s.replat, 10), incidents: Math.max(s.incidents, 99), chalWins: Math.max(s.chalWins, 99), ins: E.big(s.ins).max(500), eq: E.big(s.eq).max(100), xeno: E.big(s.xeno).max(500), bangs: Math.max(s.bangs, 2) });
       const start = now;
       if (!E.startChallenge(s, c.id, start, t)) {
         out.push(`${key}:?`);
@@ -156,7 +156,10 @@ while (now < hours * 3.6e6) {
   if (s.chal) {
     stepChallenge();
     if (s.chal) continue;
-  } else maybeStartChallenge();
+  } else {
+    E.quickClear?.(s);
+    maybeStartChallenge();
+  }
   if (s.chal) continue;
   const pend = E.pendingInsights(s);
   if (pend.gte(E.big(3).max(E.layerEarned(s, "replat").mul(s.settings.autoReplatAt - 1)))) {
