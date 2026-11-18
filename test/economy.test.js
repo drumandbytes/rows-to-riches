@@ -604,4 +604,9 @@ test("a simulated clear books what the save can do alone and leaves the real run
   // Not while a challenge is running.
   s.chal = "legacy";
   assert.equal(E.simulateClear(s, "budget", T0), null);
+  s.chal = null;
+  // Simulate all: nothing left to clear here, and every miss is reported.
+  const all = E.simulateAll(s, T0);
+  assert.deepEqual(all.cleared, []);
+  assert.ok(all.missed.includes("friday"));
 });

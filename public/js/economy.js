@@ -630,8 +630,6 @@ export function newState(now = Date.now()) {
       // Auto-buyer, per category (Settings → Game → Automation).
       autoSources: false, autoStrategy: "value", autoSkip: [],
       autoUpgrades: false, upgStrategy: "cheapest", autoColumns: false,
-      // Settings → Game → Challenges: book tiers a simulated run clears within AUTO_CLEAR_MS.
-      autoClear: false,
       // Prestige shop bots, once owned (Radar Bot, Board Bot, 1 Axiom).
       autoRadar: true, autoBoard: true, autoXeno: true, autoBang: true,
       // Set once the completion pop-up has been shown in this playthrough.
@@ -1434,7 +1432,7 @@ function recordClear(s, key, ms) {
 // ---- Simulated clears -------------------------------------------------------
 // A tier your save would clear on its own is a chore: play it on a copy of the save with a
 // greedy auto-buyer and no clicks, and book it if the copy reaches the goal within
-// AUTO_CLEAR_MS (a few seconds: "trivial" means trivial). Off unless the player turns it on. The real run is never touched. A bot is a weaker player than a human, so
+// AUTO_CLEAR_MS (a few seconds: "trivial" means trivial). Only when the player asks (Simulate all). The real run is never touched. A bot is a weaker player than a human, so
 // a miss only means "play it yourself"; it never passes a tier a human couldn't.
 function botBuy(s) {
   for (const u of UPGRADES.filter((u) => !s.upg.includes(u.id) && upgradeUnlocked(s, u)).sort((a, b) => a.cost - b.cost)) {
@@ -1480,6 +1478,22 @@ export function autoClear(s, key, now = Date.now()) {
   if (ms === null) return false;
   recordClear(s, key, ms);
   return true;
+}
+
+/** Simulates every uncleared tier you can start. A clear can switch on a reward that lets the
+ *  next one pass, so it repeats until a pass books nothing. Returns { cleared, missed } keys. */
+export function simulateAll(s, now = Date.now()) {
+  const cleared = [];
+  for (let again = true; again; ) {
+    again = false;
+    for (const key of clearCandidates(s)) {
+      if (autoClear(s, key, now)) {
+        cleared.push(key);
+        again = true;
+      }
+    }
+  }
+  return { cleared, missed: clearCandidates(s) };
 }
 
 /** Newly earned achievement ids (also records them on s). */
