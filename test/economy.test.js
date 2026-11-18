@@ -550,3 +550,18 @@ test("early challenges start with a free kit, and every kit is for a source the 
   assert.ok(E.startChallenge(s, "hiring", T0));
   assert.deepEqual(s.prod.slice(0, 4), [0, 0, 0, 1], "Hiring Freeze starts with one Postgres Box");
 });
+
+test("a save with quick-cleared tiers restored right after a reset passes the plausibility check", () => {
+  const { s: before } = playHonestly(1800);
+  before.chalEver = ["legacy"];
+  before.chalDone = [];
+  before.chalFast = ["legacy"];
+  before.chalBest = {};
+  before.replat = 2;
+  E.earn(before, 1e12);
+  before.ins = E.pendingInsights(before);
+  assert.deepEqual(E.quickClear(before), ["legacy"]);
+  const next = E.normalize(JSON.parse(JSON.stringify(before)));
+  assert.ok(E.won(next, "legacy"));
+  assert.equal(E.implausible(null, next, 7200), null);
+});

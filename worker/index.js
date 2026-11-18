@@ -147,7 +147,7 @@ async function handlePutSave(request, user, env) {
 // event name, coarse context and a few numbers, written to Workers Analytics Engine.
 const EVENTS = new Set(["session_start", "session_end", "snapshot", "replat", "acq", "contact", "bang", "finale", "challenge", "quarter", "catalog"]);
 const LABEL = /^[a-z0-9_-]{0,24}$/;
-const NUMBERS = ["sessionSecs", "playHours", "log10Rows", "replat", "acq", "contact", "bangs", "ach", "chalWins", "quarters"];
+const NUMBERS = ["sessionSecs", "playHours", "log10Rows", "replat", "acq", "contact", "bangs", "ach", "chalWins", "quarters", "secs"];
 
 async function handleEvent(request, env) {
   if (!env.STATS) return new Response(null, { status: 204 }); // local dev without the binding

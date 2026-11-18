@@ -1411,7 +1411,7 @@ function loop() {
     structureKey = "";
   } else if (result) {
     const c = result.challenge;
-    track("challenge", S, { detail: result.key.replace("#", "_t") });
+    track("challenge", S, { detail: result.key.replace("#", "_t"), secs: result.ms / 1000 });
     confetti(60);
     const time = fmtDuration(result.ms / 1000);
     const reward = result.tier === 1 ? esc(c.reward) : `Production ×${E.TIER_REWARD}.`;
