@@ -3,7 +3,8 @@
   "name": "rows-to-riches",
   "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
-  "workers_dev": true,
+  "workers_dev": false, // served on its custom domains only; the workers.dev host is outside the zone (no WAF, no rate limits)
+  "preview_urls": false,
   // Static files are served straight from public/. The Worker sees /api/* and the page
   // itself ("/"), the latter only to log where visitors came from (logRef).
   "assets": { "directory": "public", "binding": "ASSETS", "run_worker_first": ["/", "/api/*"] },
