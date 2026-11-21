@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/drumandbytes/rows-to-riches/compare/v0.8.1...v0.8.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **seo:** host the IndexNow key file and submit the sitemap after each deploy ([#109](https://github.com/drumandbytes/rows-to-riches/issues/109)) ([4b02b34](https://github.com/drumandbytes/rows-to-riches/commit/4b02b34f51858e6ba959ed79d467530a09f6da58))
+
 ## [0.8.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.8.0...v0.8.1) (2026-11-21)
 
 
