@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/drumandbytes/rows-to-riches/compare/v0.8.0...v0.8.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **seo:** shorten the home and privacy meta descriptions under 160 characters ([#107](https://github.com/drumandbytes/rows-to-riches/issues/107)) ([7063b83](https://github.com/drumandbytes/rows-to-riches/commit/7063b832b348290df8325e174d484e44f6a14a05))
+
 ## [0.8.0](https://github.com/drumandbytes/rows-to-riches/compare/v0.7.7...v0.8.0) (2026-11-18)
 
 
