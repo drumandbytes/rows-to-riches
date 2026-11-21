@@ -28,6 +28,8 @@ sed -E \
   public/index.html |
   awk 'FNR == NR { shim = shim $0 "\n"; next } /<summary>Install as an app<\/summary>/ { skip = 1 } skip { if (/<\/details>/) skip = 0; next } !privacy && /<h3>Privacy<\/h3>/ { sub(/<h3>/, "<h3 hidden>"); privacy = 1 } /<script type="module"/ { printf "    <script>\n%s    </script>\n", shim } { print }' tools/itch-shim.js - > "$out/index.html"
 sed -i.bak -E 's#url\("/fonts#url("fonts#g' "$out/style.css" && rm "$out/style.css.bak"
+# The game un-hides some of these itself (e.g. the Global Privacy Control note), so hide by CSS.
+echo '#gpc-note, #stats-note, #lb, #push-wrap, #install-wrap { display: none !important; }' >> "$out/style.css"
 
 (cd "$out" && zip -qr ../rows-to-riches-itch.zip .)
 echo "rows-to-riches-itch.zip: $(du -h rows-to-riches-itch.zip | cut -f1)"
