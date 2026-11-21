@@ -5,3 +5,5 @@ node_modules/
 public/CHANGELOG.md
 docs/listing/*.png
 !docs/listing/4-multiverse.png
+dist-itch/
+rows-to-riches-itch.zip
