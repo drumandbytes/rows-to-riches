@@ -45,3 +45,19 @@ jobs:
       # Every file must be reachable on the live site: the zone WAF can block paths that
       # work fine locally (it 403'd /js/vendor/ and broke v0.2.0).
       - run: node tools/check-live.js
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sitemap
+          path: public/sitemap.xml
+          if-no-files-found: error
+          retention-days: 1
+
+  # Bing, Yandex and others learn about the release without waiting for a crawl. The key file
+  # is public/<key>.txt, the key is the org variable INDEXNOW_KEY.
+  indexnow:
+    needs: deploy
+    uses: drumandbytes/reusable-actions/.github/workflows/indexnow.yml@v1
+    with:
+      host: rowstoriches.drumandbytes.dev
+      key: ${{ vars.INDEXNOW_KEY }}
+      sitemap-artifact: sitemap
