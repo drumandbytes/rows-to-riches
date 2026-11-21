@@ -1,0 +1,37 @@
+name: itch.io
+
+# Pushes the browser build to itch.io with butler whenever a release is tagged, next to the
+# Cloudflare deploy (a separate workflow, so an itch.io outage can't touch the live site).
+# One-time setup: an itch.io API key (itch.io/user/settings/api-keys) as the BUTLER_API_KEY
+# repository secret. The channel name `html5` is what marks the upload as playable in the
+# browser.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: tools/build-itch.sh
+      - name: Install butler
+        run: |
+          curl -fsSL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip butler
+          chmod +x butler
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          VERSION: ${{ github.ref_name }}
+        run: ./butler push dist-itch drumandbytes/rows-to-riches:html5 --userversion "${VERSION#v}"
