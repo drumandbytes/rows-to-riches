@@ -102,7 +102,7 @@ for (const p of PRODUCERS) {
       name: TIER_NAMES[p.id][t] ?? `${p.name}: ${LATE_TIERS[t - TIER_NAMES[p.id].length]}`,
       icon: p.icon,
       cost: p.cost * TIER_COST[t],
-      desc: `${p.plural} are twice as fast.`,
+      desc: `${p.plural} ${p.plural === p.name ? "is" : "are"} twice as fast.`,
       kind: "producer",
       target: p.i,
       need: { producer: p.i, count: need },
@@ -507,9 +507,11 @@ for (const [e, name] of ROW_ACH) {
 }
 for (const p of PRODUCERS) {
   for (const n of [1, 50, 100, 200, 300]) {
-    ACHIEVEMENTS.push({ id: `own_${p.id}_${n}`, name: `${p.name} ×${n}`, desc: `Own ${n} ${p.plural}.`, test: (s) => (s.prod[p.i] ?? 0) >= n });
+    ACHIEVEMENTS.push({ id: `own_${p.id}_${n}`, name: `${p.name} ×${n}`, desc: `Own ${n} ${n === 1 ? p.name : p.plural}.`, test: (s) => (s.prod[p.i] ?? 0) >= n });
   }
 }
+// "Get acquired 1 times." reads wrong: singular forms for n = 1.
+const one = (d) => d.replace(/\b1 times\b/, "once").replace(/\b1 (incident|new universe|challenge)s\b/, "1 $1");
 const COUNT_ACH = [
   ["clicks", "INSERT {n} times by hand.", [[100, "Clicky"], [1000, "Carpal Tunnel"], [10000, "Human Load Balancer"], [100000, "Is This a Bot?"]]],
   ["cols", "Have {n} columns.", [[5, "Wide Table"], [10, "Very Wide Table"], [20, "SELECT * Regret"], [30, "One Big Table"]]],
@@ -522,11 +524,11 @@ const COUNT_ACH = [
 ];
 for (const [key, desc, list] of COUNT_ACH) {
   for (const [n, name, secret] of list) {
-    ACHIEVEMENTS.push({ id: `${key}_${n}`, name, desc: desc.replace("{n}", n), secret: !!secret, test: (s) => s[key] >= n });
+    ACHIEVEMENTS.push({ id: `${key}_${n}`, name, desc: one(desc.replace("{n}", n)), secret: !!secret, test: (s) => s[key] >= n });
   }
 }
 for (const [n, name] of [[1, "Challenge Accepted"], [5, "Overachiever"], [13, "Did Them All"], [50, "Glutton for Punishment"]]) {
-  ACHIEVEMENTS.push({ id: `chal_${n}`, name, desc: `Complete ${n} challenges.`, test: (s) => s.chalWins >= n });
+  ACHIEVEMENTS.push({ id: `chal_${n}`, name, desc: one(`Complete ${n} challenges.`), test: (s) => s.chalWins >= n });
 }
 for (const e of ENVIRONMENTS.slice(1)) {
   ACHIEVEMENTS.push({ id: `env_${e.id}`, name: `Welcome to ${e.name}`, desc: `Reach the ${e.name} environment.`, test: (s) => reachedEnv(s, e) });
