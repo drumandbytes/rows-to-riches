@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.4](https://github.com/drumandbytes/rows-to-riches/compare/v0.8.3...v0.8.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* no em dashes in the tab title, toasts and ticker lines ([4e3dd4b](https://github.com/drumandbytes/rows-to-riches/commit/4e3dd4bbc3d0fe2dc907ac9989dbd795a7241919))
+
 ## [0.8.3](https://github.com/drumandbytes/rows-to-riches/compare/v0.8.2...v0.8.3) (2026-11-27)
 
 
