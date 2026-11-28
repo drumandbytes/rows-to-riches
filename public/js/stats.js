@@ -13,7 +13,7 @@ export function createStats({ E, state, fmt, fmtDuration, esc, $ }) {
       const got = state().ach.includes(a.id);
       // "Click Me" looks like any other locked entry; players find it by poking around.
       const plain = a.id === "clickme" && !got;
-      const title = got ? `${a.name}: ${a.desc}` : plain ? "Locked" : `??? — ${a.desc}`;
+      const title = got ? `${a.name}: ${a.desc}` : plain ? "Locked" : `???: ${a.desc}`;
       const glyph = a.id === "clickme" ? "👉" : a.id === "named" ? "🏷️" : a.secret ? "🕵️" : (icon(a) ?? "⭐");
       return `<button type="button" class="${got ? "got" : ""}" data-ach="${a.id}" title="${esc(title)}" aria-label="${esc(got ? a.name : "Locked")}">${plain ? "⭐" : glyph}</button>`;
     }).join("");

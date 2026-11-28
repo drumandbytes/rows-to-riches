@@ -460,7 +460,7 @@ function render(force = false) {
   }
   queryLog.setActive(prefs.querylog && (S.prod[3] > 0 || S.arch.length > 0), r);
   $("spark-wrap").hidden = !(S.prod[2] > 0 || S.arch.length > 0);
-  document.title = `${fmt(S.rows)} rows — Rows to Riches`;
+  document.title = `${fmt(S.rows)} rows | Rows to Riches`;
   renderBuffs(now);
   renderFootprint(fp, r);
   prestige.renderChallengeBanner();
@@ -827,7 +827,7 @@ function updateSchema() {
   const frozen = E.rule(S).noColumns;
   btn.textContent = frozen
     ? `🔒 Schema frozen by the ${E.parseTier(S.chal).challenge.name} challenge`
-    : `ALTER TABLE rows ADD COLUMN ${E.columnName(S.cols)} — ${fmt(cost)} rows (each column ×${each})`;
+    : `ALTER TABLE rows ADD COLUMN ${E.columnName(S.cols)}: ${fmt(cost)} rows (each column ×${each})`;
   btn.disabled = frozen || cost.gt(S.rows);
   btn.classList.toggle("affordable", !frozen && cost.lte(S.rows));
 }
@@ -858,7 +858,7 @@ async function pushCloud({ force = false, keepalive = false } = {}) {
     r = await sync.pushSave(S, { force, keepalive });
   } catch {
     cloudDirty = true;
-    setSyncStatus("Offline — will retry.");
+    setSyncStatus("Offline, will retry.");
     return;
   }
   if (r.ok) setSyncStatus(`Synced ${clockTime(true)}.`);
@@ -1135,7 +1135,7 @@ document.addEventListener("click", (e) => {
   } else if (t.dataset.ach) {
     const a = E.ACH_BY_ID[t.dataset.ach];
     if (a.id === "clickme" && !S.ach.includes(a.id)) grantSecret("clickme");
-    else if (S.ach.includes(a.id)) toast(`🏅 <b>${esc(a.name)}</b> — ${esc(a.desc)}`);
+    else if (S.ach.includes(a.id)) toast(`🏅 <b>${esc(a.name)}</b>: ${esc(a.desc)}`);
     else toast(`🔒 ${esc(a.desc)}`);
   } else if (t.id === "add-column") onBuyColumn(t);
   else if (t.id === "sync-now") pushCloud();
